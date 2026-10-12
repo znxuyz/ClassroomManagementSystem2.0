@@ -895,6 +895,8 @@ Object.assign(StudentApp, {
   tTried: new Set(),      // 這次登入已經作答過的題目(含答錯的)
   tSolved: {},            // 已經答對的題目 { questionId: true },不會再抽到
   tAttemptId: null,
+  tSwapsLeft: 3,
+  tSwapping: false,
   tOpening: false,
   tDeadline: 0,
   tTimer: null,
@@ -977,6 +979,7 @@ Object.assign(StudentApp, {
     const nextAt = Territory.nextStageAt(c);
     const pen = c.wrongPenalty || 0;
     const floor = c.penaltyFloor || 0;
+    const maxSwaps = c.maxSwaps === undefined ? 3 : c.maxSwaps;
 
     return `
       <div class="war-header" style="border-color:${color}">
@@ -1001,6 +1004,8 @@ Object.assign(StudentApp, {
         ${pen > 0 ? `<span class="war-penalty-note">答錯或作廢會倒扣 <strong>${pen}</strong> 佔領分${
             floor > 0 ? `,同一格最多扣到 −${floor} 分` : ''}。</span><br>` : ''}
         同一題答對一次就不會再出現,答錯可以再挑戰。<br>
+        ${maxSwaps > 0 ? `遇到<strong>還沒教過</strong>的題目可以<strong>換題</strong>,
+          每次攻擊最多 ${maxSwaps} 次 —— 換到的題目難度與分數都降一階。<br>` : ''}
         灰色是尚未開放的區域,★ 是各組基地,不能被攻佔。
       </div>`;
   },
@@ -1011,11 +1016,67 @@ Object.assign(StudentApp, {
      只排除「已經答對」的 —— 同一題答對一次就夠了,再答也不該再得分。
      答錯過的仍然留在池子裡,題庫小的班級才不會很快就無題可答;
      但會排到最後面,不會一直拿同一題煩人。 */
-  unusedQuestions() {
+  unusedQuestions(level) {
     const solved = this.tSolved || {};
-    const pool = this.tQuestions.filter(q => !solved[q.id]);
+    let pool = this.tQuestions.filter(q => !solved[q.id]);
+    if (level) {
+      const sameLevel = pool.filter(q => (q.difficulty || 'medium') === level);
+      if (sameLevel.length > 0) pool = sameLevel;   // 該難度沒題目就退回全部
+    }
     const fresh = pool.filter(q => !this.tTried.has(q.id));
     return fresh.length > 0 ? fresh : pool;
+  },
+
+  /* 換題:往下一個難度換。難度降了,分數也跟著降 —— 代價就在這裡,
+     所以不另外罰。還沒教到的單元,學生不會被卡死。 */
+  async swapQuestion() {
+    if (!this.tQuestion || this.tSwapping) return;
+    if (this.tSwapsLeft <= 0) { toast('這一次的換題次數用完了'); return; }
+
+    const ORDER = ['hard', 'medium', 'easy'];
+    const cur = this.tQuestion.difficulty || 'medium';
+    const i = ORDER.indexOf(cur);
+    const nextLevel = i >= 0 && i < ORDER.length - 1 ? ORDER[i + 1] : 'easy';
+
+    const pool = this.unusedQuestions(nextLevel).filter(q => q.id !== this.tQuestion.id);
+    if (pool.length === 0) {
+      toast(nextLevel === cur ? '沒有更簡單的題目了' : `題庫裡沒有其他${DIFFICULTY[nextLevel].label}的題目`);
+      return;
+    }
+
+    const q = pool[Math.floor(Math.random() * pool.length)];
+    this.tSwapping = true;
+    this.render();
+
+    try {
+      const prev = this.tAttemptId;
+      this.tAttemptId = await Cloud.startTerritoryAttempt(
+        this.classInfo.classId, Cloud.uid, {
+          studentId: this.classInfo.studentId,
+          studentName: this.classInfo.name,
+          groupIdx: this.myGroupIdx(),
+          hexKey: this.tTargetHex,
+          questionId: q.id,
+          replaces: prev          // 舊的那筆不算失手,不會倒扣
+        });
+    } catch (e) {
+      console.warn('[領地戰] 換題失敗:', e.code || e.message);
+      this.tSwapping = false;
+      toast('換題失敗:' + (e.message || e.code));
+      this.render();
+      return;
+    }
+
+    this.tSwapping = false;
+    this.tSwapsLeft--;
+    this.tQuestion = q;
+    this.tPickedAnswer = null;
+
+    // 新題目重新計時,換到的題目才有完整的作答時間
+    const limit = this.answerSeconds();
+    this.tDeadline = limit > 0 ? Date.now() + limit * 1000 : 0;
+    if (limit > 0) this.startAnswerTimer();
+    this.render();
   },
 
   async attackHex(hexKey) {
@@ -1036,7 +1097,10 @@ Object.assign(StudentApp, {
       ((TerritoryGame.config || {}).wrongPenalty > 0
         ? `· 答錯或作廢會倒扣 ${TerritoryGame.config.wrongPenalty} 佔領分\n` : '') +
       '· 會進入全螢幕,離開全螢幕或切到別的分頁就作廢\n' +
-      '· 答錯或作廢可以再挑戰這一題,但答對過的題目不會再出現\n\n準備好了就按確定')) return;
+      '· 答錯或作廢可以再挑戰這一題,但答對過的題目不會再出現\n' +
+      (((TerritoryGame.config || {}).maxSwaps ?? 3) > 0
+        ? `· 沒學過的題目可以換題(最多 ${(TerritoryGame.config || {}).maxSwaps ?? 3} 次),難度與分數降一階\n` : '') +
+      '\n準備好了就按確定')) return;
 
     const q = pool[Math.floor(Math.random() * pool.length)];
     this.tOpening = true;
@@ -1063,6 +1127,8 @@ Object.assign(StudentApp, {
     }
 
     this.tOpening = false;
+    this.tSwapsLeft = (TerritoryGame.config || {}).maxSwaps;
+    if (this.tSwapsLeft === undefined) this.tSwapsLeft = 3;
     this.tTargetHex = hexKey;
     this.tQuestion = q;
     this.tPickedAnswer = null;
@@ -1209,6 +1275,11 @@ Object.assign(StudentApp, {
             ? `<span class="war-q-penalty">答錯 −${c.wrongPenalty}</span>` : ''}
           ${this.tDeadline > 0 ? `<span class="war-q-timer" id="warCountdownBig">${
             Math.max(0, Math.ceil((this.tDeadline - Date.now()) / 1000))} 秒</span>` : ''}
+          ${this.tSwapsLeft > 0 ? `
+            <button class="btn btn-ghost btn-small" ${this.tSwapping ? 'disabled' : ''}
+                    onclick="StudentApp.swapQuestion()"
+                    title="沒學過的單元可以換一題,但難度與分數都會降一階">
+              ${this.tSwapping ? '換題中…' : `換題 (還有 ${this.tSwapsLeft} 次)`}</button>` : ''}
           <button class="btn btn-ghost btn-small" onclick="StudentApp.cancelWarQuestion()">放棄</button>
         </div>
 

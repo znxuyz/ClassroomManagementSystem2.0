@@ -442,6 +442,9 @@ const Territory = {
       /* 嚴格作答:全螢幕作答,離開全螢幕或切到別的分頁就作廢。
          擋的是「複製題目、開新分頁問 AI」這條路。 */
       strictMode: opts.strictMode !== false,
+      /* 每次攻擊最多可以換幾次題目。換到的題目難度降一階,
+         分數也跟著降 —— 代價內建在規則裡,不需要另外罰。 */
+      maxSwaps: opts.maxSwaps === 0 ? 0 : (opts.maxSwaps || 3),
       stageMode: opts.stageMode || 'auto',      // auto = 依倒數自動開放 / manual = 老師手動
       stageSeconds: opts.stageSeconds || 300,   // 自動模式下每階段的間隔
       openDepth: 1,                             // 手動模式用:已開放到第幾層
@@ -588,10 +591,13 @@ const Territory = {
 
     // 事件上記著它是由哪一筆嘗試換來的,一題多次嘗試才對得起來
     const won = new Set((events || []).map(e => e.attemptId).filter(Boolean));
+    /* 被「換題」取代掉的那一筆不算失手 —— 學生只是換了一題,沒有答錯。
+       新的那筆會記著它取代了誰(append-only,不去改舊文件)。 */
+    const replaced = new Set(attempts.map(a => a.replaces).filter(Boolean));
     const window = ((config.answerSeconds || 45) + 5) * 1000;
 
     return attempts
-      .filter(a => !won.has(a.id) && a.at + window < now)
+      .filter(a => !won.has(a.id) && !replaced.has(a.id) && a.at + window < now)
       .map(a => ({ ...a, points: -penalty, isPenalty: true }));
   },
 
@@ -1095,6 +1101,7 @@ async function startTerritoryGame() {
     answerSeconds: Math.max(0, parseInt(document.getElementById('tgAnswerSeconds').value) || 0),
     wrongPenalty: parseInt(document.getElementById('tgWrongPenalty').value) || 0,
     penaltyFloor: parseInt(document.getElementById('tgPenaltyFloor').value) || 0,
+    maxSwaps: Math.max(0, parseInt(document.getElementById('tgMaxSwaps').value) || 0),
     stageMode: document.getElementById('tgStageMode').value,
     stageSeconds: parseInt(document.getElementById('tgStageSeconds').value) || 300
   });
@@ -1309,7 +1316,12 @@ function renderLiveSettings(c) {
       </div>
 
       <div class="tg-live-row">
-        <label class="tg-live-check">
+        <label>可換題</label>
+        <input type="number" id="lsSwaps" class="rule-editor-input" style="width:80px;"
+               value="${c.maxSwaps === undefined ? 3 : c.maxSwaps}" min="0" max="5" />
+        <label>次(難度降一階)</label>
+
+        <label class="tg-live-check" style="margin-left:10px;">
           <input type="checkbox" id="lsStrict" ${c.strictMode !== false ? 'checked' : ''} />
           嚴格作答(全螢幕,離開或切分頁就作廢)
         </label>
@@ -1336,6 +1348,7 @@ async function applyLiveSettings() {
     answerSeconds: Math.max(0, parseInt(document.getElementById('lsAnswer').value) || 0),
     wrongPenalty: parseInt(document.getElementById('lsPenalty').value) || 0,
     penaltyFloor: parseInt(document.getElementById('lsFloor').value) || 0,
+    maxSwaps: Math.max(0, parseInt(document.getElementById('lsSwaps').value) || 0),
     strictMode: document.getElementById('lsStrict').checked
   };
 
