@@ -432,10 +432,13 @@ const Territory = {
       battleSeconds: opts.battleSeconds || 90,  // 一場地塊爭奪持續多久
       /* 每一題的作答時限(秒)。點開題目起算,超過就不接受答案 ——
          這是為了壓掉「複製題目去問 AI」的時間。由安全規則強制。 */
-      answerSeconds: opts.answerSeconds || 45,
+      answerSeconds: opts.answerSeconds === 0 ? 0 : (opts.answerSeconds || 45),
       /* 答錯要不要倒扣佔領分(0 = 不扣)。一題只有一次機會,
          再加上扣分,用猜的就不划算了。 */
       wrongPenalty: opts.wrongPenalty || 0,
+      /* 一組在同一格最多被扣到幾分(0 = 不設下限)。
+         沒有下限的話,一組亂猜幾次就等於永久放棄那一格。 */
+      penaltyFloor: opts.penaltyFloor || 0,
       /* 嚴格作答:全螢幕作答,離開全螢幕或切到別的分頁就作廢。
          擋的是「複製題目、開新分頁問 AI」這條路。 */
       strictMode: opts.strictMode !== false,
@@ -632,10 +635,23 @@ const Territory = {
         cell.battle = { endsAt: at + config.battleSeconds * 1000, points: {} };
         active.add(ev.hexKey);
       }
-      /* 允許扣成負分。判定勝負時是 points >= threshold,
-         負分自然就出局 —— 亂猜的那一組要先把洞補回來才追得上。 */
+      /* 允許扣成負分(判定勝負是 points >= threshold,負分自然出局),
+         但老師可以設下限,免得一組亂猜幾次就等於永久放棄那一格。 */
       const g = String(ev.groupIdx);
-      cell.battle.points[g] = (cell.battle.points[g] || 0) + ev.points;
+      let pts = (cell.battle.points[g] || 0) + ev.points;
+      const floor = config.penaltyFloor || 0;
+      if (floor > 0) pts = Math.max(-floor, pts);
+      cell.battle.points[g] = pts;
+
+      /* 空白地塊:達到門檻就立刻插旗,不用等爭奪時間結束。
+         那塊地沒有人守,沒有道理讓佔領方空等 —— 計時是給「搶別組的地」
+         用的,雙方才有來回攻防的機會。 */
+      if (cell.owner === null && pts >= config.threshold) {
+        log.push({ at, hexKey: ev.hexKey, from: null, to: ev.groupIdx, points: pts });
+        cell.owner = ev.groupIdx;
+        cell.battle = null;
+        active.delete(ev.hexKey);
+      }
     });
 
     this.resolveBattles(config, map, active, now, log);
@@ -1075,8 +1091,9 @@ async function startTerritoryGame() {
     seed: Date.now() % 2147483647,
     threshold: parseInt(document.getElementById('tgThreshold').value) || 5,
     battleSeconds: parseInt(document.getElementById('tgBattle').value) || 90,
-    answerSeconds: parseInt(document.getElementById('tgAnswerSeconds').value) || 45,
+    answerSeconds: Math.max(0, parseInt(document.getElementById('tgAnswerSeconds').value) || 0),
     wrongPenalty: parseInt(document.getElementById('tgWrongPenalty').value) || 0,
+    penaltyFloor: parseInt(document.getElementById('tgPenaltyFloor').value) || 0,
     stageMode: document.getElementById('tgStageMode').value,
     stageSeconds: parseInt(document.getElementById('tgStageSeconds').value) || 300
   });
@@ -1278,13 +1295,16 @@ function renderLiveSettings(c) {
 
         <label style="margin-left:10px;">每題限時</label>
         <input type="number" id="lsAnswer" class="rule-editor-input" style="width:90px;"
-               value="${c.answerSeconds || 45}" min="10" max="300" />
-        <label>秒</label>
+               value="${c.answerSeconds || 0}" min="0" max="300" />
+        <label>秒(0=不限)</label>
 
         <label style="margin-left:10px;">答錯倒扣</label>
         <input type="number" id="lsPenalty" class="rule-editor-input" style="width:80px;"
                value="${c.wrongPenalty || 0}" min="0" max="10" />
-        <label>分</label>
+        <label>分,最多扣到</label>
+        <input type="number" id="lsFloor" class="rule-editor-input" style="width:80px;"
+               value="${c.penaltyFloor || 0}" min="0" max="30" />
+        <label>分(0=無下限)</label>
       </div>
 
       <div class="tg-live-row">
@@ -1312,15 +1332,17 @@ async function applyLiveSettings() {
   const next = {
     threshold: parseInt(document.getElementById('lsThreshold').value) || c.threshold,
     battleSeconds: parseInt(document.getElementById('lsBattle').value) || c.battleSeconds,
-    answerSeconds: parseInt(document.getElementById('lsAnswer').value) || (c.answerSeconds || 45),
+    answerSeconds: Math.max(0, parseInt(document.getElementById('lsAnswer').value) || 0),
     wrongPenalty: parseInt(document.getElementById('lsPenalty').value) || 0,
+    penaltyFloor: parseInt(document.getElementById('lsFloor').value) || 0,
     strictMode: document.getElementById('lsStrict').checked
   };
 
   // 會影響重播結果的三項,改了就得先鎖住現況
   const rewrites = next.threshold !== c.threshold
                 || next.battleSeconds !== c.battleSeconds
-                || next.wrongPenalty !== (c.wrongPenalty || 0);
+                || next.wrongPenalty !== (c.wrongPenalty || 0)
+                || next.penaltyFloor !== (c.penaltyFloor || 0);
 
   const inBattle = Object.values(TerritoryGame.map).filter(x => x.battle).length;
   if (rewrites && !confirm(

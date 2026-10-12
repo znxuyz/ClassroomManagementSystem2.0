@@ -1018,9 +1018,10 @@ Object.assign(StudentApp, {
 
     /* 規則要先講。嚴格模式下切個分頁題目就沒了,
        沒有事先說清楚會覺得被陰。 */
+    const limitSec = this.answerSeconds();
     if (this.strictOn() && !confirm(
       '這一題開始之後:\n\n' +
-      `· 限時 ${this.answerSeconds()} 秒\n` +
+      (limitSec > 0 ? `· 限時 ${limitSec} 秒\n` : '· 不限時,想清楚再答\n') +
       '· 會進入全螢幕,離開全螢幕或切到別的分頁就作廢\n' +
       '· 一題只有一次機會,答錯或作廢都不能重來\n\n準備好了就按確定')) return;
 
@@ -1054,8 +1055,9 @@ Object.assign(StudentApp, {
     this.tQuestion = q;
     this.tPickedAnswer = null;
     this.tResult = null;
-    this.tDeadline = Date.now() + this.answerSeconds() * 1000;
-    this.startAnswerTimer();
+    const limit = this.answerSeconds();
+    this.tDeadline = limit > 0 ? Date.now() + limit * 1000 : 0;
+    if (limit > 0) this.startAnswerTimer();
     this.render();
     await this.enterStrict();
   },
@@ -1065,9 +1067,12 @@ Object.assign(StudentApp, {
       () => Cloud.listMyTerritoryAttempts(this.classInfo.classId, Cloud.uid), {});
   },
 
+  /* 0 = 不限時。老師若覺得讀題慢的學生會吃虧,可以整個關掉;
+     防作弊就只靠「一題一次機會」與嚴格作答。 */
   answerSeconds() {
     const c = TerritoryGame.config;
-    return (c && c.answerSeconds) || 45;
+    const n = c ? c.answerSeconds : 45;
+    return (n === 0 || n) ? n : 45;
   },
 
   /* ---------- 嚴格作答 ----------
@@ -1184,8 +1189,8 @@ Object.assign(StudentApp, {
         <div class="war-q-head">
           <span class="war-q-diff" style="background:${d.color}">
             ${d.label} · 答對 +${d.points} 佔領分</span>
-          <span class="war-q-timer" id="warCountdownBig">${
-            Math.max(0, Math.ceil((this.tDeadline - Date.now()) / 1000))} 秒</span>
+          ${this.tDeadline > 0 ? `<span class="war-q-timer" id="warCountdownBig">${
+            Math.max(0, Math.ceil((this.tDeadline - Date.now()) / 1000))} 秒</span>` : ''}
           <button class="btn btn-ghost btn-small" onclick="StudentApp.cancelWarQuestion()">放棄</button>
         </div>
 

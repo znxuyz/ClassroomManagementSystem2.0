@@ -189,11 +189,14 @@ service cloud.firestore {
           && request.resource.data.groupIdx == cfg().memberGroup[request.resource.data.studentId]
           // 時間戳一律用伺服器的,先後才不受學生裝置時鐘影響
           && request.resource.data.at == request.time
-          // 必須先有「點開題目」那一筆,而且要在時限內答完。
-          // 時限由老師設定(舊的對局沒有這個欄位,當作 60 秒)。
+          // 必須先有「點開題目」那一筆 —— 一題一次機會就是靠這個
           && exists(/databases/$(database)/documents/classes/$(classId)/tattempts/$(eventId))
-          && request.time < get(/databases/$(database)/documents/classes/$(classId)/tattempts/$(eventId)).data.at
-               + duration.value(('answerSeconds' in cfg()) ? cfg().answerSeconds : 60, 's');
+          // 老師有設時限才檢查。設 0 代表不限時(有些學生讀題慢)。
+          && (
+               (('answerSeconds' in cfg()) ? cfg().answerSeconds : 0) <= 0
+               || request.time < get(/databases/$(database)/documents/classes/$(classId)/tattempts/$(eventId)).data.at
+                    + duration.value(cfg().answerSeconds, 's')
+             );
 
         allow read: if signedIn();
         allow update: if false;
