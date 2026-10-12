@@ -430,6 +430,12 @@ const Territory = {
       shape, radius, seed, maxDepth,
       threshold: opts.threshold || 5,           // 拿下一格至少要累積幾分
       battleSeconds: opts.battleSeconds || 90,  // 一場地塊爭奪持續多久
+      /* 每一題的作答時限(秒)。點開題目起算,超過就不接受答案 ——
+         這是為了壓掉「複製題目去問 AI」的時間。由安全規則強制。 */
+      answerSeconds: opts.answerSeconds || 45,
+      /* 答錯要不要倒扣佔領分(0 = 不扣)。一題只有一次機會,
+         再加上扣分,用猜的就不划算了。 */
+      wrongPenalty: opts.wrongPenalty || 0,
       stageMode: opts.stageMode || 'auto',      // auto = 依倒數自動開放 / manual = 老師手動
       stageSeconds: opts.stageSeconds || 300,   // 自動模式下每階段的間隔
       openDepth: 1,                             // 手動模式用:已開放到第幾層
@@ -567,7 +573,22 @@ const Territory = {
   /* ---------- 重播 ----------
      events 必須已依伺服器時間排序。 */
 
-  replay(config, events, now) {
+  /* attempts 是「點開題目」的紀錄。沒有對應成功事件、而且作答時限已過的,
+     就是答錯或放生 —— 老師若設了 wrongPenalty 就倒扣那一格的佔領分。
+     時限還沒到的不算,那可能只是學生正在作答。 */
+  failedAttempts(config, events, attempts, now) {
+    const penalty = config.wrongPenalty || 0;
+    if (penalty <= 0 || !attempts || attempts.length === 0) return [];
+
+    const won = new Set((events || []).map(e => e.id));
+    const window = ((config.answerSeconds || 45) + 5) * 1000;
+
+    return attempts
+      .filter(a => !won.has(a.id) && a.at + window < now)
+      .map(a => ({ ...a, points: -penalty, isPenalty: true }));
+  },
+
+  replay(config, events, now, attempts) {
     now = now || Date.now();
     const depth = this.depthOf(config);
 
@@ -587,7 +608,11 @@ const Territory = {
     // 只追蹤交戰中的格子。地圖上千格時,每筆事件都掃全圖會慢到不能用
     const active = new Set();
 
-    (events || []).forEach(ev => {
+    // 成功與失手合在一起依時間重播,順序才和實際發生的一致
+    const stream = (events || []).concat(this.failedAttempts(config, events, attempts, now))
+      .sort((a, b) => a.at - b.at);
+
+    stream.forEach(ev => {
       const at = ev.at;
       this.resolveBattles(config, map, active, at, log);
 
@@ -598,12 +623,15 @@ const Territory = {
       if (!this.isOpenCell(config, ev.hexKey, cell.depth, at)) return;  // 還沒開放
       if (!this.adjacentTo(map, ev.hexKey, ev.groupIdx)) return;  // 必須與自己領地相鄰
 
+      // 倒扣只會削弱已經開打的格子,不會自己掀起一場爭奪
       if (!cell.battle) {
+        if (ev.isPenalty) return;
         cell.battle = { endsAt: at + config.battleSeconds * 1000, points: {} };
         active.add(ev.hexKey);
       }
       const g = String(ev.groupIdx);
-      cell.battle.points[g] = (cell.battle.points[g] || 0) + ev.points;
+      const next = (cell.battle.points[g] || 0) + ev.points;
+      cell.battle.points[g] = Math.max(0, next);   // 扣到 0 為止,不會變負的
     });
 
     this.resolveBattles(config, map, active, now, log);
@@ -1043,6 +1071,8 @@ async function startTerritoryGame() {
     seed: Date.now() % 2147483647,
     threshold: parseInt(document.getElementById('tgThreshold').value) || 5,
     battleSeconds: parseInt(document.getElementById('tgBattle').value) || 90,
+    answerSeconds: parseInt(document.getElementById('tgAnswerSeconds').value) || 45,
+    wrongPenalty: parseInt(document.getElementById('tgWrongPenalty').value) || 0,
     stageMode: document.getElementById('tgStageMode').value,
     stageSeconds: parseInt(document.getElementById('tgStageSeconds').value) || 300
   });
@@ -1084,9 +1114,11 @@ async function openNextRing() {
 const TerritoryGame = {
   unsubConfig: null,
   unsubEvents: null,
+  unsubAttempts: null,
   ticker: null,
   config: null,
   events: [],
+  attempts: [],
   map: {},
   log: [],
   onUpdate: null,      // 學生端掛自己的重繪
@@ -1107,6 +1139,11 @@ const TerritoryGame = {
       this.events = list;
       this.rebuild();
     });
+    // 失手的嘗試要倒扣時才用得到,但一律訂閱比較單純
+    this.unsubAttempts = Cloud.watchTerritoryAttempts(cid, list => {
+      this.attempts = list;
+      this.rebuild();
+    });
 
     // 戰役到期與階段開放都是「時間到了才發生」,沒有新事件也要重算
     this.ticker = setInterval(() => this.rebuild(), 1000);
@@ -1115,15 +1152,17 @@ const TerritoryGame = {
   stop() {
     if (this.unsubConfig) { this.unsubConfig(); this.unsubConfig = null; }
     if (this.unsubEvents) { this.unsubEvents(); this.unsubEvents = null; }
+    if (this.unsubAttempts) { this.unsubAttempts(); this.unsubAttempts = null; }
     if (this.ticker) { clearInterval(this.ticker); this.ticker = null; }
     this.config = null;
     this.events = [];
+    this.attempts = [];
     this.map = {};
   },
 
   rebuild() {
     if (!this.config) { this.map = {}; return; }
-    const r = Territory.replay(this.config, this.events);
+    const r = Territory.replay(this.config, this.events, Date.now(), this.attempts);
     this.map = r.map;
     this.log = r.log;
     if (this.onUpdate) this.onUpdate();

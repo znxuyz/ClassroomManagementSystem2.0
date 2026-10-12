@@ -35,6 +35,8 @@ const StudentApp = {
     this._warTabShown = false;
     this._warSig = null;
     this.tTried = new Set();
+    this.tAttempts = {};
+    this.stopAnswerTimer();
     this.classInfo = classInfo;
     hideAllTopViews();
     document.getElementById('studentView').classList.remove('hidden');
@@ -45,6 +47,7 @@ const StudentApp = {
     this.watch();
     this.watchPurchases();
     this.watchTerritory();
+    this.loadMyAttempts();
   },
 
   /* 老師結算兌換後,狀態會即時反映在學生畫面上 */
@@ -890,6 +893,10 @@ Object.assign(StudentApp, {
   _warTabShown: false,
   _warSig: null,
   tTried: new Set(),      // 這次登入已經作答過的題目(含答錯的)
+  tAttempts: {},          // 伺服器上已登記的作答嘗試 { questionId: true }
+  tOpening: false,
+  tDeadline: 0,
+  tTimer: null,
   qProgress: {},          // { quizId: 已答題數 } 逐題搶答用
   qAnswered: {},          // 目前這份測驗自己答過的題目
   qPicked: null,
@@ -994,29 +1001,94 @@ Object.assign(StudentApp, {
   /* 已經答過的題目不再出現。答過的名單直接從戰況事件推出來,
      重新整理或換裝置都算數,不靠瀏覽器記憶。 */
   unusedQuestions() {
-    // 答錯不會留下事件(規則直接擋掉),所以本機也要記一份,
-    // 否則同一題可以一直猜到對為止。
+    /* 用掉的題目以伺服器上的「作答嘗試」為準。
+       以前只記在本機,學生重新整理就全部歸零,等於可以一直猜到對為止。 */
     const used = new Set([
-      ...(TerritoryGame.events || [])
-        .filter(e => e.uid === Cloud.uid)
-        .map(e => e.questionId),
+      ...Object.keys(this.tAttempts || {}),
       ...this.tTried
     ]);
     return this.tQuestions.filter(q => !used.has(q.id));
   },
 
-  attackHex(hexKey) {
+  async attackHex(hexKey) {
     if (this.tQuestions.length === 0) { toast('題庫是空的,請找老師'); return; }
     const pool = this.unusedQuestions();
     if (pool.length === 0) { toast('題庫的題目你都答過了,請找老師再出題'); return; }
+    if (this.tOpening) return;
+
+    const q = pool[Math.floor(Math.random() * pool.length)];
+    this.tOpening = true;
+
+    /* 先在伺服器登記「我點開了這一題」,拿到伺服器時間之後才顯示題目。
+       登記失敗代表這題已經用掉機會了(例如在另一台裝置開過)。 */
+    try {
+      await Cloud.startTerritoryAttempt(this.classInfo.classId, Cloud.uid, {
+        studentId: this.classInfo.studentId,
+        studentName: this.classInfo.name,
+        groupIdx: this.myGroupIdx(),
+        hexKey,
+        questionId: q.id
+      });
+    } catch (e) {
+      console.warn('[領地戰] 登記作答失敗:', e.code || e.message);
+      this.tAttempts[q.id] = true;     // 這題不要再抽到
+      this.tOpening = false;
+      toast(e.code === 'already-exists' || e.code === 'permission-denied'
+        ? '這一題你已經答過了,換一格再試'
+        : '開啟題目失敗:' + e.message);
+      this.render();
+      return;
+    }
+
+    this.tAttempts[q.id] = true;
+    this.tOpening = false;
     this.tTargetHex = hexKey;
-    this.tQuestion = pool[Math.floor(Math.random() * pool.length)];
+    this.tQuestion = q;
     this.tPickedAnswer = null;
     this.tResult = null;
+    this.tDeadline = Date.now() + this.answerSeconds() * 1000;
+    this.startAnswerTimer();
     this.render();
   },
 
+  async loadMyAttempts() {
+    this.tAttempts = await this.optional('作答紀錄',
+      () => Cloud.listMyTerritoryAttempts(this.classInfo.classId, Cloud.uid), {});
+  },
+
+  answerSeconds() {
+    const c = TerritoryGame.config;
+    return (c && c.answerSeconds) || 45;
+  },
+
+  /* 作答倒數。時間到就關掉題目 —— 機會已經用掉了,不能再回來慢慢查。 */
+  startAnswerTimer() {
+    clearInterval(this.tTimer);
+    this.tTimer = setInterval(() => {
+      const left = Math.max(0, Math.ceil((this.tDeadline - Date.now()) / 1000));
+      const el = document.getElementById('warCountdownBig');
+      if (el) {
+        el.textContent = left + ' 秒';
+        el.classList.toggle('is-urgent', left <= 10);
+      }
+      if (left <= 0) this.timeUpWarAnswer();
+    }, 250);
+  },
+
+  stopAnswerTimer() { clearInterval(this.tTimer); this.tTimer = null; },
+
+  timeUpWarAnswer() {
+    this.stopAnswerTimer();
+    if (!this.tQuestion) return;
+    this.tQuestion = null;
+    this.tTargetHex = null;
+    this.tPickedAnswer = null;
+    this.render();
+    showWarResult(false, '時間到,這一題的機會用掉了');
+  },
+
   cancelWarQuestion() {
+    this.stopAnswerTimer();
     this.tQuestion = null;
     this.tTargetHex = null;
     this.tPickedAnswer = null;
@@ -1040,6 +1112,8 @@ Object.assign(StudentApp, {
         <div class="war-q-head">
           <span class="war-q-diff" style="background:${d.color}">
             ${d.label} · 答對 +${d.points} 佔領分</span>
+          <span class="war-q-timer" id="warCountdownBig">${
+            Math.max(0, Math.ceil((this.tDeadline - Date.now()) / 1000))} 秒</span>
           <button class="btn btn-ghost btn-small" onclick="StudentApp.cancelWarQuestion()">放棄</button>
         </div>
 
@@ -1053,10 +1127,12 @@ Object.assign(StudentApp, {
           </span>
         </div>
 
-        <div class="war-q-text">${escapeHtml(q.text)}</div>
+        <div class="war-q-text noselect" oncopy="return false" oncontextmenu="return false"
+             >${escapeHtml(q.text)}</div>
 
         ${q.options.map((opt, i) => opt ? `
-          <label class="student-option ${this.tPickedAnswer === i ? 'picked' : ''}"
+          <label class="student-option noselect ${this.tPickedAnswer === i ? 'picked' : ''}"
+                 oncopy="return false" oncontextmenu="return false"
                  onclick="StudentApp.pickWarAnswer(${i})">
             <span class="student-option-letter">${'ABCD'[i]}</span>
             <span>${escapeHtml(opt)}</span>
@@ -1075,6 +1151,7 @@ Object.assign(StudentApp, {
      正確答案不需要送到學生端,也就無從偷看。 */
   async submitWarAnswer() {
     if (this.tPickedAnswer === null || this.tSubmitting) return;
+    this.stopAnswerTimer();
     this.tSubmitting = true;
     this.render();
 
@@ -1096,7 +1173,9 @@ Object.assign(StudentApp, {
     } catch (e) {
       if (e.code === 'permission-denied') {
         // 答案由安全規則在伺服器端比對,被拒絕就代表答錯
-        showWarResult(false, '這一題答錯了,換一格再試試');
+        const pen = (TerritoryGame.config || {}).wrongPenalty || 0;
+        showWarResult(false, '這一題答錯了,機會已經用掉,不能再答一次' +
+          (pen > 0 ? `。這一格倒扣 ${pen} 佔領分` : ''));
       } else {
         console.error(e);
         showWarResult(null, '送出失敗:' + e.message);

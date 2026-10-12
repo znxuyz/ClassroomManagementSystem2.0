@@ -128,6 +128,36 @@ service cloud.firestore {
          所以驗證必須在這裡做到位。規則會比對老師設定的正確答案,
          答錯的事件根本寫不進來;組別與佔領分也都從伺服器端的資料核對,
          學生改前端沒有用。寫入後不可修改,免得事後竄改。 */
+      /* 作答嘗試:學生「點開題目」的當下就先寫一筆,由伺服器蓋時間。
+         這份紀錄解決兩件事 ——
+         (1) 文件 id 綁定「誰 + 哪一題」且只能建立不能修改,所以不管重新
+             整理幾次,一題就是一次機會。答錯了也用掉,不能再猜。
+             (之前答錯不留痕跡,學生重整就能一直猜到對為止。)
+         (2) 有了開始時間,下面的 tevents 才能限制「必須在 N 秒內答完」,
+             把跑去問 AI 的時間壓掉。
+         這裡刻意不驗證答案 —— 對錯是 tevents 的事,嘗試本身一定要留下。 */
+      match /tattempts/{attemptId} {
+        function cfg() {
+          return get(/databases/$(database)/documents/classes/$(classId)/territory/config).data;
+        }
+        function isClassTeacher() {
+          return signedIn()
+            && get(/databases/$(database)/documents/classes/$(classId)).data.teacherUid == request.auth.uid;
+        }
+
+        allow create: if signedIn()
+          && request.resource.data.uid == request.auth.uid
+          && attemptId == request.auth.uid + '_' + request.resource.data.questionId
+          && request.resource.data.at == request.time
+          && request.resource.data.groupIdx == cfg().memberGroup[request.resource.data.studentId]
+          && cfg().status == 'running';
+
+        // 裡面只有題號與時間,沒有答案,全班可讀不會洩題
+        allow read: if signedIn();
+        allow update: if false;
+        allow delete: if isClassTeacher();
+      }
+
       match /tevents/{eventId} {
         function cfg() {
           return get(/databases/$(database)/documents/classes/$(classId)/territory/config).data;
@@ -158,7 +188,12 @@ service cloud.firestore {
           // 組別以老師的分組為準
           && request.resource.data.groupIdx == cfg().memberGroup[request.resource.data.studentId]
           // 時間戳一律用伺服器的,先後才不受學生裝置時鐘影響
-          && request.resource.data.at == request.time;
+          && request.resource.data.at == request.time
+          // 必須先有「點開題目」那一筆,而且要在時限內答完。
+          // 時限由老師設定(舊的對局沒有這個欄位,當作 60 秒)。
+          && exists(/databases/$(database)/documents/classes/$(classId)/tattempts/$(eventId))
+          && request.time < get(/databases/$(database)/documents/classes/$(classId)/tattempts/$(eventId)).data.at
+               + duration.value(('answerSeconds' in cfg()) ? cfg().answerSeconds : 60, 's');
 
         allow read: if signedIn();
         allow update: if false;

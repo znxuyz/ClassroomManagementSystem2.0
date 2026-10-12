@@ -571,6 +571,44 @@ const Cloud = {
 
   /* 送出一次攻擊。答錯的話會被安全規則擋下來,
      丟出 permission-denied,呼叫端據此判定答錯。 */
+  /* 點開題目就先登記一筆,由伺服器蓋時間。
+     文件 id 和作答事件用同一組,規則才對得起來。
+     已經登記過會被規則擋下(already-exists / permission-denied),
+     呼叫端據此判定「這題你已經用掉機會了」。 */
+  async startTerritoryAttempt(classId, uid, payload) {
+    await this.db.collection('classes').doc(classId)
+      .collection('tattempts').doc(`${uid}_${payload.questionId}`)
+      .create({
+        ...payload,
+        uid,
+        at: firebase.firestore.FieldValue.serverTimestamp()
+      });
+  },
+
+  /* 我自己用掉了哪幾題(重新整理、換裝置都算數) */
+  async listMyTerritoryAttempts(classId, uid) {
+    const snap = await this.db.collection('classes').doc(classId)
+      .collection('tattempts').where('uid', '==', uid).get();
+    const out = {};
+    snap.docs.forEach(d => { out[d.data().questionId] = true; });
+    return out;
+  },
+
+  /* 老師端重播要用:失手的嘗試會扣佔領分 */
+  watchTerritoryAttempts(classId, cb) {
+    return this.db.collection('classes').doc(classId)
+      .collection('tattempts').onSnapshot(snap => {
+        const list = [];
+        snap.docs.forEach(d => {
+          const data = d.data();
+          if (!data.at || typeof data.at.toMillis !== 'function') return;
+          list.push({ id: d.id, ...data, at: data.at.toMillis() });
+        });
+        list.sort((a, b) => a.at - b.at);
+        cb(list);
+      }, err => console.warn('[領地戰] 嘗試監聽中斷:', err.message));
+  },
+
   /* 文件 id 固定為 {uid}_{題目id}:同一題每個人只能答一次。
      用隨機 id 的話,學生記住答案後可以對同一題重複作答刷分,
      而且規則擋不住(每一次送出看起來都是合法的新事件)。 */
@@ -599,10 +637,15 @@ const Cloud = {
       }, err => console.warn('[領地戰] 事件監聽中斷:', err.message));
   },
 
-  /* 重新開局時清掉上一局的事件 */
+  /* 重新開局時清掉上一局的事件與作答嘗試 */
   async clearTerritoryEvents(classId) {
+    await this._clearSub(classId, 'tattempts');
+    await this._clearSub(classId, 'tevents');
+  },
+
+  async _clearSub(classId, name) {
     const snap = await this.db.collection('classes').doc(classId)
-      .collection('tevents').get();
+      .collection(name).get();
     for (let i = 0; i < snap.docs.length; i += 400) {
       const batch = this.db.batch();
       snap.docs.slice(i, i + 400).forEach(d => batch.delete(d.ref));

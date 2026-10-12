@@ -446,3 +446,39 @@
   pointer-events: auto;
   cursor: pointer;
 }
+
+/* ---------- 作答限時 ---------- */
+
+.war-q-timer {
+  margin-left: auto;
+  margin-right: 10px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--paper-warm);
+  border: 1px solid var(--paper-shadow);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.war-q-timer.is-urgent {
+  background: rgba(194, 91, 78, 0.16);
+  border-color: rgba(194, 91, 78, 0.4);
+  color: var(--sick);
+  animation: warTimerPulse 1s ease-in-out infinite;
+}
+
+@keyframes warTimerPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+/* 題目與選項不給選取、不給長按複製。
+   擋得住隨手貼給 AI,擋不住拍照 —— 真正有用的是上面的限時。 */
+.noselect {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
