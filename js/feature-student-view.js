@@ -1018,7 +1018,10 @@ Object.assign(StudentApp, {
   async attackHex(hexKey) {
     if (this.tQuestions.length === 0) { toast('題庫是空的,請找老師'); return; }
     const pool = this.unusedQuestions();
-    if (pool.length === 0) { toast('題庫的題目你都答過了,請找老師再出題'); return; }
+    if (pool.length === 0) {
+      toast(`題庫共 ${this.tQuestions.length} 題你都答過了 —— 每題只有一次機會,請找老師加題目`);
+      return;
+    }
     if (this.tOpening) return;
 
     /* 規則要先講。嚴格模式下切個分頁題目就沒了,
@@ -1047,11 +1050,25 @@ Object.assign(StudentApp, {
       });
     } catch (e) {
       console.warn('[領地戰] 登記作答失敗:', e.code || e.message);
-      this.tAttempts[q.id] = true;     // 這題不要再抽到
       this.tOpening = false;
-      toast(e.code === 'already-exists' || e.code === 'permission-denied'
-        ? '這一題你已經答過了,換一格再試'
-        : '開啟題目失敗:' + e.message);
+
+      /* 寫入被拒的原因不只一種,不能一律當成「已經答過」。
+         真的用過的話文件會存在,直接去確認 —— 不然規則一出問題,
+         學生會被一題一題燒掉,而且每次都看到誤導的訊息。 */
+      let used = false;
+      try {
+        used = await Cloud.territoryAttemptExists(
+          this.classInfo.classId, Cloud.uid, q.id);
+      } catch (_) { /* 連查都查不到就當作不是「已用過」 */ }
+
+      if (used) {
+        this.tAttempts[q.id] = true;         // 確定用過了,不要再抽到
+        toast('這一題你已經答過了,再點一次換下一題');
+      } else {
+        toast(e.code === 'permission-denied'
+          ? '開啟題目被拒絕,請老師確認 Firestore 安全性規則已重新發布'
+          : '開啟題目失敗:' + (e.message || e.code));
+      }
       this.render();
       return;
     }

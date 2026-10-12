@@ -589,6 +589,15 @@ const Cloud = {
       });
   },
 
+  /* 這一題我是不是真的已經登記過了。
+     寫入被拒有很多種原因(規則沒發布、設定對不上…),不能一律當成
+     「已經答過」—— 那會把還沒用過的題目也標記掉。所以直接去問。 */
+  async territoryAttemptExists(classId, uid, questionId) {
+    const snap = await this.db.collection('classes').doc(classId)
+      .collection('tattempts').doc(`${uid}_${questionId}`).get();
+    return snap.exists;
+  },
+
   /* 我自己用掉了哪幾題(重新整理、換裝置都算數) */
   async listMyTerritoryAttempts(classId, uid) {
     const snap = await this.db.collection('classes').doc(classId)
