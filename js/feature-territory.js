@@ -436,6 +436,9 @@ const Territory = {
       /* 答錯要不要倒扣佔領分(0 = 不扣)。一題只有一次機會,
          再加上扣分,用猜的就不划算了。 */
       wrongPenalty: opts.wrongPenalty || 0,
+      /* 嚴格作答:全螢幕作答,離開全螢幕或切到別的分頁就作廢。
+         擋的是「複製題目、開新分頁問 AI」這條路。 */
+      strictMode: opts.strictMode !== false,
       stageMode: opts.stageMode || 'auto',      // auto = 依倒數自動開放 / manual = 老師手動
       stageSeconds: opts.stageSeconds || 300,   // 自動模式下每階段的間隔
       openDepth: 1,                             // 手動模式用:已開放到第幾層
@@ -629,9 +632,10 @@ const Territory = {
         cell.battle = { endsAt: at + config.battleSeconds * 1000, points: {} };
         active.add(ev.hexKey);
       }
+      /* 允許扣成負分。判定勝負時是 points >= threshold,
+         負分自然就出局 —— 亂猜的那一組要先把洞補回來才追得上。 */
       const g = String(ev.groupIdx);
-      const next = (cell.battle.points[g] || 0) + ev.points;
-      cell.battle.points[g] = Math.max(0, next);   // 扣到 0 為止,不會變負的
+      cell.battle.points[g] = (cell.battle.points[g] || 0) + ev.points;
     });
 
     this.resolveBattles(config, map, active, now, log);
@@ -1221,6 +1225,8 @@ function renderTerritoryBoard() {
         ? '<button class="btn btn-accent btn-small" onclick="openNextRing()">往外開一圈</button>' : ''}
       ${c.status === 'running' && !TerritoryEdit.active
         ? '<button class="btn btn-ghost btn-small" onclick="TerritoryEdit.enter()">手動開放/封鎖</button>' : ''}
+      ${c.status === 'running'
+        ? '<button class="btn btn-ghost btn-small" onclick="toggleLiveSettings()">調整設定</button>' : ''}
       ${TerritoryGame.events.length >= COMPACT_SUGGEST_AT
         ? `<button class="btn btn-accent btn-small" onclick="compactTerritory()"
              title="作答紀錄已累積 ${TerritoryGame.events.length} 筆,壓縮可加快所有人的載入">
@@ -1229,12 +1235,117 @@ function renderTerritoryBoard() {
       ${c.status === 'running'
         ? '<button class="btn btn-ghost btn-small" onclick="endTerritoryGame()">結束這一局</button>' : ''}
     </div>
+    ${_liveSettingsOpen ? renderLiveSettings(c) : ''}
     ${renderStandings(c, TerritoryGame.map)}
     ${renderHexMap(c, TerritoryGame.map, {
         zoom: _territoryZoom,
         editMode: TerritoryEdit.active,
         selected: TerritoryEdit.selected
       })}`;
+}
+
+/* ============================================
+   遊戲中調整設定
+   ────────────────────────────────────────────
+   地圖不是存檔、是由事件重播出來的,所以門檻、爭奪秒數、答錯倒扣
+   這幾項「改了會連過去一起重算」—— 把門檻調高,之前打下來的地可能
+   直接被吐回去。所以改這些之前會先把目前戰況存成快照鎖住,
+   改動只從現在開始生效。
+============================================ */
+
+let _liveSettingsOpen = false;
+
+function toggleLiveSettings() {
+  _liveSettingsOpen = !_liveSettingsOpen;
+  _lastMapSig = null;
+  renderTerritoryBoard();
+}
+
+function renderLiveSettings(c) {
+  return `
+    <div class="tg-live-settings">
+      <div class="tg-live-title">遊戲中調整設定</div>
+      <div class="tg-live-row">
+        <label>佔領門檻</label>
+        <input type="number" id="lsThreshold" class="rule-editor-input" style="width:80px;"
+               value="${c.threshold}" min="1" max="30" />
+        <label>分</label>
+
+        <label style="margin-left:10px;">爭奪時間</label>
+        <input type="number" id="lsBattle" class="rule-editor-input" style="width:90px;"
+               value="${c.battleSeconds}" min="15" max="600" />
+        <label>秒</label>
+
+        <label style="margin-left:10px;">每題限時</label>
+        <input type="number" id="lsAnswer" class="rule-editor-input" style="width:90px;"
+               value="${c.answerSeconds || 45}" min="10" max="300" />
+        <label>秒</label>
+
+        <label style="margin-left:10px;">答錯倒扣</label>
+        <input type="number" id="lsPenalty" class="rule-editor-input" style="width:80px;"
+               value="${c.wrongPenalty || 0}" min="0" max="10" />
+        <label>分</label>
+      </div>
+
+      <div class="tg-live-row">
+        <label class="tg-live-check">
+          <input type="checkbox" id="lsStrict" ${c.strictMode !== false ? 'checked' : ''} />
+          嚴格作答(全螢幕,離開或切分頁就作廢)
+        </label>
+        <div style="flex:1"></div>
+        <button class="btn btn-ghost btn-small" onclick="toggleLiveSettings()">取消</button>
+        <button class="btn btn-primary btn-small" onclick="applyLiveSettings()">套用</button>
+      </div>
+
+      <div class="tg-live-note">
+        門檻、爭奪時間、答錯倒扣會影響「重新計算整場戰況」的結果。
+        套用前系統會先把目前的地圖鎖成快照,所以<strong>已經打下來的地不會被吐回去</strong>,
+        改動從現在開始算。
+      </div>
+    </div>`;
+}
+
+async function applyLiveSettings() {
+  const c = TerritoryGame.config;
+  if (!c) return;
+
+  const next = {
+    threshold: parseInt(document.getElementById('lsThreshold').value) || c.threshold,
+    battleSeconds: parseInt(document.getElementById('lsBattle').value) || c.battleSeconds,
+    answerSeconds: parseInt(document.getElementById('lsAnswer').value) || (c.answerSeconds || 45),
+    wrongPenalty: parseInt(document.getElementById('lsPenalty').value) || 0,
+    strictMode: document.getElementById('lsStrict').checked
+  };
+
+  // 會影響重播結果的三項,改了就得先鎖住現況
+  const rewrites = next.threshold !== c.threshold
+                || next.battleSeconds !== c.battleSeconds
+                || next.wrongPenalty !== (c.wrongPenalty || 0);
+
+  const inBattle = Object.values(TerritoryGame.map).filter(x => x.battle).length;
+  if (rewrites && !confirm(
+      `這次調整會影響整場戰況的重新計算,所以會先把目前的地圖鎖成快照。\n\n` +
+      `· 已經打下來的地維持不變\n` +
+      (inBattle > 0 ? `· 目前有 ${inBattle} 格正在交戰,會重新開始累積\n` : '') +
+      `· 新的設定從現在開始生效\n\n要套用嗎?`)) return;
+
+  try {
+    toast('套用中…');
+    const merged = { ...c, ...next };
+    if (rewrites) {
+      merged.snapshot = Territory.snapshotOf(TerritoryGame.map);
+      merged.compactedAt = Date.now();
+    }
+    await Cloud.saveTerritoryConfig(state.classId, merged);
+    if (rewrites) await Cloud.clearTerritoryEvents(state.classId);
+
+    _liveSettingsOpen = false;
+    _lastMapSig = null;
+    toast('✦ 設定已更新');
+  } catch (e) {
+    console.error(e);
+    toast('套用失敗:' + e.message);
+  }
 }
 
 function renderTerritoryFeed() {

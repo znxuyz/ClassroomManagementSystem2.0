@@ -1016,6 +1016,14 @@ Object.assign(StudentApp, {
     if (pool.length === 0) { toast('題庫的題目你都答過了,請找老師再出題'); return; }
     if (this.tOpening) return;
 
+    /* 規則要先講。嚴格模式下切個分頁題目就沒了,
+       沒有事先說清楚會覺得被陰。 */
+    if (this.strictOn() && !confirm(
+      '這一題開始之後:\n\n' +
+      `· 限時 ${this.answerSeconds()} 秒\n` +
+      '· 會進入全螢幕,離開全螢幕或切到別的分頁就作廢\n' +
+      '· 一題只有一次機會,答錯或作廢都不能重來\n\n準備好了就按確定')) return;
+
     const q = pool[Math.floor(Math.random() * pool.length)];
     this.tOpening = true;
 
@@ -1049,6 +1057,7 @@ Object.assign(StudentApp, {
     this.tDeadline = Date.now() + this.answerSeconds() * 1000;
     this.startAnswerTimer();
     this.render();
+    await this.enterStrict();
   },
 
   async loadMyAttempts() {
@@ -1059,6 +1068,67 @@ Object.assign(StudentApp, {
   answerSeconds() {
     const c = TerritoryGame.config;
     return (c && c.answerSeconds) || 45;
+  },
+
+  /* ---------- 嚴格作答 ----------
+     學生的手法是:在電腦上把題目複製下來,開另一個分頁貼給 AI。
+     所以真正要擋的不是「複製」,是「離開這個畫面」。
+
+     兩層偵測:
+       · 全螢幕:作答時進入全螢幕,離開就作廢
+       · 可見性:切到別的分頁、切到別的視窗(blur)一樣作廢
+     第二層其實比第一層準 —— 就算沒進全螢幕,切走也抓得到。
+     兩個都是前端判定,但伺服器那邊有作答時限當底,繞過前端也來不及查。 */
+
+  strictOn() {
+    const c = TerritoryGame.config;
+    return !!(c && c.strictMode !== false);
+  },
+
+  async enterStrict() {
+    if (!this.strictOn()) return;
+    const box = document.getElementById('studentView');
+    try {
+      if (box && box.requestFullscreen && !document.fullscreenElement) {
+        await box.requestFullscreen();
+      }
+    } catch (e) {
+      console.warn('[領地戰] 無法進入全螢幕:', e.message);
+    }
+
+    this._onLeave = () => {
+      // 進入全螢幕的那一瞬間也會觸發一次,要排掉
+      if (document.fullscreenElement) return;
+      this.violate('離開了全螢幕');
+    };
+    this._onHide = () => {
+      if (document.visibilityState === 'hidden') this.violate('切換到別的分頁或視窗');
+    };
+    document.addEventListener('fullscreenchange', this._onLeave);
+    document.addEventListener('visibilitychange', this._onHide);
+    window.addEventListener('blur', this._onHide);
+  },
+
+  exitStrict() {
+    document.removeEventListener('fullscreenchange', this._onLeave || (() => {}));
+    document.removeEventListener('visibilitychange', this._onHide || (() => {}));
+    window.removeEventListener('blur', this._onHide || (() => {}));
+    this._onLeave = this._onHide = null;
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    }
+  },
+
+  /* 違規:題目作廢。機會本來就在點開時登記掉了,所以不用再寫什麼 */
+  violate(why) {
+    if (!this.tQuestion) return;
+    this.stopAnswerTimer();
+    this.exitStrict();
+    this.tQuestion = null;
+    this.tTargetHex = null;
+    this.tPickedAnswer = null;
+    this.render();
+    showWarResult(false, `${why},這一題作廢`);
   },
 
   /* 作答倒數。時間到就關掉題目 —— 機會已經用掉了,不能再回來慢慢查。 */
@@ -1079,6 +1149,7 @@ Object.assign(StudentApp, {
 
   timeUpWarAnswer() {
     this.stopAnswerTimer();
+    this.exitStrict();
     if (!this.tQuestion) return;
     this.tQuestion = null;
     this.tTargetHex = null;
@@ -1089,6 +1160,7 @@ Object.assign(StudentApp, {
 
   cancelWarQuestion() {
     this.stopAnswerTimer();
+    this.exitStrict();
     this.tQuestion = null;
     this.tTargetHex = null;
     this.tPickedAnswer = null;
@@ -1152,6 +1224,7 @@ Object.assign(StudentApp, {
   async submitWarAnswer() {
     if (this.tPickedAnswer === null || this.tSubmitting) return;
     this.stopAnswerTimer();
+    this.exitStrict();
     this.tSubmitting = true;
     this.render();
 
