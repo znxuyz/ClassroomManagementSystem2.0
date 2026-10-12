@@ -576,9 +576,13 @@ const Cloud = {
      已經登記過會被規則擋下(already-exists / permission-denied),
      呼叫端據此判定「這題你已經用掉機會了」。 */
   async startTerritoryAttempt(classId, uid, payload) {
+    /* 用 set() 而不是 create() —— 網頁版的 Firebase SDK 沒有 create()
+       (那是伺服器端 SDK 才有的)。但效果一樣:安全規則只允許 create、
+       不允許 update,所以寫到已經存在的文件會被擋下來並回 permission-denied,
+       呼叫端據此判定「這題已經用掉機會了」。擋的人是伺服器,不是前端。 */
     await this.db.collection('classes').doc(classId)
       .collection('tattempts').doc(`${uid}_${payload.questionId}`)
-      .create({
+      .set({
         ...payload,
         uid,
         at: firebase.firestore.FieldValue.serverTimestamp()
