@@ -35,7 +35,7 @@ const StudentApp = {
     this._warTabShown = false;
     this._warSig = null;
     this.tTried = new Set();
-    this.tAttempts = {};
+    this.tSolved = {};
     this.stopAnswerTimer();
     this.classInfo = classInfo;
     hideAllTopViews();
@@ -893,7 +893,8 @@ Object.assign(StudentApp, {
   _warTabShown: false,
   _warSig: null,
   tTried: new Set(),      // 這次登入已經作答過的題目(含答錯的)
-  tAttempts: {},          // 伺服器上已登記的作答嘗試 { questionId: true }
+  tSolved: {},            // 已經答對的題目 { questionId: true },不會再抽到
+  tAttemptId: null,
   tOpening: false,
   tDeadline: 0,
   tTimer: null,
@@ -999,27 +1000,29 @@ Object.assign(StudentApp, {
         時間內分數最高且達到 ${c.threshold} 分的那一組拿下。<br>
         ${pen > 0 ? `<span class="war-penalty-note">答錯或作廢會倒扣 <strong>${pen}</strong> 佔領分${
             floor > 0 ? `,同一格最多扣到 −${floor} 分` : ''}。</span><br>` : ''}
-        每一題每個人只有一次機會。灰色是尚未開放的區域,★ 是各組基地,不能被攻佔。
+        同一題答對一次就不會再出現,答錯可以再挑戰。<br>
+        灰色是尚未開放的區域,★ 是各組基地,不能被攻佔。
       </div>`;
   },
 
   /* 已經答過的題目不再出現。答過的名單直接從戰況事件推出來,
      重新整理或換裝置都算數,不靠瀏覽器記憶。 */
+  /* 可以再抽到的題目。
+     只排除「已經答對」的 —— 同一題答對一次就夠了,再答也不該再得分。
+     答錯過的仍然留在池子裡,題庫小的班級才不會很快就無題可答;
+     但會排到最後面,不會一直拿同一題煩人。 */
   unusedQuestions() {
-    /* 用掉的題目以伺服器上的「作答嘗試」為準。
-       以前只記在本機,學生重新整理就全部歸零,等於可以一直猜到對為止。 */
-    const used = new Set([
-      ...Object.keys(this.tAttempts || {}),
-      ...this.tTried
-    ]);
-    return this.tQuestions.filter(q => !used.has(q.id));
+    const solved = this.tSolved || {};
+    const pool = this.tQuestions.filter(q => !solved[q.id]);
+    const fresh = pool.filter(q => !this.tTried.has(q.id));
+    return fresh.length > 0 ? fresh : pool;
   },
 
   async attackHex(hexKey) {
     if (this.tQuestions.length === 0) { toast('題庫是空的,請找老師'); return; }
     const pool = this.unusedQuestions();
     if (pool.length === 0) {
-      toast(`題庫共 ${this.tQuestions.length} 題你都答過了 —— 每題只有一次機會,請找老師加題目`);
+      toast(`題庫共 ${this.tQuestions.length} 題你都答對了,請找老師再出題`);
       return;
     }
     if (this.tOpening) return;
@@ -1033,47 +1036,32 @@ Object.assign(StudentApp, {
       ((TerritoryGame.config || {}).wrongPenalty > 0
         ? `· 答錯或作廢會倒扣 ${TerritoryGame.config.wrongPenalty} 佔領分\n` : '') +
       '· 會進入全螢幕,離開全螢幕或切到別的分頁就作廢\n' +
-      '· 一題只有一次機會,答錯或作廢都不能重來\n\n準備好了就按確定')) return;
+      '· 答錯或作廢可以再挑戰這一題,但答對過的題目不會再出現\n\n準備好了就按確定')) return;
 
     const q = pool[Math.floor(Math.random() * pool.length)];
     this.tOpening = true;
 
     /* 先在伺服器登記「我點開了這一題」,拿到伺服器時間之後才顯示題目。
-       登記失敗代表這題已經用掉機會了(例如在另一台裝置開過)。 */
+       每次點開都是新的一筆,所以答錯之後還可以再試這一題。 */
     try {
-      await Cloud.startTerritoryAttempt(this.classInfo.classId, Cloud.uid, {
-        studentId: this.classInfo.studentId,
-        studentName: this.classInfo.name,
-        groupIdx: this.myGroupIdx(),
-        hexKey,
-        questionId: q.id
-      });
+      this.tAttemptId = await Cloud.startTerritoryAttempt(
+        this.classInfo.classId, Cloud.uid, {
+          studentId: this.classInfo.studentId,
+          studentName: this.classInfo.name,
+          groupIdx: this.myGroupIdx(),
+          hexKey,
+          questionId: q.id
+        });
     } catch (e) {
       console.warn('[領地戰] 登記作答失敗:', e.code || e.message);
       this.tOpening = false;
-
-      /* 寫入被拒的原因不只一種,不能一律當成「已經答過」。
-         真的用過的話文件會存在,直接去確認 —— 不然規則一出問題,
-         學生會被一題一題燒掉,而且每次都看到誤導的訊息。 */
-      let used = false;
-      try {
-        used = await Cloud.territoryAttemptExists(
-          this.classInfo.classId, Cloud.uid, q.id);
-      } catch (_) { /* 連查都查不到就當作不是「已用過」 */ }
-
-      if (used) {
-        this.tAttempts[q.id] = true;         // 確定用過了,不要再抽到
-        toast('這一題你已經答過了,再點一次換下一題');
-      } else {
-        toast(e.code === 'permission-denied'
-          ? '開啟題目被拒絕,請老師確認 Firestore 安全性規則已重新發布'
-          : '開啟題目失敗:' + (e.message || e.code));
-      }
+      toast(e.code === 'permission-denied'
+        ? '開啟題目被拒絕,請老師確認 Firestore 安全性規則已重新發布'
+        : '開啟題目失敗:' + (e.message || e.code));
       this.render();
       return;
     }
 
-    this.tAttempts[q.id] = true;
     this.tOpening = false;
     this.tTargetHex = hexKey;
     this.tQuestion = q;
@@ -1087,8 +1075,8 @@ Object.assign(StudentApp, {
   },
 
   async loadMyAttempts() {
-    this.tAttempts = await this.optional('作答紀錄',
-      () => Cloud.listMyTerritoryAttempts(this.classInfo.classId, Cloud.uid), {});
+    this.tSolved = await this.optional('作答紀錄',
+      () => Cloud.listMySolvedQuestions(this.classInfo.classId, Cloud.uid), {});
   },
 
   /* 0 = 不限時。老師若覺得讀題慢的學生會吃虧,可以整個關掉;
@@ -1157,7 +1145,9 @@ Object.assign(StudentApp, {
     this.tTargetHex = null;
     this.tPickedAnswer = null;
     this.render();
-    showWarResult(false, `${why},這一題作廢`);
+    const pen4 = (TerritoryGame.config || {}).wrongPenalty || 0;
+    showWarResult(false, `${why},這一次作廢` +
+      (pen4 > 0 ? `,倒扣 ${pen4} 佔領分` : '') + '。可以再挑戰這一題');
   },
 
   /* 作答倒數。時間到就關掉題目 —— 機會已經用掉了,不能再回來慢慢查。 */
@@ -1184,7 +1174,9 @@ Object.assign(StudentApp, {
     this.tTargetHex = null;
     this.tPickedAnswer = null;
     this.render();
-    showWarResult(false, '時間到,這一題的機會用掉了');
+    const pen3 = (TerritoryGame.config || {}).wrongPenalty || 0;
+    showWarResult(false, '時間到,這一次算答錯' +
+      (pen3 > 0 ? `,倒扣 ${pen3} 佔領分` : '') + '。可以再挑戰這一題');
   },
 
   cancelWarQuestion() {
@@ -1270,16 +1262,19 @@ Object.assign(StudentApp, {
         groupIdx,
         hexKey: this.tTargetHex,
         questionId: this.tQuestion.id,
+        attemptId: this.tAttemptId,
         answer: this.tPickedAnswer,
         points
       });
+      this.tSolved[this.tQuestion.id] = true;
       showWarResult(true, `為第 ${groupIdx + 1} 組拿下 ${points} 佔領分`);
     } catch (e) {
       if (e.code === 'permission-denied') {
         // 答案由安全規則在伺服器端比對,被拒絕就代表答錯
         const pen = (TerritoryGame.config || {}).wrongPenalty || 0;
-        showWarResult(false, '這一題答錯了,機會已經用掉,不能再答一次' +
-          (pen > 0 ? `。這一格倒扣 ${pen} 佔領分` : ''));
+        showWarResult(false, '這一題答錯了' +
+          (pen > 0 ? `,這一格倒扣 ${pen} 佔領分` : '') +
+          '。可以再挑戰這一題,但會先輪到還沒做過的題目');
       } else {
         console.error(e);
         showWarResult(null, '送出失敗:' + e.message);

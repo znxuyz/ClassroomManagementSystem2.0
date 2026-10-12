@@ -576,32 +576,27 @@ const Cloud = {
      已經登記過會被規則擋下(already-exists / permission-denied),
      呼叫端據此判定「這題你已經用掉機會了」。 */
   async startTerritoryAttempt(classId, uid, payload) {
-    /* 用 set() 而不是 create() —— 網頁版的 Firebase SDK 沒有 create()
-       (那是伺服器端 SDK 才有的)。但效果一樣:安全規則只允許 create、
-       不允許 update,所以寫到已經存在的文件會被擋下來並回 permission-denied,
-       呼叫端據此判定「這題已經用掉機會了」。擋的人是伺服器,不是前端。 */
+    /* 每次點開都是新的一筆(id 帶時間),所以同一題答錯後可以再試 ——
+       題庫小的班級不會因為錯幾題就無題可答。
+       防刷分不是靠這裡,是靠 tevents:它的 id 是 {uid}_{題號},
+       同一題只能「答對」一次,背答案也刷不了分。
+       回傳 id 給呼叫端,送出答案時要附上,規則才查得到這次的開始時間。 */
+    const attemptId = `${uid}_${payload.questionId}_${Date.now()}`;
     await this.db.collection('classes').doc(classId)
-      .collection('tattempts').doc(`${uid}_${payload.questionId}`)
+      .collection('tattempts').doc(attemptId)
       .set({
         ...payload,
         uid,
         at: firebase.firestore.FieldValue.serverTimestamp()
       });
+    return attemptId;
   },
 
-  /* 這一題我是不是真的已經登記過了。
-     寫入被拒有很多種原因(規則沒發布、設定對不上…),不能一律當成
-     「已經答過」—— 那會把還沒用過的題目也標記掉。所以直接去問。 */
-  async territoryAttemptExists(classId, uid, questionId) {
+  /* 我已經「答對」過哪幾題 —— 那些不會再出現。
+     答錯過的不算,可以再試。 */
+  async listMySolvedQuestions(classId, uid) {
     const snap = await this.db.collection('classes').doc(classId)
-      .collection('tattempts').doc(`${uid}_${questionId}`).get();
-    return snap.exists;
-  },
-
-  /* 我自己用掉了哪幾題(重新整理、換裝置都算數) */
-  async listMyTerritoryAttempts(classId, uid) {
-    const snap = await this.db.collection('classes').doc(classId)
-      .collection('tattempts').where('uid', '==', uid).get();
+      .collection('tevents').where('uid', '==', uid).get();
     const out = {};
     snap.docs.forEach(d => { out[d.data().questionId] = true; });
     return out;
@@ -625,6 +620,7 @@ const Cloud = {
   /* 文件 id 固定為 {uid}_{題目id}:同一題每個人只能答一次。
      用隨機 id 的話,學生記住答案後可以對同一題重複作答刷分,
      而且規則擋不住(每一次送出看起來都是合法的新事件)。 */
+  /* payload 必須含 attemptId,規則要靠它查這次作答的開始時間 */
   async sendTerritoryEvent(classId, uid, payload) {
     await this.db.collection('classes').doc(classId)
       .collection('tevents').doc(`${uid}_${payload.questionId}`).set({

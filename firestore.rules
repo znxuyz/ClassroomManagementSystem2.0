@@ -145,9 +145,13 @@ service cloud.firestore {
             && get(/databases/$(database)/documents/classes/$(classId)).data.teacherUid == request.auth.uid;
         }
 
+        /* 文件 id 是 {uid}_{題號}_{時間},所以同一題可以再試 —— 題庫小的班級
+           不會因為答錯幾題就無題可答。防刷分靠的是另外兩件事:
+           tevents 的 id 仍然是 {uid}_{題號},同一題只能「答對」一次;
+           以及答錯會倒扣。 */
         allow create: if signedIn()
           && request.resource.data.uid == request.auth.uid
-          && attemptId == request.auth.uid + '_' + request.resource.data.questionId
+          && attemptId.matches('^' + request.auth.uid + '_.*')
           && request.resource.data.at == request.time
           && request.resource.data.groupIdx == cfg().memberGroup[request.resource.data.studentId]
           && cfg().status == 'running';
@@ -168,6 +172,9 @@ service cloud.firestore {
         function q() {
           return answerKey()[request.resource.data.questionId];
         }
+        function attempt() {
+          return get(/databases/$(database)/documents/classes/$(classId)/tattempts/$(request.resource.data.attemptId)).data;
+        }
         function isClassTeacher() {
           return signedIn()
             && get(/databases/$(database)/documents/classes/$(classId)).data.teacherUid == request.auth.uid;
@@ -175,8 +182,9 @@ service cloud.firestore {
 
         allow create: if signedIn()
           && request.resource.data.uid == request.auth.uid
-          // 文件 id 綁定「誰 + 哪一題」,同一題每人只能答一次。
-          // 加上 update 一律禁止,學生就無法對記住答案的題目重複刷分。
+          // 文件 id 綁定「誰 + 哪一題」,所以同一題每人只能「答對」一次。
+          // 加上 update 一律禁止,背下答案也無法重複刷分。
+          // (答錯則可以再試,見 tattempts)
           && eventId == request.auth.uid + '_' + request.resource.data.questionId
           // 遊戲要在進行中
           && cfg().status == 'running'
@@ -189,13 +197,14 @@ service cloud.firestore {
           && request.resource.data.groupIdx == cfg().memberGroup[request.resource.data.studentId]
           // 時間戳一律用伺服器的,先後才不受學生裝置時鐘影響
           && request.resource.data.at == request.time
-          // 必須先有「點開題目」那一筆 —— 一題一次機會就是靠這個
-          && exists(/databases/$(database)/documents/classes/$(classId)/tattempts/$(eventId))
+          // 必須指向一筆自己的、同一題的「點開題目」紀錄
+          && exists(/databases/$(database)/documents/classes/$(classId)/tattempts/$(request.resource.data.attemptId))
+          && attempt().uid == request.auth.uid
+          && attempt().questionId == request.resource.data.questionId
           // 老師有設時限才檢查。設 0 代表不限時(有些學生讀題慢)。
           && (
                (('answerSeconds' in cfg()) ? cfg().answerSeconds : 0) <= 0
-               || request.time < get(/databases/$(database)/documents/classes/$(classId)/tattempts/$(eventId)).data.at
-                    + duration.value(cfg().answerSeconds, 's')
+               || request.time < attempt().at + duration.value(cfg().answerSeconds, 's')
              );
 
         allow read: if signedIn();

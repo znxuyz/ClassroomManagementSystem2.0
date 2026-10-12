@@ -586,7 +586,8 @@ const Territory = {
     const penalty = config.wrongPenalty || 0;
     if (penalty <= 0 || !attempts || attempts.length === 0) return [];
 
-    const won = new Set((events || []).map(e => e.id));
+    // 事件上記著它是由哪一筆嘗試換來的,一題多次嘗試才對得起來
+    const won = new Set((events || []).map(e => e.attemptId).filter(Boolean));
     const window = ((config.answerSeconds || 45) + 5) * 1000;
 
     return attempts
