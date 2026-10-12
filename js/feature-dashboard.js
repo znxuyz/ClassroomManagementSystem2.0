@@ -21,7 +21,14 @@ function getStudent(id) {
 function renderSelectedStudent() {
   const display = document.getElementById('selectedStudentDisplay');
   const panel = document.getElementById('quickAssignPanel');
-  
+
+  // 批次模式:上面換成「選了誰」,下面的積分規則照舊,只是套用到所有勾選的人
+  if (BatchAward.active) {
+    display.innerHTML = BatchAward.renderPanel();
+    panel.style.display = BatchAward.picked.size > 0 ? '' : 'none';
+    return;
+  }
+
   if (!state.selectedStudentId) {
     display.innerHTML = `
       <div class="empty-state" style="color: var(--moss);">
@@ -104,16 +111,18 @@ function renderRuleGrid() {
    發放積分
 ============================================ */
 function assignPoints(ruleIndex) {
+  const rule = state.rules[ruleIndex];
+  if (BatchAward.active) { BatchAward.award(rule.points, rule.name); return; }
+
   if (!state.selectedStudentId) {
     toast('請先選擇一位學生');
     return;
   }
-  const rule = state.rules[ruleIndex];
   applyPointsToStudent(state.selectedStudentId, rule.points, rule.name);
 }
 
 function assignCustomPoints() {
-  if (!state.selectedStudentId) {
+  if (!BatchAward.active && !state.selectedStudentId) {
     toast('請先選擇一位學生');
     return;
   }
@@ -127,17 +136,25 @@ function assignCustomPoints() {
     return;
   }
   
-  applyPointsToStudent(state.selectedStudentId, points, reason);
+  if (BatchAward.active) BatchAward.award(points, reason);
+  else applyPointsToStudent(state.selectedStudentId, points, reason);
   pointsInput.value = '';
   reasonInput.value = '';
 }
 
-function applyPointsToStudent(studentId, points, reason) {
-  const student = getStudent(studentId);
-  if (!student) return;
-  
-  const oldStage = student.pet ? PetEngine.getStage(student.totalPoints) : 0;
-  
+/* 真正改資料的那一段。批次發分要連續叫很多次,所以不在這裡
+   存檔、重繪或跳提示 —— 那些由呼叫端收尾,28 個學生才不會
+   存 28 次、跳 28 個提示。
+   回傳復原所需的快照,批次發分的「復原」靠它。 */
+function awardPointsCore(student, points, reason) {
+  const before = {
+    id: student.id,
+    total: student.totalPoints,
+    current: student.currentPoints,
+    lastPointTime: student.lastPointTime,
+    historyLen: (student.history || []).length
+  };
+
   // 正分:totalPoints 與 currentPoints 都加
   // 負分:只扣 currentPoints,totalPoints 不減(寵物不會退化)
   if (points >= 0) {
@@ -146,24 +163,39 @@ function applyPointsToStudent(studentId, points, reason) {
   } else {
     student.currentPoints = Math.max(0, student.currentPoints + points);
   }
-  
+
   student.lastPointTime = Date.now();
-  student.history.push({
-    time: Date.now(),
-    points: points,
-    reason: reason
-  });
-  
+  if (!student.history) student.history = [];
+  student.history.push({ time: Date.now(), points, reason });
+  return before;
+}
+
+/* 把 awardPointsCore 的快照倒回去 */
+function revertPointsCore(before) {
+  const student = getStudent(before.id);
+  if (!student) return;
+  student.totalPoints = before.total;
+  student.currentPoints = before.current;
+  student.lastPointTime = before.lastPointTime;
+  if (student.history) student.history.length = before.historyLen;
+}
+
+function applyPointsToStudent(studentId, points, reason) {
+  const student = getStudent(studentId);
+  if (!student) return;
+
+  const oldStage = student.pet ? PetEngine.getStage(student.totalPoints) : 0;
+  awardPointsCore(student, points, reason);
   const newStage = student.pet ? PetEngine.getStage(student.totalPoints) : 0;
-  
+
   // 更新班級任務進度
   updateClassTasksProgress();
-  
+
   save();
   renderStudentList();
   renderSelectedStudent();
   renderProjector();
-  
+
   if (newStage > oldStage) {
     toast(`✦ ${student.name} 的守護獸進化為「${STAGE_NAMES[newStage]}」!`);
     // 在今日聯絡簿留下記錄
@@ -171,7 +203,7 @@ function applyPointsToStudent(studentId, points, reason) {
   } else {
     toast(`${student.name} ${points > 0 ? '+' : ''}${points} 分 · ${reason}`);
   }
-  
+
   triggerProjectorFlash(studentId, points);
 }
 

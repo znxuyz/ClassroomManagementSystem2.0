@@ -8,18 +8,30 @@ function renderStudentList() {
   
   if (!list || !count) return;
   
-  count.textContent = state.students.length + ' 位';
+  count.textContent = BatchAward.active
+    ? `已選 ${BatchAward.picked.size} / ${state.students.length}`
+    : state.students.length + ' 位';
+
+  const btn = document.getElementById('batchToggleBtn');
+  if (btn) {
+    btn.textContent = BatchAward.active ? '離開批次' : '批次加分';
+    btn.classList.toggle('active', BatchAward.active);
+  }
   
   list.innerHTML = state.students.map(student => {
     const stage = student.pet ? PetEngine.getStage(student.totalPoints) : 0;
     const health = PetEngine.getHealth(student);
     const icon = student.pet ? PetEngine.getIcon(student) : '❓';
-    const isSelected = student.id === state.selectedStudentId;
+    const batch = BatchAward.active;
+    const isPicked = batch && BatchAward.picked.has(student.id);
+    const isSelected = batch ? isPicked : student.id === state.selectedStudentId;
     const seatLabel = student.seatNumber
       ? `<span class="seat-no">${escapeHtml(String(student.seatNumber))}</span> ` : '';
     
     return `
-      <li class="student-item ${isSelected ? 'selected' : ''}" onclick="selectStudent('${student.id}')">
+      <li class="student-item ${isSelected ? 'selected' : ''} ${batch ? 'is-batch' : ''}"
+          onclick="${batch ? `BatchAward.pick('${student.id}')` : `selectStudent('${student.id}')`}">
+        ${batch ? `<span class="student-check ${isPicked ? 'on' : ''}">${isPicked ? '✓' : ''}</span>` : ''}
         <div class="student-avatar stage-${stage} health-${health}">
           ${icon}
         </div>

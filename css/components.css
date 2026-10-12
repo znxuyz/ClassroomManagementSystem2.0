@@ -410,3 +410,25 @@ textarea.custom-points-input {
 .api-key-hint .btn {
   height: var(--control-h-lg);
 }
+
+/* 帶動作按鈕的提示 */
+.toast.has-action {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.toast-action {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: #fff;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toast-action:hover { background: rgba(255, 255, 255, 0.15); }

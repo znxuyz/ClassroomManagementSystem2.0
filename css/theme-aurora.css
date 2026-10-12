@@ -324,6 +324,13 @@ html[data-theme="aurora"] .student-tabs {
 
 /* ---------- 空狀態:別再是一大塊深色 ---------- */
 
+/* 批次面板用亮底,和其他操作面板一致 */
+html[data-theme="aurora"] .selected-student-card:has(.batch-panel) {
+  background: var(--glass);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-sm);
+}
+
 html[data-theme="aurora"] .selected-student-card:has(.empty-state) {
   background: var(--glass);
   border: 1px dashed var(--paper-shadow);
