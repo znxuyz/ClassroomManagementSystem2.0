@@ -974,6 +974,8 @@ Object.assign(StudentApp, {
     const targets = Territory.targetsFor(c, map, groupIdx);
     const color = GROUP_COLORS[groupIdx % GROUP_COLORS.length];
     const nextAt = Territory.nextStageAt(c);
+    const pen = c.wrongPenalty || 0;
+    const floor = c.penaltyFloor || 0;
 
     return `
       <div class="war-header" style="border-color:${color}">
@@ -992,9 +994,12 @@ Object.assign(StudentApp, {
       ${renderStandings(c, map, groupIdx)}
       ${renderHexMap(c, map, { groupIdx, onClick: 'StudentApp.attackHex', zoom: _territoryZoom })}
       <div class="war-legend">
-        每塊地被攻擊後會展開 ${c.battleSeconds} 秒的爭奪,
+        <strong>空白的地</strong>:累積到 ${c.threshold} 分就立刻佔領。<br>
+        <strong>別組的地</strong>:打下去會展開 ${c.battleSeconds} 秒的爭奪,
         時間內分數最高且達到 ${c.threshold} 分的那一組拿下。<br>
-        灰色是尚未開放的區域,★ 是各組基地,不能被攻佔。
+        ${pen > 0 ? `<span class="war-penalty-note">答錯或作廢會倒扣 <strong>${pen}</strong> 佔領分${
+            floor > 0 ? `,同一格最多扣到 −${floor} 分` : ''}。</span><br>` : ''}
+        每一題每個人只有一次機會。灰色是尚未開放的區域,★ 是各組基地,不能被攻佔。
       </div>`;
   },
 
@@ -1022,6 +1027,8 @@ Object.assign(StudentApp, {
     if (this.strictOn() && !confirm(
       '這一題開始之後:\n\n' +
       (limitSec > 0 ? `· 限時 ${limitSec} 秒\n` : '· 不限時,想清楚再答\n') +
+      ((TerritoryGame.config || {}).wrongPenalty > 0
+        ? `· 答錯或作廢會倒扣 ${TerritoryGame.config.wrongPenalty} 佔領分\n` : '') +
       '· 會進入全螢幕,離開全螢幕或切到別的分頁就作廢\n' +
       '· 一題只有一次機會,答錯或作廢都不能重來\n\n準備好了就按確定')) return;
 
@@ -1189,6 +1196,8 @@ Object.assign(StudentApp, {
         <div class="war-q-head">
           <span class="war-q-diff" style="background:${d.color}">
             ${d.label} · 答對 +${d.points} 佔領分</span>
+          ${(c.wrongPenalty || 0) > 0
+            ? `<span class="war-q-penalty">答錯 −${c.wrongPenalty}</span>` : ''}
           ${this.tDeadline > 0 ? `<span class="war-q-timer" id="warCountdownBig">${
             Math.max(0, Math.ceil((this.tDeadline - Date.now()) / 1000))} 秒</span>` : ''}
           <button class="btn btn-ghost btn-small" onclick="StudentApp.cancelWarQuestion()">放棄</button>

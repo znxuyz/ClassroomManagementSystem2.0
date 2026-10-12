@@ -532,3 +532,16 @@
   background: var(--paper-warm);
   overflow-y: auto;
 }
+
+/* 答錯倒扣:和「答對 +N」並排,學生在按下去之前就看得到代價 */
+.war-q-penalty {
+  padding: 4px 12px;
+  border-radius: 10px;
+  background: rgba(194, 91, 78, 0.16);
+  color: var(--sick);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.war-penalty-note { color: var(--sick); }

@@ -32,6 +32,13 @@ function helpRuleSections(rules) {
   const diff = Object.values(DIFFICULTY).map(d =>
     `<span class="help-rule">${escapeHtml(d.label)} <b>+${d.points}</b></span>`).join('');
 
+  /* 領地戰的規則直接讀目前那一局的設定。老師在遊戲中調了倒扣,
+     說明要跟著變,不然學生照著舊規則判斷要不要冒險。 */
+  const tc = (typeof TerritoryGame !== 'undefined' && TerritoryGame.config) || null;
+  const pen = tc ? (tc.wrongPenalty || 0) : 0;
+  const floor = tc ? (tc.penaltyFloor || 0) : 0;
+  const limit = tc ? (tc.answerSeconds || 0) : 0;
+
   return [
     {
       icon: '✦',
@@ -77,15 +84,21 @@ function helpRuleSections(rules) {
       title: '領地戰的計分規則',
       items: [
         '題目難度決定答對可得的<strong>佔領分</strong>:' + `<div class="help-rules">${diff}</div>`,
+        tc && pen > 0
+          ? `<strong>答錯會倒扣 ${pen} 佔領分</strong>` +
+            (floor > 0 ? `,同一格最多扣到 <strong>−${floor} 分</strong>` : '(會扣成負分)') +
+            '。時間到沒送出、或中途離開作答畫面,也算答錯一樣倒扣。'
+          : (tc ? '這一局<strong>答錯不倒扣</strong>,但機會一樣用掉。' : ''),
+        tc && limit > 0
+          ? `這一局每題<strong>限時 ${limit} 秒</strong>,點開題目就開始倒數。`
+          : (tc ? '這一局<strong>不限時</strong>,想清楚再答。' : ''),
         '<strong>空白的地</strong>:累積到門檻分數就<strong>立刻插旗</strong>,不用等 —— 那塊地沒有人守。',
         '<strong>別組的地</strong>:打下去會進入<strong>交戰</strong>,在設定的秒數內分數最高、' +
           '且達到門檻的那一組才拿走。這段時間是留給對方反擊的。',
         '<strong>每一題每個人只能答一次</strong>,而且點開題目的那一刻就記在伺服器上了 ——' +
           '重新整理、換電腦都一樣,答錯就是用掉一次機會。',
-        '<strong>每題有作答限時</strong>,點開題目就開始倒數,時間到沒送出一樣算用掉。' +
-          '所以先想好再點開。',
-        '老師可以設定<strong>答錯倒扣佔領分</strong>,而且會扣成負分 —— 亂猜的話要先把洞補回來。' +
-          '不過也有下限,不會無止境地扣下去。',
+        tc ? '' : '老師可以設定每題的<strong>作答限時</strong>與<strong>答錯倒扣</strong>,' +
+                   '開局時會寫在上面。',
         '老師開了<strong>嚴格作答</strong>的話,作答時會進入全螢幕,' +
           '<strong>離開全螢幕或切到別的分頁,這一題就作廢</strong>。點開題目前會先提醒你。',
         '只能打<strong>自己領地相鄰</strong>的格子,★ 基地不能被攻佔。'
@@ -278,6 +291,8 @@ function renderHelpFull(which, rules) {
 }
 
 function renderHelpSections(list) {
+  // 有些項目會依當下的對局設定決定要不要出現,空的就不要留一個空點
+  list = list.map(sec => ({ ...sec, items: sec.items.filter(Boolean) }));
   return list.map(sec => `
     <section class="help-sec">
       <h3 class="help-sec-title"><span class="help-icon">${sec.icon}</span>${escapeHtml(sec.title)}</h3>
