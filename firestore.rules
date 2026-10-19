@@ -231,6 +231,39 @@ service cloud.firestore {
         allow delete: if isClassTeacher();
       }
 
+      /* 失手回報:學生答錯/超時/作廢/放棄的當下自己寫一筆,
+         文件 id 就是那次嘗試的 id。有了它,倒扣才會發生在「真正答錯的
+         那一刻、他正在打的那一格」,而不是等期限到了才一起浮現 ——
+         否則讀題慢的學生還在想,那一格就先被扣,老師看起來就像
+         好幾塊正在進攻的地同時被扣分。
+
+         這裡不需要防「少寫」:想躲倒扣的人本來就不會寫,重播有期限兜底。
+         要防的是「亂寫」—— 所以限定只能回報自己的嘗試,一筆只能寫一次。 */
+      match /tfails/{attemptId} {
+        function isClassTeacher() {
+          return signedIn()
+            && get(/databases/$(database)/documents/classes/$(classId)).data.teacherUid == request.auth.uid;
+        }
+        function attempt() {
+          return get(/databases/$(database)/documents/classes/$(classId)/tattempts/$(attemptId)).data;
+        }
+
+        allow create: if signedIn()
+          && request.resource.data.uid == request.auth.uid
+          // 只能回報自己的嘗試,而且那筆嘗試要真的存在
+          && exists(/databases/$(database)/documents/classes/$(classId)/tattempts/$(attemptId))
+          && attempt().uid == request.auth.uid
+          // 扣在哪一格由那筆嘗試決定,不能自己挑別人的地來扣
+          && request.resource.data.hexKey == attempt().hexKey
+          && request.resource.data.groupIdx == attempt().groupIdx
+          // 時間戳一律用伺服器的
+          && request.resource.data.at == request.time;
+
+        allow read: if signedIn();
+        allow update: if false;
+        allow delete: if isClassTeacher();
+      }
+
       match /tevents/{eventId} {
         function cfg() {
           return get(/databases/$(database)/documents/classes/$(classId)/territory/config).data;

@@ -238,7 +238,15 @@ const Territory = {
     return last.at + sec * 1000;
   },
 
-  failedAttempts(config, events, attempts, now) {
+  /* fails 是 { attemptId: 失手的伺服器時間 } —— 學生答錯/超時/作廢/放棄的
+     當下自己寫下的一筆。有這筆就「當下、就那一格」扣,不必等期限,
+     也不會波及他同時點開過的其他格子。
+
+     為什麼還留著期限兜底:關掉分頁想躲掉倒扣的人不會自己寫那一筆。
+     但期限只是兜底,所以放得很寬 —— 沒設時限時原本用 50 秒當期限,
+     讀題慢的學生還在想,那一格就先被扣了(答完才又加回來),
+     老師看起來就像「好幾塊正在進攻的地同時被扣分」。 */
+  failedAttempts(config, events, attempts, now, fails) {
     const penalty = config.wrongPenalty || 0;
     if (penalty <= 0 || !attempts || attempts.length === 0) return [];
 
@@ -247,14 +255,25 @@ const Territory = {
     /* 被「換題」取代掉的那一筆不算失手 —— 學生只是換了一題,沒有答錯。
        新的那筆會記著它取代了誰(append-only,不去改舊文件)。 */
     const replaced = new Set(attempts.map(a => a.replaces).filter(Boolean));
-    const window = ((config.answerSeconds || 45) + 5) * 1000;
+    const failAt = fails || {};
+    // 有時限就以時限為準(多給 5 秒送出);沒時限的兜底期限放寬到 10 分鐘
+    const window = config.answerSeconds > 0
+      ? (config.answerSeconds + 5) * 1000
+      : 10 * 60 * 1000;
 
     return attempts
-      .filter(a => !won.has(a.id) && !replaced.has(a.id) && a.at + window < now)
-      .map(a => ({ ...a, points: -penalty, isPenalty: true }));
+      .filter(a => !won.has(a.id) && !replaced.has(a.id))
+      .map(a => {
+        // 學生自己報的失手:扣在他真正答錯的那一刻
+        if (failAt[a.id]) return { ...a, at: failAt[a.id], points: -penalty, isPenalty: true };
+        // 沒報的,等期限過了才算 —— 否則還在想的那一格會先被扣
+        if (a.at + window < now) return { ...a, points: -penalty, isPenalty: true };
+        return null;
+      })
+      .filter(Boolean);
   },
 
-  replay(config, events, now, attempts) {
+  replay(config, events, now, attempts, fails) {
     now = now || Date.now();
     const depth = this.depthOf(config);
 
@@ -275,7 +294,7 @@ const Territory = {
     const active = new Set();
 
     // 成功與失手合在一起依時間重播,順序才和實際發生的一致
-    const stream = (events || []).concat(this.failedAttempts(config, events, attempts, now))
+    const stream = (events || []).concat(this.failedAttempts(config, events, attempts, now, fails))
       .sort((a, b) => a.at - b.at);
 
     stream.forEach(ev => {

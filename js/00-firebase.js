@@ -599,6 +599,32 @@ const Cloud = {
     return attemptId;
   },
 
+  /* 失手回報:學生答錯/超時/作廢/放棄的當下自己寫一筆,id 就是那次嘗試的 id。
+     有了這一筆,倒扣就發生在「他真正答錯的那一刻、他正在打的那一格」,
+     不必等期限到,也不會波及他同時點開過的別的格子。
+     寫不進去不要緊 —— 重播還有期限兜底,所以呼叫端可以安心忽略失敗。 */
+  async sendTerritoryFail(classId, uid, attemptId, payload) {
+    await this.db.collection('classes').doc(classId)
+      .collection('tfails').doc(attemptId)
+      .set({
+        ...(payload || {}),
+        uid,
+        at: firebase.firestore.FieldValue.serverTimestamp()
+      });
+  },
+
+  watchTerritoryFails(classId, cb) {
+    return this.db.collection('classes').doc(classId)
+      .collection('tfails').onSnapshot(snap => {
+        const out = {};
+        snap.docs.forEach(d => {
+          const at = d.data().at;
+          if (at && typeof at.toMillis === 'function') out[d.id] = at.toMillis();
+        });
+        cb(out);
+      }, err => console.warn('[領地戰] 失手監聽中斷:', err.message));
+  },
+
   /* 我自己的所有嘗試紀錄。用來接續那條鏈(seq / prev / streak)——
      重新整理或換裝置都會從伺服器重新算,所以躲不掉冷卻。
      只查自己的,量很小(一局幾十筆)。 */
@@ -675,6 +701,7 @@ const Cloud = {
   /* 重新開局時清掉上一局的事件與作答嘗試 */
   async clearTerritoryEvents(classId) {
     await this._clearSub(classId, 'tattempts');
+    await this._clearSub(classId, 'tfails');
     await this._clearSub(classId, 'tevents');
   },
 

@@ -15,10 +15,12 @@ const TerritoryGame = {
   unsubConfig: null,
   unsubEvents: null,
   unsubAttempts: null,
+  unsubFails: null,
   ticker: null,
   config: null,
   events: [],
   attempts: [],
+  fails: {},        // { attemptId: 失手時間 } 答錯的當下就扣那一格
   map: {},
   log: [],
   onUpdate: null,      // 學生端掛自己的重繪
@@ -45,6 +47,12 @@ const TerritoryGame = {
       this.rebuild();
     });
 
+    // 答錯的當下就要扣在那一格,不能等期限 —— 見 Territory.failedAttempts
+    this.unsubFails = Cloud.watchTerritoryFails(cid, m => {
+      this.fails = m;
+      this.rebuild();
+    });
+
     // 戰役到期與階段開放都是「時間到了才發生」,沒有新事件也要重算
     this.ticker = setInterval(() => this.rebuild(), 1000);
   },
@@ -53,16 +61,18 @@ const TerritoryGame = {
     if (this.unsubConfig) { this.unsubConfig(); this.unsubConfig = null; }
     if (this.unsubEvents) { this.unsubEvents(); this.unsubEvents = null; }
     if (this.unsubAttempts) { this.unsubAttempts(); this.unsubAttempts = null; }
+    if (this.unsubFails) { this.unsubFails(); this.unsubFails = null; }
     if (this.ticker) { clearInterval(this.ticker); this.ticker = null; }
     this.config = null;
     this.events = [];
     this.attempts = [];
+    this.fails = {};
     this.map = {};
   },
 
   rebuild() {
     if (!this.config) { this.map = {}; return; }
-    const r = Territory.replay(this.config, this.events, Date.now(), this.attempts);
+    const r = Territory.replay(this.config, this.events, Date.now(), this.attempts, this.fails);
     this.map = r.map;
     this.log = r.log;
     if (this.onUpdate) this.onUpdate();

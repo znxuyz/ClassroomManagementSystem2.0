@@ -141,7 +141,8 @@ Object.assign(StudentApp, {
         <strong>別組的地</strong>:打下去會展開 ${c.battleSeconds} 秒的爭奪,
         時間內分數最高且達到 ${c.threshold} 分的那一組拿下。<br>
         ${pen > 0 ? `<span class="war-penalty-note">答錯或作廢會倒扣 <strong>${pen}</strong> 佔領分${
-            floor > 0 ? `,同一格最多扣到 −${floor} 分` : ''}。</span><br>` : ''}
+            floor > 0 ? `,同一格最多扣到 −${floor} 分` : ''} ——
+            <strong>只扣你答錯的那一格</strong>,其他正在打的地不會被扣。</span><br>` : ''}
         同一題答對一次就不會再出現,答錯可以再挑戰。<br>
         ${coolN > 0 && coolSec > 0 ? `<span class="war-penalty-note">連續答錯
           <strong>${coolN}</strong> 題要等 <strong>${coolSec}</strong> 秒才能再出手,
@@ -345,6 +346,22 @@ Object.assign(StudentApp, {
     return Math.max(0, Territory.cooldownUntil(c, this.tLastAttempt, this.tSolved) - Date.now());
   },
 
+  /* 回報失手:答錯/超時/作廢/放棄都走這裡。
+     扣分就發生在這一刻、扣在這一格 —— 不會波及我點開過的其他格子。
+     寫不進去不要緊,重播還有寬鬆的期限兜底,所以不打擾學生。 */
+  reportFail(why) {
+    const id = this.tAttemptId;
+    const hexKey = this.tTargetHex;
+    const questionId = this.tQuestion ? this.tQuestion.id : null;
+    if (!id || !hexKey) return;
+    Cloud.sendTerritoryFail(this.classInfo.classId, Cloud.uid, id, {
+      studentId: this.classInfo.studentId,
+      studentName: this.classInfo.name,
+      groupIdx: this.myGroupIdx(),
+      hexKey, questionId, why
+    }).catch(e => console.warn('[領地戰] 回報失手失敗:', e.code || e.message));
+  },
+
   /* 答錯之後要講清楚現在連錯幾題、還差幾題就要等 ——
      不說的話學生只會覺得莫名其妙被鎖住。 */
   cooldownNote() {
@@ -439,6 +456,7 @@ Object.assign(StudentApp, {
     if (!this.tQuestion) return;
     this.stopAnswerTimer();
     this.exitStrict();
+    this.reportFail('作廢:' + why);
     this.tQuestion = null;
     this.tTargetHex = null;
     this.tPickedAnswer = null;
@@ -468,6 +486,7 @@ Object.assign(StudentApp, {
     this.stopAnswerTimer();
     this.exitStrict();
     if (!this.tQuestion) return;
+    this.reportFail('時間到');
     this.tQuestion = null;
     this.tTargetHex = null;
     this.tPickedAnswer = null;
@@ -480,6 +499,7 @@ Object.assign(StudentApp, {
   cancelWarQuestion() {
     this.stopAnswerTimer();
     this.exitStrict();
+    this.reportFail('放棄');
     this.tQuestion = null;
     this.tTargetHex = null;
     this.tPickedAnswer = null;
@@ -574,6 +594,7 @@ Object.assign(StudentApp, {
     } catch (e) {
       if (e.code === 'permission-denied') {
         // 答案由安全規則在伺服器端比對,被拒絕就代表答錯
+        this.reportFail('答錯');
         const pen = (TerritoryGame.config || {}).wrongPenalty || 0;
         showWarResult(false, '這一題答錯了' +
           (pen > 0 ? `,這一格倒扣 ${pen} 佔領分` : '') +
