@@ -248,29 +248,42 @@ const Territory = {
      老師看起來就像「好幾塊正在進攻的地同時被扣分」。 */
   failedAttempts(config, events, attempts, now, fails) {
     const penalty = config.wrongPenalty || 0;
-    if (penalty <= 0 || !attempts || attempts.length === 0) return [];
+    if (penalty <= 0) return [];
+    attempts = attempts || [];
+    // 學生端不訂嘗試紀錄,倒扣全部來自失手紀錄 —— 所以不能因為
+    // attempts 是空的就提早結束,那會讓學生看不到任何扣分
+    if (attempts.length === 0 && Object.keys(fails || {}).length === 0) return [];
 
     // 事件上記著它是由哪一筆嘗試換來的,一題多次嘗試才對得起來
     const won = new Set((events || []).map(e => e.attemptId).filter(Boolean));
     /* 被「換題」取代掉的那一筆不算失手 —— 學生只是換了一題,沒有答錯。
        新的那筆會記著它取代了誰(append-only,不去改舊文件)。 */
     const replaced = new Set(attempts.map(a => a.replaces).filter(Boolean));
-    const failAt = fails || {};
     // 有時限就以時限為準(多給 5 秒送出);沒時限的兜底期限放寬到 10 分鐘
     const window = config.answerSeconds > 0
       ? (config.answerSeconds + 5) * 1000
       : 10 * 60 * 1000;
 
-    return attempts
-      .filter(a => !won.has(a.id) && !replaced.has(a.id))
-      .map(a => {
-        // 學生自己報的失手:扣在他真正答錯的那一刻
-        if (failAt[a.id]) return { ...a, at: failAt[a.id], points: -penalty, isPenalty: true };
-        // 沒報的,等期限過了才算 —— 否則還在想的那一格會先被扣
-        if (a.at + window < now) return { ...a, points: -penalty, isPenalty: true };
-        return null;
-      })
-      .filter(Boolean);
+    const out = [];
+    const done = new Set();
+
+    /* (1) 有回報的失手。這一份自己就帶著「扣哪一格、哪一組、什麼時候」,
+           所以不需要原本那筆嘗試紀錄 —— 學生端只訂這一條就夠了。 */
+    Object.values(fails || {}).forEach(f => {
+      if (!f || !f.hexKey) return;
+      if (won.has(f.id) || replaced.has(f.id)) return;
+      done.add(f.id);
+      out.push({ ...f, points: -penalty, isPenalty: true });
+    });
+
+    /* (2) 沒回報又過了期限的。只有老師那一台拿得到嘗試紀錄,
+           由它補寫成 (1) 的那種紀錄,其他人就看得到了。 */
+    attempts.forEach(a => {
+      if (done.has(a.id) || won.has(a.id) || replaced.has(a.id)) return;
+      if (a.at + window < now) out.push({ ...a, points: -penalty, isPenalty: true });
+    });
+
+    return out;
   },
 
   replay(config, events, now, attempts, fails) {

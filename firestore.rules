@@ -249,10 +249,13 @@ service cloud.firestore {
         }
 
         allow create: if signedIn()
-          && request.resource.data.uid == request.auth.uid
-          // 只能回報自己的嘗試,而且那筆嘗試要真的存在
+          // 那筆嘗試要真的存在
           && exists(/databases/$(database)/documents/classes/$(classId)/tattempts/$(attemptId))
-          && attempt().uid == request.auth.uid
+          // 回報的人要嘛是本人,要嘛是導師。
+          // 導師那一台負責補寫「點開題目就關掉分頁、沒人回報」的那幾筆 ——
+          // 有了這個,學生端就不必再讀整份嘗試紀錄(那是最大的一份集合)。
+          && request.resource.data.uid == attempt().uid
+          && (attempt().uid == request.auth.uid || isClassTeacher())
           // 扣在哪一格由那筆嘗試決定,不能自己挑別人的地來扣
           && request.resource.data.hexKey == attempt().hexKey
           && request.resource.data.groupIdx == attempt().groupIdx

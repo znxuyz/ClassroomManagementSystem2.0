@@ -34,6 +34,7 @@ const StudentApp = {
     this.lastScore = undefined;
     this._warTabShown = false;
     this._warSig = null;
+    this._warHistoryLoaded = false;
     this.tTried = new Set();
     this.tSolved = {};
     this.stopAnswerTimer();
@@ -47,7 +48,7 @@ const StudentApp = {
     this.watch();
     this.watchPurchases();
     this.watchTerritory();
-    this.loadMyAttempts();
+    // 自己的領地戰紀錄等「真的有一局在跑」再讀,沒開局就不必花那些讀取
   },
 
   /* 老師結算兌換後,狀態會即時反映在學生畫面上 */

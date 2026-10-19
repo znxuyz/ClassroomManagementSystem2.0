@@ -37,6 +37,12 @@ Object.assign(StudentApp, {
     // 領地戰分頁時才重繪,否則學生會一直看不到那個分頁。
     TerritoryGame.start(() => {
       const running = !!(TerritoryGame.config && TerritoryGame.config.status === 'running');
+      /* 開了局才去讀自己的作答紀錄(答過哪些題、連錯幾題)。
+         沒開局就讀的話,每個人每次登入都白白付那些讀取。 */
+      if (running && !this._warHistoryLoaded) {
+        this._warHistoryLoaded = true;
+        this.loadMyAttempts().then(() => { if (this.tab === 'war') this.render(); });
+      }
       if (running !== this._warTabShown) {
         this._warTabShown = running;
         if (!running && this.tab === 'war') this.tab = 'pet';
@@ -234,6 +240,9 @@ Object.assign(StudentApp, {
 
   async attackHex(hexKey) {
     if (this.tQuestions.length === 0) { toast('題庫是空的,請找老師'); return; }
+    // 紀錄是開局後才讀的,萬一還沒讀完就被點到,先補讀 —— 否則會抽到
+    // 已經答對過的題目,送出時被規則擋下來,看起來就像莫名其妙答錯
+    if (!this._warHistoryLoaded) { this._warHistoryLoaded = true; await this.loadMyAttempts(); }
     const pool = this.unusedQuestions();
     if (pool.length === 0) {
       toast(`題庫共 ${this.tQuestions.length} 題你都答對了,請找老師再出題`);

@@ -618,8 +618,10 @@ const Cloud = {
       .collection('tfails').onSnapshot(snap => {
         const out = {};
         snap.docs.forEach(d => {
-          const at = d.data().at;
-          if (at && typeof at.toMillis === 'function') out[d.id] = at.toMillis();
+          const data = d.data();
+          // serverTimestamp 還沒回填就先跳過,下一次快照就會有了
+          if (!data.at || typeof data.at.toMillis !== 'function') return;
+          out[d.id] = { id: d.id, ...data, at: data.at.toMillis() };
         });
         cb(out);
       }, err => console.warn('[領地戰] 失手監聽中斷:', err.message));
