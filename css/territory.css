@@ -545,3 +545,37 @@
 }
 
 .war-penalty-note { color: var(--sick); }
+
+/* ---------- 連錯冷卻 ----------
+   擋在地圖上方,學生一眼就知道為什麼點不動。
+   用警示色但不刺眼 —— 這是提醒慢下來,不是處罰。 */
+.war-cooldown-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+  padding: 14px 18px;
+  border: 1px solid rgba(194, 91, 78, 0.45);
+  border-radius: var(--radius);
+  background: linear-gradient(135deg,
+              rgba(194, 91, 78, 0.18), rgba(194, 91, 78, 0.06));
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.war-cooldown-icon {
+  font-size: 28px;
+  flex: none;
+  animation: war-cool-pulse 1.6s ease-in-out infinite;
+}
+
+.war-cooldown-bar #warCooldown {
+  color: var(--sick);
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes war-cool-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .55; transform: scale(.9); }
+}

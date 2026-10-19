@@ -581,7 +581,14 @@ const Cloud = {
        防刷分不是靠這裡,是靠 tevents:它的 id 是 {uid}_{題號},
        同一題只能「答對」一次,背答案也刷不了分。
        回傳 id 給呼叫端,送出答案時要附上,規則才查得到這次的開始時間。 */
-    const attemptId = `${uid}_${payload.questionId}_${Date.now()}`;
+    /* 文件 id 是 {uid}_{seq}。seq 是這個學生的第幾筆嘗試,放進 id 裡,
+       再加上「不准修改」,同一個 seq 就只會存在一份 —— 連錯冷卻要靠
+       這條不能分岔的鏈才擋得住(見 Territory.cooldownUntil)。
+       同一題可以再試:再試就是新的 seq,不是改舊的那一筆。
+       號碼必須連號(規則會查 prev 是不是 {uid}_{seq-1}),所以不在這裡
+       自動挪號 —— 撞號只會發生在同一個學生開兩個分頁的時候,
+       那時該做的是重新接鏈,由呼叫端處理。 */
+    const attemptId = `${uid}_${payload.seq}`;
     await this.db.collection('classes').doc(classId)
       .collection('tattempts').doc(attemptId)
       .set({
@@ -590,6 +597,25 @@ const Cloud = {
         at: firebase.firestore.FieldValue.serverTimestamp()
       });
     return attemptId;
+  },
+
+  /* 我自己的所有嘗試紀錄。用來接續那條鏈(seq / prev / streak)——
+     重新整理或換裝置都會從伺服器重新算,所以躲不掉冷卻。
+     只查自己的,量很小(一局幾十筆)。 */
+  async listMyAttempts(classId, uid) {
+    const snap = await this.db.collection('classes').doc(classId)
+      .collection('tattempts').where('uid', '==', uid).get();
+    const list = [];
+    snap.docs.forEach(d => {
+      const data = d.data();
+      list.push({
+        id: d.id,
+        ...data,
+        at: data.at && typeof data.at.toMillis === 'function' ? data.at.toMillis() : 0
+      });
+    });
+    list.sort((a, b) => (a.seq || 0) - (b.seq || 0));
+    return list;
   },
 
   /* 我已經「答對」過哪幾題 —— 那些不會再出現。

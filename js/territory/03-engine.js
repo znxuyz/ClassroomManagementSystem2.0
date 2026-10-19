@@ -57,6 +57,11 @@ const Territory = {
       /* 一組在同一格最多被扣到幾分(0 = 不設下限)。
          沒有下限的話,一組亂猜幾次就等於永久放棄那一格。 */
       penaltyFloor: opts.penaltyFloor || 0,
+      /* 連錯幾題就要冷卻(0 = 不冷卻)。連續答錯累積到這個數字,
+         下一題要等 cooldownSeconds 秒才能點開 —— 專治「一直猜」。
+         答對一次就歸零,正常作答的學生不會碰到。 */
+      cooldownWrong: opts.cooldownWrong === 0 ? 0 : (opts.cooldownWrong || 3),
+      cooldownSeconds: opts.cooldownSeconds === 0 ? 0 : (opts.cooldownSeconds || 60),
       /* 嚴格作答:全螢幕作答,離開全螢幕或切到別的分頁就作廢。
          擋的是「複製題目、開新分頁問 AI」這條路。 */
       strictMode: opts.strictMode !== false,
@@ -203,6 +208,36 @@ const Territory = {
   /* attempts 是「點開題目」的紀錄。沒有對應成功事件、而且作答時限已過的,
      就是答錯或放生 —— 老師若設了 wrongPenalty 就倒扣那一格的佔領分。
      時限還沒到的不算,那可能只是學生正在作答。 */
+  /* ---------- 連錯冷卻 ----------
+     每一筆嘗試都記著「它是我的第幾筆」(seq)、「上一筆是哪一筆」(prev)
+     以及「點開它之前已經連錯幾題」(streak)。三個欄位把一個學生的嘗試
+     接成一條單向鏈,文件 id 就是 {uid}_{seq} 且不准修改 —— 所以同一個
+     seq 只會存在一份,學生沒辦法跳過或重接那條鏈來躲冷卻。
+
+     下面兩個函式是前端與安全規則共用的同一套算式:前端用它顯示倒數,
+     規則用它擋寫入。兩邊算出來一樣,畫面上看到的就是真的。 */
+
+  /* 接著 last 這筆嘗試之後,新的一筆該帶的 streak。
+     solved 是「我已經答對的題目」—— 由 tevents 推出來,學生偽造不了。 */
+  nextStreak(last, solved, isSwap) {
+    if (!last) return 0;
+    if (isSwap) return last.streak || 0;        // 換題不算答錯
+    if ((solved || {})[last.questionId]) return 0;  // 上一題答對了,歸零
+    return (last.streak || 0) + 1;
+  },
+
+  /* 冷卻到什麼時候為止(0 = 現在就能答)。
+     連錯數剛好踩到倍數時冷卻一次,所以是「每連錯三題罰一次」,
+     不是「錯三題之後每一題都要等」。 */
+  cooldownUntil(config, last, solved) {
+    const n = config.cooldownWrong || 0;
+    const sec = config.cooldownSeconds || 0;
+    if (n <= 0 || sec <= 0 || !last) return 0;
+    const s = this.nextStreak(last, solved, false);
+    if (s <= 0 || s % n !== 0) return 0;
+    return last.at + sec * 1000;
+  },
+
   failedAttempts(config, events, attempts, now) {
     const penalty = config.wrongPenalty || 0;
     if (penalty <= 0 || !attempts || attempts.length === 0) return [];

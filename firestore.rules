@@ -145,16 +145,85 @@ service cloud.firestore {
             && get(/databases/$(database)/documents/classes/$(classId)).data.teacherUid == request.auth.uid;
         }
 
-        /* 文件 id 是 {uid}_{題號}_{時間},所以同一題可以再試 —— 題庫小的班級
-           不會因為答錯幾題就無題可答。防刷分靠的是另外兩件事:
+        /* 文件 id 是 {uid}_{seq}:seq 是這個學生的第幾筆嘗試。
+           同一題可以再試 —— 再試就是新的 seq,題庫小的班級不會因為
+           答錯幾題就無題可答。防刷分靠的是另外兩件事:
            tevents 的 id 仍然是 {uid}_{題號},同一題只能「答對」一次;
-           以及答錯會倒扣。 */
+           以及答錯會倒扣。
+
+           seq 放進 id 裡還有一個用途:id 唯一 + 不准修改,等於
+           同一個 seq 只能存在一份,一個學生的嘗試就被迫接成一條
+           不能分岔、不能跳號的鏈。連錯冷卻就是靠這條鏈擋的。 */
+        function prevDoc() {
+          return get(/databases/$(database)/documents/classes/$(classId)/tattempts/$(request.resource.data.prev)).data;
+        }
+        /* 上一筆答對了嗎 —— 答對會留下 tevents/{uid}_{題號},
+           那份文件只有答對才寫得進來,學生偽造不了。 */
+        function prevSolved() {
+          return exists(/databases/$(database)/documents/classes/$(classId)/tevents/$(request.auth.uid + '_' + prevDoc().questionId));
+        }
+        /* 這一筆是不是「換題」。換題的定義很窄:接在自己的前一筆之後、
+           打同一格、而且前一筆還沒答對 —— 否則就只是一筆新的嘗試。
+           這個判定必須嚴,因為換題不算答錯:放寬的話學生只要每一筆都
+           宣稱自己在換題,連錯冷卻和答錯倒扣就都失效了。
+           換題次數另外由 maxSwaps 封頂(見下面),所以就算全用來換題,
+           一次攻擊最多也只能凍結那幾筆。 */
+        function isSwap() {
+          return request.resource.data.get('replaces', '') != ''
+            && request.resource.data.get('replaces', '') == request.resource.data.prev
+            && prevDoc().hexKey == request.resource.data.hexKey
+            && !prevSolved();
+        }
+        /* 這一筆該帶的連錯數。前端用同一套算式顯示倒數(見 Territory.nextStreak) */
+        function wantStreak() {
+          return isSwap()
+                   ? prevDoc().get('streak', 0)                 // 換題不算答錯
+                   : (prevSolved() ? 0 : prevDoc().get('streak', 0) + 1);
+        }
+        /* 這一次攻擊已經換過幾次題。換題累加,新的攻擊歸零 */
+        function wantSwaps() {
+          return isSwap() ? prevDoc().get('swaps', 0) + 1 : 0;
+        }
+        function coolN() { return cfg().get('cooldownWrong', 0); }
+        function coolSec() { return cfg().get('cooldownSeconds', 0); }
+
         allow create: if signedIn()
           && request.resource.data.uid == request.auth.uid
-          && attemptId.matches('^' + request.auth.uid + '_.*')
+          && attemptId == request.auth.uid + '_' + string(request.resource.data.seq)
           && request.resource.data.at == request.time
           && request.resource.data.groupIdx == cfg().memberGroup[request.resource.data.studentId]
-          && cfg().status == 'running';
+          && cfg().status == 'running'
+          // 老師關掉冷卻(連錯題數或秒數設 0)就不檢查這條鏈
+          && (
+               coolN() <= 0 || coolSec() <= 0
+               || (
+                    /* 鏈必須是連號的:第 n 筆的前一筆只能是 {uid}_{n-1}。
+                       不准跳號,所以「把 prev 填空、假裝自己是第一筆」
+                       這招只有在真的第一筆(seq=1)時才成立,
+                       而 {uid}_1 這個 id 一輩子只能被建立一次。 */
+                    request.resource.data.seq == 1
+                      ? (request.resource.data.prev == ''
+                           && request.resource.data.streak == 0
+                           && request.resource.data.get('swaps', 0) == 0)
+                      : (
+                          request.resource.data.seq > 1
+                          && request.resource.data.prev
+                             == request.auth.uid + '_' + string(request.resource.data.seq - 1)
+                          && exists(/databases/$(database)/documents/classes/$(classId)/tattempts/$(request.resource.data.prev))
+                          // 連錯數不能自己填,由上一筆的結果推出來
+                          && request.resource.data.streak == wantStreak()
+                          // 換題次數也不能自己填,而且不能超過老師設的上限
+                          && request.resource.data.get('swaps', 0) == wantSwaps()
+                          && request.resource.data.get('swaps', 0) <= cfg().get('maxSwaps', 3)
+                          // 連錯數踩到倍數就得等滿冷卻時間
+                          && (
+                               request.resource.data.streak == 0
+                               || request.resource.data.streak % coolN() != 0
+                               || request.time >= prevDoc().at + duration.value(coolSec(), 's')
+                             )
+                        )
+                  )
+             );
 
         // 裡面只有題號與時間,沒有答案,全班可讀不會洩題
         allow read: if signedIn();

@@ -19,6 +19,8 @@ Object.assign(StudentApp, {
   tTried: new Set(),      // 這次登入已經作答過的題目(含答錯的)
   tSolved: {},            // 已經答對的題目 { questionId: true },不會再抽到
   tAttemptId: null,
+  tLastAttempt: null,     // 我最後一筆嘗試 { id, seq, questionId, streak, at } 連錯冷卻用
+  tCooldownTimer: null,
   tSwapsLeft: 3,
   tSwapping: false,
   tOpening: false,
@@ -104,8 +106,21 @@ Object.assign(StudentApp, {
     const pen = c.wrongPenalty || 0;
     const floor = c.penaltyFloor || 0;
     const maxSwaps = c.maxSwaps === undefined ? 3 : c.maxSwaps;
+    const coolN = c.cooldownWrong || 0;
+    const coolSec = c.cooldownSeconds || 0;
+    const coolLeft = this.cooldownLeftMs();
+    if (coolLeft > 0) requestAnimationFrame(() => this.startCooldownTimer());
 
     return `
+      ${coolLeft > 0 ? `
+        <div class="war-cooldown-bar">
+          <span class="war-cooldown-icon">⏳</span>
+          <div>
+            <strong>連續答錯 ${coolN} 題,先休息一下</strong><br>
+            還要等 <strong id="warCooldown">${Math.ceil(coolLeft / 1000)} 秒</strong>
+            才能再出手。趁這段時間把題目看清楚吧!
+          </div>
+        </div>` : ''}
       <div class="war-header" style="border-color:${color}">
         <div class="war-head-row">
           <div class="war-my-group" style="color:${color}">我是第 ${groupIdx + 1} 組</div>
@@ -128,6 +143,9 @@ Object.assign(StudentApp, {
         ${pen > 0 ? `<span class="war-penalty-note">答錯或作廢會倒扣 <strong>${pen}</strong> 佔領分${
             floor > 0 ? `,同一格最多扣到 −${floor} 分` : ''}。</span><br>` : ''}
         同一題答對一次就不會再出現,答錯可以再挑戰。<br>
+        ${coolN > 0 && coolSec > 0 ? `<span class="war-penalty-note">連續答錯
+          <strong>${coolN}</strong> 題要等 <strong>${coolSec}</strong> 秒才能再出手,
+          答對一次就歸零(換題不算答錯)。</span><br>` : ''}
         ${maxSwaps > 0 ? `遇到<strong>還沒教過</strong>的題目可以<strong>換題</strong>,
           每次攻擊最多 ${maxSwaps} 次 —— 換到的題目難度與分數都降一階。<br>` : ''}
         灰色是尚未開放的區域,★ 是各組基地,不能被攻佔。
@@ -174,6 +192,10 @@ Object.assign(StudentApp, {
 
     try {
       const prev = this.tAttemptId;
+      // 換題不算答錯,連錯數維持原樣
+      const streak = Territory.nextStreak(this.tLastAttempt, this.tSolved, true);
+      // 換題次數由伺服器核對:接著前一筆往上加,上限是老師設的 maxSwaps
+      const swapsUsed = ((this.tLastAttempt || {}).swaps || 0) + 1;
       this.tAttemptId = await Cloud.startTerritoryAttempt(
         this.classInfo.classId, Cloud.uid, {
           studentId: this.classInfo.studentId,
@@ -181,13 +203,19 @@ Object.assign(StudentApp, {
           groupIdx: this.myGroupIdx(),
           hexKey: this.tTargetHex,
           questionId: q.id,
-          replaces: prev          // 舊的那筆不算失手,不會倒扣
+          seq: (this.tSeq || 0) + 1,
+          prev,
+          replaces: prev,         // 舊的那筆不算失手,不會倒扣
+          streak,
+          swaps: swapsUsed
         });
+      this.rememberAttempt(q.id, streak, swapsUsed);
     } catch (e) {
       console.warn('[領地戰] 換題失敗:', e.code || e.message);
       this.tSwapping = false;
       toast('換題失敗:' + (e.message || e.code));
-      this.render();
+      // 被擋下通常代表本機算的鏈接錯了,從伺服器重新接一次
+      this.loadMyAttempts().then(() => { if (this.tab === 'war') this.render(); });
       return;
     }
 
@@ -212,6 +240,13 @@ Object.assign(StudentApp, {
     }
     if (this.tOpening) return;
 
+    const cool = this.cooldownLeftMs();
+    if (cool > 0) {
+      const c0 = TerritoryGame.config || {};
+      toast(`連續答錯 ${c0.cooldownWrong} 題,要等 ${Math.ceil(cool / 1000)} 秒才能再出手`);
+      return;
+    }
+
     /* 規則要先講。嚴格模式下切個分頁題目就沒了,
        沒有事先說清楚會覺得被陰。 */
     const limitSec = this.answerSeconds();
@@ -222,6 +257,9 @@ Object.assign(StudentApp, {
         ? `· 答錯或作廢會倒扣 ${TerritoryGame.config.wrongPenalty} 佔領分\n` : '') +
       '· 會進入全螢幕,離開全螢幕或切到別的分頁就作廢\n' +
       '· 答錯或作廢可以再挑戰這一題,但答對過的題目不會再出現\n' +
+      ((TerritoryGame.config || {}).cooldownWrong > 0
+        && (TerritoryGame.config || {}).cooldownSeconds > 0
+        ? `· 連續答錯 ${TerritoryGame.config.cooldownWrong} 題要等 ${TerritoryGame.config.cooldownSeconds} 秒才能再出手\n` : '') +
       (((TerritoryGame.config || {}).maxSwaps ?? 3) > 0
         ? `· 沒學過的題目可以換題(最多 ${(TerritoryGame.config || {}).maxSwaps ?? 3} 次),難度與分數降一階\n` : '') +
       '\n準備好了就按確定')) return;
@@ -231,6 +269,8 @@ Object.assign(StudentApp, {
 
     /* 先在伺服器登記「我點開了這一題」,拿到伺服器時間之後才顯示題目。
        每次點開都是新的一筆,所以答錯之後還可以再試這一題。 */
+    const last = this.tLastAttempt;
+    const streak = Territory.nextStreak(last, this.tSolved, false);
     try {
       this.tAttemptId = await Cloud.startTerritoryAttempt(
         this.classInfo.classId, Cloud.uid, {
@@ -238,15 +278,21 @@ Object.assign(StudentApp, {
           studentName: this.classInfo.name,
           groupIdx: this.myGroupIdx(),
           hexKey,
-          questionId: q.id
+          questionId: q.id,
+          seq: (this.tSeq || 0) + 1,
+          prev: last ? last.id : '',      // 第一筆沒有前一筆
+          streak,
+          swaps: 0                        // 新的一次攻擊,換題次數歸零
         });
+      this.rememberAttempt(q.id, streak, 0);
     } catch (e) {
       console.warn('[領地戰] 登記作答失敗:', e.code || e.message);
       this.tOpening = false;
       toast(e.code === 'permission-denied'
-        ? '開啟題目被拒絕,請老師確認 Firestore 安全性規則已重新發布'
+        ? '開啟題目被拒絕 —— 可能是冷卻還沒結束,或請老師確認 Firestore 安全性規則已重新發布'
         : '開啟題目失敗:' + (e.message || e.code));
-      this.render();
+      // 被擋下通常代表本機算的鏈接錯了,從伺服器重新接一次
+      this.loadMyAttempts().then(() => { if (this.tab === 'war') this.render(); });
       return;
     }
 
@@ -267,7 +313,69 @@ Object.assign(StudentApp, {
   async loadMyAttempts() {
     this.tSolved = await this.optional('作答紀錄',
       () => Cloud.listMySolvedQuestions(this.classInfo.classId, Cloud.uid), {});
+    /* 嘗試紀錄要從伺服器接回來,連錯冷卻才不會被「重新整理」繞過。
+       取不到就當成沒連錯過 —— 寧可少罰,也不要讓學生被卡住不能玩。 */
+    const all = await this.optional('嘗試紀錄',
+      () => Cloud.listMyAttempts(this.classInfo.classId, Cloud.uid), []);
+    /* 只認帶 seq 的那些。更新版本之前留下的舊紀錄沒有 seq,
+       不在這條鏈上 —— 那是舊局的資料,拿來接鏈只會接錯。 */
+    const list = all.filter(a => (a.seq || 0) >= 1);
+    this.tLastAttempt = list.length ? list[list.length - 1] : null;
+    this.tSeq = this.tLastAttempt ? (this.tLastAttempt.seq || 0) : 0;
   },
+
+  /* ---------- 連錯冷卻 ----------
+     連錯幾題就停幾秒,擋的是「不看題目一直猜」。
+     算式在 Territory.cooldownUntil,安全規則用同一套,
+     所以畫面上的倒數就是伺服器真正在等的時間。 */
+
+  /* 記下剛剛登記成功的那一筆,接著當下一筆的 prev。
+       seq 以伺服器真正收下的 id 為準(撞號時會往後挪) */
+  rememberAttempt(questionId, streak, swaps) {
+    const seq = Number(String(this.tAttemptId || '').split('_').pop()) || (this.tSeq || 0) + 1;
+    this.tSeq = seq;
+    this.tLastAttempt = {
+      id: this.tAttemptId, seq, questionId, streak, swaps: swaps || 0, at: Date.now()
+    };
+  },
+
+  cooldownLeftMs() {
+    const c = TerritoryGame.config;
+    if (!c) return 0;
+    return Math.max(0, Territory.cooldownUntil(c, this.tLastAttempt, this.tSolved) - Date.now());
+  },
+
+  /* 答錯之後要講清楚現在連錯幾題、還差幾題就要等 ——
+     不說的話學生只會覺得莫名其妙被鎖住。 */
+  cooldownNote() {
+    const c = TerritoryGame.config || {};
+    const n = c.cooldownWrong || 0;
+    const sec = c.cooldownSeconds || 0;
+    if (n <= 0 || sec <= 0) return '';
+    const s = Territory.nextStreak(this.tLastAttempt, this.tSolved, false);
+    if (s <= 0) return '';
+    return s % n === 0
+      ? `。已經連錯 ${s} 題,要等 ${sec} 秒才能再出手`
+      : `。已經連錯 ${s} 題,再錯 ${n - (s % n)} 題就要等 ${sec} 秒`;
+  },
+
+  /* 冷卻中每秒只更新那一行字,不重畫地圖 */
+  startCooldownTimer() {
+    clearInterval(this.tCooldownTimer);
+    this.tCooldownTimer = setInterval(() => {
+      const left = this.cooldownLeftMs();
+      const el = document.getElementById('warCooldown');
+      if (!el) { this.stopCooldownTimer(); return; }
+      if (left <= 0) {
+        this.stopCooldownTimer();
+        if (this.tab === 'war' && !this.tQuestion) this.render();
+        return;
+      }
+      el.textContent = Math.ceil(left / 1000) + ' 秒';
+    }, 250);
+  },
+
+  stopCooldownTimer() { clearInterval(this.tCooldownTimer); this.tCooldownTimer = null; },
 
   /* 0 = 不限時。老師若覺得讀題慢的學生會吃虧,可以整個關掉;
      防作弊就只靠「一題一次機會」與嚴格作答。 */
@@ -337,7 +445,7 @@ Object.assign(StudentApp, {
     this.render();
     const pen4 = (TerritoryGame.config || {}).wrongPenalty || 0;
     showWarResult(false, `${why},這一次作廢` +
-      (pen4 > 0 ? `,倒扣 ${pen4} 佔領分` : '') + '。可以再挑戰這一題');
+      (pen4 > 0 ? `,倒扣 ${pen4} 佔領分` : '') + '。可以再挑戰這一題' + this.cooldownNote());
   },
 
   /* 作答倒數。時間到就關掉題目 —— 機會已經用掉了,不能再回來慢慢查。 */
@@ -366,7 +474,7 @@ Object.assign(StudentApp, {
     this.render();
     const pen3 = (TerritoryGame.config || {}).wrongPenalty || 0;
     showWarResult(false, '時間到,這一次算答錯' +
-      (pen3 > 0 ? `,倒扣 ${pen3} 佔領分` : '') + '。可以再挑戰這一題');
+      (pen3 > 0 ? `,倒扣 ${pen3} 佔領分` : '') + '。可以再挑戰這一題' + this.cooldownNote());
   },
 
   cancelWarQuestion() {
@@ -469,7 +577,7 @@ Object.assign(StudentApp, {
         const pen = (TerritoryGame.config || {}).wrongPenalty || 0;
         showWarResult(false, '這一題答錯了' +
           (pen > 0 ? `,這一格倒扣 ${pen} 佔領分` : '') +
-          '。可以再挑戰這一題,但會先輪到還沒做過的題目');
+          '。可以再挑戰這一題,但會先輪到還沒做過的題目' + this.cooldownNote());
       } else {
         console.error(e);
         showWarResult(null, '送出失敗:' + e.message);

@@ -105,6 +105,8 @@ async function startTerritoryGame() {
     wrongPenalty: parseInt(document.getElementById('tgWrongPenalty').value) || 0,
     penaltyFloor: parseInt(document.getElementById('tgPenaltyFloor').value) || 0,
     maxSwaps: Math.max(0, parseInt(document.getElementById('tgMaxSwaps').value) || 0),
+    cooldownWrong: Math.max(0, parseInt(document.getElementById('tgCooldownWrong').value) || 0),
+    cooldownSeconds: Math.max(0, parseInt(document.getElementById('tgCooldownSeconds').value) || 0),
     stageMode: document.getElementById('tgStageMode').value,
     stageSeconds: parseInt(document.getElementById('tgStageSeconds').value) || 300
   });
@@ -240,6 +242,14 @@ function renderLiveSettings(c) {
                value="${c.maxSwaps === undefined ? 3 : c.maxSwaps}" min="0" max="5" />
         <label>次(難度降一階)</label>
 
+        <label style="margin-left:10px;">連錯</label>
+        <input type="number" id="lsCoolN" class="rule-editor-input" style="width:80px;"
+               value="${c.cooldownWrong === undefined ? 3 : c.cooldownWrong}" min="0" max="10" />
+        <label>題,冷卻</label>
+        <input type="number" id="lsCoolSec" class="rule-editor-input" style="width:80px;"
+               value="${c.cooldownSeconds === undefined ? 60 : c.cooldownSeconds}" min="0" max="600" />
+        <label>秒(0=不冷卻)</label>
+
         <label class="tg-live-check" style="margin-left:10px;">
           <input type="checkbox" id="lsStrict" ${c.strictMode !== false ? 'checked' : ''} />
           嚴格作答(全螢幕,離開或切分頁就作廢)
@@ -268,6 +278,8 @@ async function applyLiveSettings() {
     wrongPenalty: parseInt(document.getElementById('lsPenalty').value) || 0,
     penaltyFloor: parseInt(document.getElementById('lsFloor').value) || 0,
     maxSwaps: Math.max(0, parseInt(document.getElementById('lsSwaps').value) || 0),
+    cooldownWrong: Math.max(0, parseInt(document.getElementById('lsCoolN').value) || 0),
+    cooldownSeconds: Math.max(0, parseInt(document.getElementById('lsCoolSec').value) || 0),
     strictMode: document.getElementById('lsStrict').checked
   };
 
