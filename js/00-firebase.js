@@ -613,9 +613,10 @@ const Cloud = {
       });
   },
 
-  watchTerritoryFails(classId, cb) {
-    return this.db.collection('classes').doc(classId)
-      .collection('tfails').onSnapshot(snap => {
+  watchTerritoryFails(classId, cb, since) {
+    let q = this.db.collection('classes').doc(classId).collection('tfails');
+    if (since > 0) q = q.where('at', '>', new Date(since));
+    return q.onSnapshot(snap => {
         const out = {};
         snap.docs.forEach(d => {
           const data = d.data();
@@ -657,9 +658,10 @@ const Cloud = {
   },
 
   /* 老師端重播要用:失手的嘗試會扣佔領分 */
-  watchTerritoryAttempts(classId, cb) {
-    return this.db.collection('classes').doc(classId)
-      .collection('tattempts').onSnapshot(snap => {
+  watchTerritoryAttempts(classId, cb, since) {
+    let q = this.db.collection('classes').doc(classId).collection('tattempts');
+    if (since > 0) q = q.where('at', '>', new Date(since));
+    return q.onSnapshot(snap => {
         const list = [];
         snap.docs.forEach(d => {
           const data = d.data();
@@ -684,10 +686,16 @@ const Cloud = {
       });
   },
 
-  /* 依伺服器時間排序 —— 先後由伺服器認定,不受學生裝置時鐘影響 */
-  watchTerritoryEvents(classId, cb) {
-    return this.db.collection('classes').doc(classId)
-      .collection('tevents').orderBy('at')
+  /* 依伺服器時間排序 —— 先後由伺服器認定,不受學生裝置時鐘影響。
+
+     since:壓縮點。壓縮之後,那個時間以前的戰況已經存進設定檔的快照裡,
+     重播不需要再看那些事件 —— 但文件要留著,因為「誰答過哪一題」就是
+     靠它們擋的(tevents 的 id 是 {uid}_{題號})。所以壓縮不刪資料,
+     只是不再讀 —— 一局打久了,新進來的人只要讀壓縮點之後那幾筆。 */
+  watchTerritoryEvents(classId, cb, since) {
+    let q = this.db.collection('classes').doc(classId).collection('tevents');
+    if (since > 0) q = q.where('at', '>', new Date(since));
+    return q.orderBy('at')
       .onSnapshot(snap => {
         const list = [];
         snap.docs.forEach(d => {

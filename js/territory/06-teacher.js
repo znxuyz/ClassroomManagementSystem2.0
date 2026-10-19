@@ -293,6 +293,7 @@ async function applyLiveSettings() {
   if (rewrites && !confirm(
       `這次調整會影響整場戰況的重新計算,所以會先把目前的地圖鎖成快照。\n\n` +
       `· 已經打下來的地維持不變\n` +
+      `· 作答紀錄不會被刪,舊題目不會重新開放\n` +
       (inBattle > 0 ? `· 目前有 ${inBattle} 格正在交戰,會重新開始累積\n` : '') +
       `· 新的設定從現在開始生效\n\n要套用嗎?`)) return;
 
@@ -300,11 +301,16 @@ async function applyLiveSettings() {
     toast('套用中…');
     const merged = { ...c, ...next };
     if (rewrites) {
+      /* 鎖住現況:存成快照,並把壓縮點推到最後一筆事件。
+         舊紀錄不刪 —— 刪了「誰答過哪一題」就跟著消失,舊題目會重新開放。
+         不讀就等於不算,效果一樣,而且順便省下大家的讀取量。 */
       merged.snapshot = Territory.snapshotOf(TerritoryGame.map);
-      merged.compactedAt = Date.now();
+      merged.battles = Territory.battlesOf(TerritoryGame.map);
+      merged.compactedAt = TerritoryGame.events.length
+        ? TerritoryGame.events[TerritoryGame.events.length - 1].at
+        : (c.compactedAt || 0);
     }
     await Cloud.saveTerritoryConfig(state.classId, merged);
-    if (rewrites) await Cloud.clearTerritoryEvents(state.classId);
 
     _liveSettingsOpen = false;
     _lastMapSig = null;
@@ -477,13 +483,13 @@ async function compactTerritory() {
   const n = TerritoryGame.events.length;
 
   if (!confirm(
-    `把目前戰況壓縮成快照,並清掉 ${n} 筆作答紀錄?\n\n` +
-    `地圖不會改變,之後載入會快很多。\n` +
-    `但「誰答過哪一題」是記在作答紀錄裡的,清掉之後舊題目會重新開放作答。\n` +
-    `建議壓縮前先換一批新題目。\n` +
-    (inBattle > 0
-      ? `\n注意:目前有 ${inBattle} 格正在交戰,壓縮後這些爭奪會歸零重來。`
-      : '\n目前沒有正在交戰的格子,是壓縮的好時機。')
+    `把目前戰況壓縮成快照?\n\n` +
+    `地圖不會改變,之後所有人載入只需要讀新的紀錄,會快很多。\n` +
+    `目前累積 ${n} 筆。\n\n` +
+    `不會刪掉任何資料 —— 舊紀錄留著,所以「誰答過哪一題」還是擋得住,` +
+    `舊題目不會重新開放。\n\n` +
+    (inBattle > 0 ? `目前有 ${inBattle} 格正在交戰,會連同累積的分數與倒數一起保留。\n\n` : '') +
+    `(平常不用自己按:累積到一定筆數系統就會自動壓縮。)`
   )) return;
 
   try {
@@ -491,10 +497,13 @@ async function compactTerritory() {
     await Cloud.saveTerritoryConfig(state.classId, {
       ...c,
       snapshot: Territory.snapshotOf(TerritoryGame.map),
-      compactedAt: Date.now()
+      battles: Territory.battlesOf(TerritoryGame.map),
+      // 壓縮點用最後一筆事件的時間,不是現在 —— 否則這一瞬間剛寫進來的會被跳過
+      compactedAt: TerritoryGame.events.length
+        ? TerritoryGame.events[TerritoryGame.events.length - 1].at
+        : (c.compactedAt || 0)
     });
-    await Cloud.clearTerritoryEvents(state.classId);
-    toast(`✦ 已壓縮,清掉 ${n} 筆紀錄`);
+    toast(`✦ 已壓縮 ${n} 筆戰況`);
   } catch (e) {
     console.error(e);
     toast('壓縮失敗:' + e.message);

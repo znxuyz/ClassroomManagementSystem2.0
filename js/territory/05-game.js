@@ -59,9 +59,19 @@ const TerritoryGame = {
     const cid = this._cid;
     const hasGame = !!this.config;
     const needPenalty = hasGame && (this.config.wrongPenalty || 0) > 0;
+    /* 壓縮點往前推時,已經訂好的那幾條要重接 —— 重接之後讀到的
+       就只剩壓縮點之後那一小段,這正是壓縮省讀取量的地方。 */
+    const since = hasGame ? (this.config.compactedAt || 0) : 0;
+    if (since !== this._since) {
+      this._since = since;
+      ['unsubEvents', 'unsubAttempts', 'unsubFails'].forEach(k => {
+        if (this[k]) { this[k](); this[k] = null; }
+      });
+      this.events = []; this.attempts = []; this.fails = {};
+    }
 
     this._stream('unsubEvents', hasGame,
-      () => Cloud.watchTerritoryEvents(cid, list => { this.events = list; this.rebuild(); }),
+      () => Cloud.watchTerritoryEvents(cid, list => { this.events = list; this.rebuild(); }, since),
       () => { this.events = []; });
 
     /* 嘗試紀錄是所有集合裡最大的一份(每點開一題就一筆,換題、答對的
@@ -71,11 +81,11 @@ const TerritoryGame = {
        補寫成一筆 tfails,學生端只要讀 tfails 就夠了。
        老師的畫面開著時行為完全一樣;沒開的時候那幾筆會晚一點才補上。 */
     this._stream('unsubAttempts', needPenalty && this.isTeacherSide(),
-      () => Cloud.watchTerritoryAttempts(cid, list => { this.attempts = list; this.rebuild(); }),
+      () => Cloud.watchTerritoryAttempts(cid, list => { this.attempts = list; this.rebuild(); }, since),
       () => { this.attempts = []; });
 
     this._stream('unsubFails', needPenalty,
-      () => Cloud.watchTerritoryFails(cid, m => { this.fails = m; this.rebuild(); }),
+      () => Cloud.watchTerritoryFails(cid, m => { this.fails = m; this.rebuild(); }, since),
       () => { this.fails = {}; });
   },
 
@@ -94,6 +104,8 @@ const TerritoryGame = {
     if (this.unsubFails) { this.unsubFails(); this.unsubFails = null; }
     if (this.ticker) { clearInterval(this.ticker); this.ticker = null; }
     this._cid = null;
+    this._since = undefined;
+    this._lastCompact = 0;
     this.config = null;
     this.events = [];
     this.attempts = [];
@@ -108,6 +120,7 @@ const TerritoryGame = {
     this.map = r.map;
     this.log = r.log;
     this.materializeFails();
+    this.autoCompact();
     if (this.onUpdate) this.onUpdate();
     else renderTerritoryLive();
   },
@@ -131,6 +144,45 @@ const TerritoryGame = {
           questionId: f.questionId, why: '逾時未作答'
         }).catch(() => {});
       });
+  },
+
+  /* ---------- 自動壓縮 ----------
+     事件累積多了,每個新進來的人都要把整串重播一次才看得到地圖 ——
+     那是讀取量最大的來源。壓縮就是把「現在誰佔哪一格」寫進設定檔,
+     並記下壓縮點;之後大家只讀壓縮點之後那幾筆。
+
+     不刪任何資料。舊事件留著,「誰答過哪一題」就還擋得住,
+     所以壓縮完不會讓舊題目重新開放 —— 這是以前手動壓縮最麻煩的地方。
+
+     打到一半的爭奪(累積分數與倒數)也一起存進快照,所以任何時候
+     壓縮都是無損的 —— 不必等到沒人在搶地,正熱鬧的時候照樣能壓。 */
+  COMPACT_AT: 400,          // 累積幾筆就值得壓一次
+  COMPACT_COOLDOWN: 180000, // 兩次壓縮至少隔 3 分鐘
+
+  autoCompact() {
+    if (!this.isTeacherSide() || !this._cid) return;
+    const c = this.config;
+    if (!c || c.status !== 'running') return;
+    if (this.events.length < this.COMPACT_AT) return;
+    if (Date.now() - (this._lastCompact || 0) < this.COMPACT_COOLDOWN) return;
+
+    /* 壓縮點用「最後一筆被納入快照的事件」的時間,不是現在 ——
+       用現在的話,這一瞬間剛寫進來的事件會被跳過,那一格就不見了。 */
+    const since = this.events[this.events.length - 1].at;
+    this._lastCompact = Date.now();
+    const n = this.events.length;
+
+    Cloud.saveTerritoryConfig(this._cid, {
+      ...c,
+      snapshot: Territory.snapshotOf(this.map),
+      battles: Territory.battlesOf(this.map),
+      compactedAt: since
+    }).then(() => {
+      console.info(`[領地戰] 已自動壓縮 ${n} 筆戰況,之後只讀新的`);
+    }).catch(e => {
+      console.warn('[領地戰] 自動壓縮失敗:', e.message);
+      this._lastCompact = 0;        // 失敗就讓它下次再試
+    });
   },
 
   myTargets(groupIdx) {

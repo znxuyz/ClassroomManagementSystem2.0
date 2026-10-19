@@ -306,6 +306,13 @@ const Territory = {
     // 只追蹤交戰中的格子。地圖上千格時,每筆事件都掃全圖會慢到不能用
     const active = new Set();
 
+    // 快照裡打到一半的爭奪,接著打下去
+    Object.entries(config.battles || {}).forEach(([k, b]) => {
+      if (!map[k] || map[k].isBase || !b) return;
+      map[k].battle = { endsAt: b.endsAt, points: { ...(b.points || {}) } };
+      active.add(k);
+    });
+
     // 成功與失手合在一起依時間重播,順序才和實際發生的一致
     const stream = (events || []).concat(this.failedAttempts(config, events, attempts, now, fails))
       .sort((a, b) => a.at - b.at);
@@ -426,6 +433,16 @@ const Territory = {
       if (cell.owner !== null && !cell.isBase) snap[k] = cell.owner;
     });
     return snap;
+  },
+
+  /* 正在交戰的格子也要存下來,壓縮才不會把打到一半的爭奪歸零。
+     有了這個,任何時候壓縮都是無損的,不必等到沒人在搶地。 */
+  battlesOf(map) {
+    const out = {};
+    Object.entries(map).forEach(([k, cell]) => {
+      if (cell.battle) out[k] = { endsAt: cell.battle.endsAt, points: { ...cell.battle.points } };
+    });
+    return out;
   },
 
   /* 畫面用的指紋。地圖上千格時,沒變就不該重繪 */
