@@ -59,6 +59,18 @@ jobs:
           fi
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
 
+          # 金鑰必須是「要發布的那個專案」的。拿別的專案的金鑰來,
+          # Google 會去檢查那個專案的 API 有沒有開,錯誤訊息會指向
+          # 一個你看不懂的專案編號 —— 先擋下來,把話講清楚。
+          KEY_PROJECT=$(jq -r '.project_id // ""' "$RUNNER_TEMP/sa.json")
+          WANT=$(jq -r '.projects.default' .firebaserc)
+          if [ "$KEY_PROJECT" != "$WANT" ]; then
+            echo "::error::金鑰屬於專案「$KEY_PROJECT」,但要發布的是「$WANT」。請在 $WANT 底下重新建立服務帳戶與金鑰,見 docs/自動發布規則.md。"
+            rm -f "$RUNNER_TEMP/sa.json"
+            exit 1
+          fi
+          echo "金鑰專案:$KEY_PROJECT ✓"
+
       - name: 發布規則
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
