@@ -1,0 +1,56 @@
+# 自動發布 Firestore 安全性規則
+# ──────────────────────────────────────────────
+# firestore.rules 一推上 main 就自動發布,不必再記得去後台貼一次。
+# 規則有語法錯誤或權限不足時,這個流程會失敗並寄信通知 —— 失敗就是
+# 「沒有發布」,線上跑的還是舊的那一份,不會把壞規則推上去。
+#
+# 需要先設定一次:見 docs/自動發布規則.md
+
+name: 發布 Firestore 規則
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'firestore.rules'
+      - 'firebase.json'
+      - '.firebaserc'
+      - '.github/workflows/deploy-rules.yml'
+  workflow_dispatch:        # 也可以在 Actions 頁面手動按一次
+
+# 同時間只跑一個,避免兩次推送互相覆蓋
+concurrency:
+  group: firestore-rules
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 安裝 firebase-tools
+        run: npm install -g firebase-tools@15
+
+      - name: 寫出服務帳戶金鑰
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then
+            echo "::error::找不到 FIREBASE_SERVICE_ACCOUNT。請依 docs/自動發布規則.md 設定一次。"
+            exit 1
+          fi
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+
+      - name: 發布規則
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: firebase deploy --only firestore:rules --non-interactive
+
+      - name: 清掉金鑰
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
