@@ -68,7 +68,9 @@ jobs:
           code=$?
           echo "$out"
           # 權限不足的訊息很長,直接把該補哪個角色講清楚
-          if [ $code -ne 0 ] && echo "$out" | grep -q 'serviceusage'; then
+          if [ $code -ne 0 ] && echo "$out" | grep -q 'has not been used in project\|it is disabled'; then
+            echo "::error::專案還沒開啟 Firebase Rules API。到 https://console.developers.google.com/apis/api/firebaserules.googleapis.com/overview?project=classroom-management-sys-26f97 按「啟用」,等一兩分鐘再重跑。"
+          elif [ $code -ne 0 ] && echo "$out" | grep -q 'serviceusage'; then
             echo "::error::上一步的「跳過 API 啟用檢查」沒生效。請確認 .firebaserc 裡的專案代號與實際專案一致。"
           elif [ $code -ne 0 ] && echo "$out" | grep -qi 'permission\|403'; then
             echo "::error::服務帳戶少了「Firebase Rules 管理員」角色,見 docs/自動發布規則.md 第 1 步。金鑰不用重做。"
