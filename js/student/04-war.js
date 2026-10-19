@@ -323,15 +323,29 @@ Object.assign(StudentApp, {
   async loadMyAttempts() {
     this.tSolved = await this.optional('作答紀錄',
       () => Cloud.listMySolvedQuestions(this.classInfo.classId, Cloud.uid), {});
-    /* 嘗試紀錄要從伺服器接回來,連錯冷卻才不會被「重新整理」繞過。
-       取不到就當成沒連錯過 —— 寧可少罰,也不要讓學生被卡住不能玩。 */
-    const all = await this.optional('嘗試紀錄',
-      () => Cloud.listMyAttempts(this.classInfo.classId, Cloud.uid), []);
-    /* 只認帶 seq 的那些。更新版本之前留下的舊紀錄沒有 seq,
-       不在這條鏈上 —— 那是舊局的資料,拿來接鏈只會接錯。 */
-    const list = all.filter(a => (a.seq || 0) >= 1);
-    this.tLastAttempt = list.length ? list[list.length - 1] : null;
-    this.tSeq = this.tLastAttempt ? (this.tLastAttempt.seq || 0) : 0;
+    /* 連錯冷卻要接回自己那條鏈,才不會被「重新整理」繞過。
+       只需要最後一筆,所以不把整串抓回來 —— 用上次記住的號碼去驗,
+       通常 2 次讀取就夠(見 Cloud.getMyChainTip)。
+       取不到就當成沒連錯過 —— 寧可少罰,也不要讓學生被卡住不能玩。
+       就算接錯了也不會出事:安全規則會擋下來,擋下來就重接一次。 */
+    const tip = await this.optional('嘗試紀錄',
+      () => Cloud.getMyChainTip(this.classInfo.classId, Cloud.uid, this.chainHint()), null);
+    this.tLastAttempt = tip && (tip.seq || 0) >= 1 ? tip : null;
+    this.tSeq = this.tLastAttempt ? this.tLastAttempt.seq : 0;
+    this.saveChainHint();
+  },
+
+  /* 上次答到第幾號,記在這台裝置上。只是個提示,錯了頂多多讀幾筆 */
+  chainKey() {
+    return `war:${this.classInfo.classId}:${(TerritoryGame.config || {}).startedAt || 0}:seq`;
+  },
+
+  chainHint() {
+    try { return Number(localStorage.getItem(this.chainKey())) || 0; } catch (e) { return 0; }
+  },
+
+  saveChainHint() {
+    try { localStorage.setItem(this.chainKey(), String(this.tSeq || 0)); } catch (e) { /* 無痕模式 */ }
   },
 
   /* ---------- 連錯冷卻 ----------
@@ -347,6 +361,7 @@ Object.assign(StudentApp, {
     this.tLastAttempt = {
       id: this.tAttemptId, seq, questionId, streak, swaps: swaps || 0, at: Date.now()
     };
+    this.saveChainHint();
   },
 
   cooldownLeftMs() {

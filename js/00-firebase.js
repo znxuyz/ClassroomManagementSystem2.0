@@ -356,7 +356,7 @@ const Cloud = {
   /* 學生端要的不只是開放中的測驗 —— 已結束的也要看得到自己的成績,
      否則老師一按「結束」,學生的答題結果就從畫面上消失了。
      只取最近幾份,免得一整個學期的測驗全部撈回來。 */
-  async listQuizzesForStudent(classId, recent = 8) {
+  async listQuizzesForStudent(classId, recent = 5) {
     const col = this.db.collection('classes').doc(classId).collection('quizzes');
     const [openSnap, closedSnap] = await Promise.all([
       col.where('status', '==', 'open').get(),
@@ -628,24 +628,40 @@ const Cloud = {
       }, err => console.warn('[領地戰] 失手監聽中斷:', err.message));
   },
 
-  /* 我自己的所有嘗試紀錄。用來接續那條鏈(seq / prev / streak)——
-     重新整理或換裝置都會從伺服器重新算,所以躲不掉冷卻。
-     只查自己的,量很小(一局幾十筆)。 */
-  async listMyAttempts(classId, uid) {
-    const snap = await this.db.collection('classes').doc(classId)
-      .collection('tattempts').where('uid', '==', uid).get();
-    const list = [];
-    snap.docs.forEach(d => {
+  /* 連錯冷卻只需要「我最後一筆嘗試」,不需要整串。
+     文件 id 是 {uid}_{seq} 而且號碼連號,所以可以用「這一號存不存在」
+     直接找出最後一號 —— 先用上次記住的號碼驗兩筆,猜中就只花 2 次讀取;
+     沒猜中才往上探再二分,500 筆也只要二十幾次,不必整串抓回來。 */
+  async getMyChainTip(classId, uid, hint) {
+    const col = this.db.collection('classes').doc(classId).collection('tattempts');
+    const read = async seq => {
+      if (seq < 1) return null;
+      const d = await col.doc(`${uid}_${seq}`).get();
+      if (!d.exists) return null;
       const data = d.data();
-      list.push({
-        id: d.id,
-        ...data,
+      return {
+        id: d.id, ...data,
         at: data.at && typeof data.at.toMillis === 'function' ? data.at.toMillis() : 0
-      });
-    });
-    list.sort((a, b) => (a.seq || 0) - (b.seq || 0));
-    return list;
+      };
+    };
+
+    // 上次記住的號碼還是最後一號嗎(它在、下一號不在)
+    if (hint > 0 && !(await read(hint + 1))) {
+      const cur = await read(hint);
+      if (cur) return cur;
+    }
+
+    // 往上探到不存在為止,再二分找最後一號
+    let lo = 0, hi = 1;
+    while (await read(hi)) { lo = hi; hi *= 2; if (hi > 100000) break; }
+    while (hi - lo > 1) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (await read(mid)) lo = mid; else hi = mid;
+    }
+    return lo > 0 ? read(lo) : null;
   },
+
+
 
   /* 我已經「答對」過哪幾題 —— 那些不會再出現。
      答錯過的不算,可以再試。 */
