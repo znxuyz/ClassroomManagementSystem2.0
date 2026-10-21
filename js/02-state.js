@@ -47,5 +47,9 @@ let state = {
   // 領地戰題庫(含正確答案,只留在老師端)
   territoryQuestions: [], // [{ id, text, options, answer, difficulty }]
   // 作業測驗題庫
-  quizzes: []               // [{ id, title, questions, status, dueDate, pointsPerQuestion }]
+  quizzes: [],              // [{ id, title, questions, status, dueDate, pointsPerQuestion }]
+  // 守護獸技能:{ enabled, weeks, startAt }。預設關閉,老師自己決定何時開
+  skills: { ...SKILL_DEFAULTS },
+  // 已經在結算時吃掉的技能使用 { useId: 時間 },避免同一筆被套用兩次
+  skillConsumed: {}
 };

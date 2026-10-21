@@ -351,8 +351,16 @@ async function runCollect(quiz, quizId, silent) {
     // 前 N 名模式:沒答對任何一題就不算進名次,免得零分也佔名額
     const inTopN = rank <= (quiz.topN || 0) && score > 0 && slots > 0;
     const earns = isTopN ? inTopN : true;
-    const points = earns ? score * quiz.pointsPerQuestion : 0;
+    let points = earns ? score * quiz.pointsPerQuestion : 0;
     if (isTopN && points > 0) slots--;
+
+    /* 守護獸技能。效果在這裡套用 —— 結算本來就是老師端算的,
+       所以學生改前端沒有用;技能次數則由安全規則把關。
+       「保險」先算(把 0 變成一半),「專注」後算(再翻倍),
+       順序固定,兩個一起用才不會因為先後不同而結果不同。 */
+    const sk = quizSkillsFor(quiz, student, score * quiz.pointsPerQuestion);
+    if (sk.insured && points === 0) points = sk.halfPoints;
+    if (sk.doubled) points *= 2;
 
     student.quizResults[quizId] = {
       score,
@@ -364,9 +372,9 @@ async function runCollect(quiz, quizId, silent) {
     };
 
     if (points > 0) {
-      const reason = isTopN
+      const reason = (isTopN
         ? `測驗「${quiz.title}」第 ${rank} 名,答對 ${score}/${quiz.questions.length} 題`
-        : `測驗「${quiz.title}」答對 ${score}/${quiz.questions.length} 題`;
+        : `測驗「${quiz.title}」答對 ${score}/${quiz.questions.length} 題`) + sk.note;
       applyPointsToStudent(student.id, points, reason);
       totalPoints += points;
     } else if (isTopN && score > 0) {
@@ -445,10 +453,15 @@ async function runCollectPerQuestion(quiz, quizId, silent) {
       at: Date.now()
     };
 
+    const sk = quizSkillsFor(quiz, student, p.score * quiz.pointsPerQuestion);
+    if (sk.insured && p.points === 0) p.points = sk.halfPoints;
+    if (sk.doubled) p.points *= 2;
+    student.quizResults[quizId].awarded = p.points;
+
     if (p.points > 0) {
       const fast = p.ranks.filter(r => r > 0).length;
       applyPointsToStudent(student.id, p.points,
-        `測驗「${quiz.title}」有 ${fast} 題搶到前 ${topN} 名`);
+        `測驗「${quiz.title}」有 ${fast} 題搶到前 ${topN} 名` + sk.note);
       totalPoints += p.points;
     }
     newlyAwarded++;
@@ -462,6 +475,29 @@ async function runCollectPerQuestion(quiz, quizId, silent) {
   } else {
     toast(`✦ 逐題結算 ${newlyAwarded} 位學生,共發出 ${totalPoints} 分`);
   }
+}
+
+/* 這位學生對這份測驗用了哪些技能。
+   每一筆技能使用只能被吃掉一次(記在班級資料裡),
+   所以重複結算、換裝置結算都不會重複加成。
+   earned 是「照原本規則應得的分數」,保險要用它算一半。 */
+function quizSkillsFor(quiz, student, earned) {
+  const out = { doubled: false, insured: false, halfPoints: 0, note: '' };
+  if (typeof SkillAdmin === 'undefined' || !SkillAdmin.on()) return out;
+
+  const dbl = SkillAdmin.usedOn(student.id, 'quiz_double', quiz.id);
+  if (dbl && SkillAdmin.claim(dbl.id, student.id, 'quiz_double')) {
+    out.doubled = true;
+    out.note += '(📘 專注雙倍)';
+  }
+
+  const ins = SkillAdmin.usedOn(student.id, 'quiz_insure', quiz.id);
+  if (ins && earned > 0 && SkillAdmin.claim(ins.id, student.id, 'quiz_insure')) {
+    out.insured = true;
+    out.halfPoints = Math.floor(earned / 2);
+    if (out.halfPoints > 0) out.note += '(🧷 保險半額)';
+  }
+  return out;
 }
 
 /* ============================================

@@ -18,6 +18,7 @@ Object.assign(StudentApp, {
 
     return `
       <section class="student-pet-section">${petHtml}</section>
+      ${this.renderSkillsPanel()}
       <section class="student-section">
         <div class="student-section-title">最近的積分紀錄</div>
         ${this.renderHistory()}
@@ -66,10 +67,38 @@ Object.assign(StudentApp, {
             ${q.scoreMode === 'topN' ? ` · 前 ${q.topN} 名得分` : ''}
           </div>
           ${r ? this.renderMyQuizResult(q, r) : ''}
+          ${!r && q.status === 'open' ? this.renderQuizSkills(q) : ''}
         </div>
         ${action}
       </div>`;
     }).join('');
+  },
+
+  /* 測驗卡片上的技能。只在「還沒結算」時給用 ——
+     結算完才用就沒意義了,而且老師那邊也不會再重算。
+     保險只對搶分類的測驗有用,所以其他類型不顯示。 */
+  renderQuizSkills(q) {
+    if (!this.skillsOn()) return '';
+    const race = q.scoreMode === 'topN' || q.scoreMode === 'perQuestion';
+    const list = ['quiz_double', 'quiz_insure']
+      .filter(id => id !== 'quiz_insure' || race)
+      .map(id => SkillEngine.byId(id))
+      .filter(sk => SkillEngine.usesAt(sk.id, this.myStage()) > 0);
+    if (list.length === 0) return '';
+
+    return `
+      <div class="quiz-skill-row">
+        ${list.map(sk => {
+          const used = this.quizSkillUsed(sk.id, q.id);
+          const left = this.skillLeft(sk.id);
+          return `<button class="skill-chip ${used ? 'on' : ''}"
+                    ${used || left <= 0 ? 'disabled' : ''}
+                    title="${escapeHtml(sk.desc)}"
+                    onclick="StudentApp.useQuizSkill('${sk.id}', '${q.id}')">
+                    ${sk.icon} ${escapeHtml(sk.name)}${
+                      used ? ' ✓' : `<small>剩 ${left}</small>`}</button>`;
+        }).join('')}
+      </div>`;
   },
 
   /* 成績公布後,學生看得到自己每一題的對錯。
@@ -197,6 +226,10 @@ Object.assign(StudentApp, {
     if (!item) return;
     if (!confirm(`用 ${item.price} 點兌換「${item.name}」嗎?`)) return;
 
+    /* 技能要先登記,再把它的 id 寫進申請單 —— 老師結算時照著算。
+       取消或沒技能就是一般兌換。 */
+    const skill = this.skillsOn() ? await this.pickShopSkill(item.id) : null;
+
     try {
       await Cloud.createPurchase(this.classInfo.classId, Cloud.uid, {
         studentId: this.classInfo.studentId,
@@ -204,9 +237,13 @@ Object.assign(StudentApp, {
         itemId: item.id,
         itemName: item.name,
         itemIcon: item.icon || '🎁',
-        requestedPrice: item.price
+        requestedPrice: item.price,
+        skillId: skill ? skill.skillId : '',
+        skillUseId: skill ? skill.skillUseId : ''
       });
-      toast('✦ 已送出兌換,老師確認後就會扣點');
+      toast(skill
+        ? `✦ 已送出兌換(帶著「${SkillEngine.byId(skill.skillId).name}」)`
+        : '✦ 已送出兌換,老師確認後就會扣點');
     } catch (e) {
       console.error(e);
       toast('兌換失敗:' + e.message);

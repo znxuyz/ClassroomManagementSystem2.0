@@ -184,6 +184,9 @@ service cloud.firestore {
         function wantSwaps() {
           return isSwap() ? prevDoc().get('swaps', 0) + 1 : 0;
         }
+        function focusUse() {
+          return get(/databases/$(database)/documents/classes/$(classId)/skilluses/$(request.resource.data.skillUseId)).data;
+        }
         function coolN() { return cfg().get('cooldownWrong', 0); }
         function coolSec() { return cfg().get('cooldownSeconds', 0); }
 
@@ -220,6 +223,16 @@ service cloud.firestore {
                                request.resource.data.streak == 0
                                || request.resource.data.streak % coolN() != 0
                                || request.time >= prevDoc().at + duration.value(coolSec(), 's')
+                               /* 守護獸的「靜心」技能:附上一筆有效的技能使用紀錄
+                                  就能免等。那筆紀錄要指名「是哪一次冷卻」
+                                  (ref == prev),所以一次技能只解一次冷卻。 */
+                               || (
+                                    request.resource.data.get('skillUseId', '') != ''
+                                    && exists(/databases/$(database)/documents/classes/$(classId)/skilluses/$(request.resource.data.skillUseId))
+                                    && focusUse().uid == request.auth.uid
+                                    && focusUse().skillId == 'war_focus'
+                                    && focusUse().ref == request.resource.data.prev
+                                  )
                              )
                         )
                   )
@@ -239,6 +252,74 @@ service cloud.firestore {
 
          這裡不需要防「少寫」:想躲倒扣的人本來就不會寫,重播有期限兜底。
          要防的是「亂寫」—— 所以限定只能回報自己的嘗試,一筆只能寫一次。 */
+      /* ---------- 守護獸技能 ----------
+         授權表:老師端算好「每個學生這一季各技能幾次」寫一份。
+         學生只能讀 —— 能改的話技能次數就等於無限。 */
+      match /skills/{docId} {
+        function isClassTeacher() {
+          return signedIn()
+            && get(/databases/$(database)/documents/classes/$(classId)).data.teacherUid == request.auth.uid;
+        }
+        allow read: if signedIn();
+        allow write: if isClassTeacher();
+      }
+
+      /* 技能使用紀錄。
+         文件 id = {uid}_{賽季}_{技能}_{第幾次},id 唯一而且不准修改,
+         所以「第幾次」不會重複 —— 上限只要比對那個數字,
+         不必去數文件有幾筆(規則本來也數不了)。
+
+         額度綁的是 studentId,所以必須確認「這個 studentId 真的是我」,
+         否則可以冒用同學的額度。用的是名冊索引(以 Google 帳號的
+         email 為鍵),那份索引只有老師寫得了。 */
+      match /skilluses/{useId} {
+        function grants() {
+          return get(/databases/$(database)/documents/classes/$(classId)/skills/grants).data;
+        }
+        function myStudentId() {
+          return get(/databases/$(database)/documents/rosterIndex/$(request.auth.token.email.lower()))
+                   .data.classes[classId].studentId;
+        }
+        function shielded() {
+          return get(/databases/$(database)/documents/classes/$(classId)/tattempts/$(request.resource.data.ref)).data;
+        }
+        function isClassTeacher() {
+          return signedIn()
+            && get(/databases/$(database)/documents/classes/$(classId)).data.teacherUid == request.auth.uid;
+        }
+
+        allow create: if signedIn()
+          && request.auth.token.email != null
+          && request.resource.data.uid == request.auth.uid
+          && useId == request.auth.uid + '_' + string(request.resource.data.season)
+                      + '_' + request.resource.data.skillId
+                      + '_' + string(request.resource.data.n)
+          // 時間戳一律用伺服器的
+          && request.resource.data.at == request.time
+          // 只能用在「現在這一季」
+          && request.resource.data.season == grants().season
+          // 這個 studentId 必須真的是我
+          && request.resource.data.studentId == myStudentId()
+          // 次數不能超過老師發的額度
+          && request.resource.data.n is int
+          && request.resource.data.n >= 1
+          && request.resource.data.n <= grants().g[request.resource.data.studentId][request.resource.data.skillId]
+          /* 護盾只能罩自己的那一次作答 —— 不然可以拿去救別人,
+             或是罩在一筆根本不存在的紀錄上。 */
+          && (
+               request.resource.data.skillId != 'war_shield'
+               || (
+                    exists(/databases/$(database)/documents/classes/$(classId)/tattempts/$(request.resource.data.ref))
+                    && shielded().uid == request.auth.uid
+                  )
+             );
+
+        // 用過就不能改,也不能收回
+        allow read: if signedIn();
+        allow update: if false;
+        allow delete: if isClassTeacher();
+      }
+
       match /tfails/{attemptId} {
         function isClassTeacher() {
           return signedIn()
@@ -280,6 +361,9 @@ service cloud.firestore {
         function attempt() {
           return get(/databases/$(database)/documents/classes/$(classId)/tattempts/$(request.resource.data.attemptId)).data;
         }
+        function skillUse() {
+          return get(/databases/$(database)/documents/classes/$(classId)/skilluses/$(request.resource.data.skillUseId)).data;
+        }
         function isClassTeacher() {
           return signedIn()
             && get(/databases/$(database)/documents/classes/$(classId)).data.teacherUid == request.auth.uid;
@@ -296,8 +380,23 @@ service cloud.firestore {
           // 題目必須存在,而且答案要正確
           && request.resource.data.questionId in answerKey()
           && request.resource.data.answer == q().a
-          // 佔領分由題目難度決定,不能自己填
-          && request.resource.data.points == q().p
+          /* 佔領分由題目難度決定,不能自己填。
+             唯一的例外是守護獸的「猛擊」技能:附上一筆有效的技能使用
+             紀錄就能拿兩倍。那筆紀錄必須是自己的、而且指名這一次作答
+             (ref == attemptId),所以一次技能只能加成一題。
+             技能用幾次夠不夠,由 skilluses 自己的規則把關。 */
+          && (
+               request.resource.data.get('skillId', '') == ''
+                 ? request.resource.data.points == q().p
+                 : (
+                     request.resource.data.skillId == 'war_power'
+                     && request.resource.data.points == q().p * 2
+                     && exists(/databases/$(database)/documents/classes/$(classId)/skilluses/$(request.resource.data.skillUseId))
+                     && skillUse().uid == request.auth.uid
+                     && skillUse().skillId == 'war_power'
+                     && skillUse().ref == request.resource.data.attemptId
+                   )
+             )
           // 組別以老師的分組為準
           && request.resource.data.groupIdx == cfg().memberGroup[request.resource.data.studentId]
           // 時間戳一律用伺服器的,先後才不受學生裝置時鐘影響

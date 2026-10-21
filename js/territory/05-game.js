@@ -21,6 +21,7 @@ const TerritoryGame = {
   events: [],
   attempts: [],
   fails: {},        // { attemptId: 失手時間 } 答錯的當下就扣那一格
+  shielded: new Set(),   // 被守護獸「護盾」罩住、不倒扣的那幾筆
   map: {},
   log: [],
   onUpdate: null,      // 學生端掛自己的重繪
@@ -110,13 +111,15 @@ const TerritoryGame = {
     this.events = [];
     this.attempts = [];
     this.fails = {};
+    this.shielded = new Set();
     this._written = new Set();
     this.map = {};
   },
 
   rebuild() {
     if (!this.config) { this.map = {}; return; }
-    const r = Territory.replay(this.config, this.events, Date.now(), this.attempts, this.fails);
+    const r = Territory.replay(this.config, this.events, Date.now(), this.attempts,
+                               this.fails, this.shielded);
     this.map = r.map;
     this.log = r.log;
     this.materializeFails();

@@ -72,7 +72,8 @@ const BLOB_SCHEMA = 1;
 const KNOWN_BLOB_KEYS = [
   'schema', 'className', 'teacherName', 'students', 'rules', 'attendance',
   'seatingLayouts', 'groupSets', 'currentGroups', 'contactBook', 'homework',
-  'classTasks', 'shopHistory', 'shopItems', 'territoryQuestions', 'quizzes'
+  'classTasks', 'shopHistory', 'shopItems', 'territoryQuestions', 'quizzes',
+  'skills', 'skillConsumed'
 ];
 
 function serializeState() {
@@ -101,7 +102,9 @@ function serializeState() {
     shopHistory: state.shopHistory,
     shopItems: state.shopItems,
     territoryQuestions: state.territoryQuestions,
-    quizzes: state.quizzes
+    quizzes: state.quizzes,
+    skills: state.skills,         // 守護獸技能設定(開關、幾週刷新、起算時間)
+    skillConsumed: state.skillConsumed    // 已經結算吃掉的技能使用,避免重複套用
   };
 }
 

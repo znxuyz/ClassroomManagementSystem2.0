@@ -599,6 +599,53 @@ const Cloud = {
     return attemptId;
   },
 
+  /* ---------- 守護獸技能 ----------
+     授權表(誰這一季各技能幾次)由老師端算好寫一份,安全規則照它驗。
+     使用紀錄的文件 id 含「第幾次」,id 唯一 + 不准修改 = 用不超過上限。 */
+
+  watchSkillGrants(classId, cb) {
+    return this.db.collection('classes').doc(classId)
+      .collection('skills').doc('grants')
+      .onSnapshot(snap => cb(snap.exists ? snap.data() : null),
+        err => console.warn('[技能] 授權監聽中斷:', err.message));
+  },
+
+  async saveSkillGrants(classId, grants) {
+    await this.db.collection('classes').doc(classId)
+      .collection('skills').doc('grants').set(grants);
+  },
+
+  /* 我這一季用過哪些技能。只查自己的,量很小(一季個位數)。 */
+  async listMySkillUses(classId, uid, season) {
+    const snap = await this.db.collection('classes').doc(classId)
+      .collection('skilluses')
+      .where('uid', '==', uid).where('season', '==', season).get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+
+  /* 全班的技能使用。老師端看得到誰用了什麼;領地戰的護盾也要靠它重播,
+     所以學生端在有人用過護盾時也需要 —— 一季的量很小。 */
+  watchSkillUses(classId, season, cb) {
+    return this.db.collection('classes').doc(classId)
+      .collection('skilluses').where('season', '==', season)
+      .onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+        err => console.warn('[技能] 使用紀錄監聽中斷:', err.message));
+  },
+
+  /* 用掉一次技能。n 是「這一季的第幾次」,由呼叫端算好 ——
+     撞號代表同一次被送了兩遍,規則會擋下來(不准修改既有文件)。
+     回傳文件 id,領地戰的事件要附上它,規則才查得到這次加成。 */
+  async useSkill(classId, uid, payload) {
+    const id = `${uid}_${payload.season}_${payload.skillId}_${payload.n}`;
+    await this.db.collection('classes').doc(classId)
+      .collection('skilluses').doc(id).set({
+        ...payload,
+        uid,
+        at: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    return id;
+  },
+
   /* 失手回報:學生答錯/超時/作廢/放棄的當下自己寫一筆,id 就是那次嘗試的 id。
      有了這一筆,倒扣就發生在「他真正答錯的那一刻、他正在打的那一格」,
      不必等期限到,也不會波及他同時點開過的別的格子。

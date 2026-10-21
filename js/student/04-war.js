@@ -39,6 +39,7 @@ Object.assign(StudentApp, {
       const running = !!(TerritoryGame.config && TerritoryGame.config.status === 'running');
       /* 開了局才去讀自己的作答紀錄(答過哪些題、連錯幾題)。
          沒開局就讀的話,每個人每次登入都白白付那些讀取。 */
+      this.syncSkillUseWatch();
       if (running && !this._warHistoryLoaded) {
         this._warHistoryLoaded = true;
         this.loadMyAttempts().then(() => { if (this.tab === 'war') this.render(); });
@@ -126,12 +127,24 @@ Object.assign(StudentApp, {
             還要等 <strong id="warCooldown">${Math.ceil(coolLeft / 1000)} 秒</strong>
             才能再出手。趁這段時間把題目看清楚吧!
           </div>
+          ${this.skillsOn() && this.skillLeft('war_focus') > 0 ? `
+            <button class="btn btn-accent btn-small"
+                    onclick="StudentApp.useFocus()"
+                    title="用掉一次靜心,立刻解除這次冷卻">
+              🌀 靜心(剩 ${this.skillLeft('war_focus')})</button>` : ''}
         </div>` : ''}
       <div class="war-header" style="border-color:${color}">
         <div class="war-head-row">
           <div class="war-my-group" style="color:${color}">我是第 ${groupIdx + 1} 組</div>
           <button class="btn btn-ghost btn-small"
                   onclick="centerOnGroup(${groupIdx})">⌖ 回到我的領地</button>
+          ${this.skillsOn() && SkillEngine.usesAt('war_power', this.myStage()) > 0 ? `
+            <button class="btn btn-small ${this.armedSkill === 'war_power' ? 'btn-accent' : 'btn-ghost'}"
+                    ${this.skillLeft('war_power') > 0 ? '' : 'disabled'}
+                    onclick="StudentApp.armWarPower()"
+                    title="開啟後,下一題答對的佔領分變兩倍">
+              ⚔️ 猛擊${this.armedSkill === 'war_power'
+                ? ' 已待命' : `(剩 ${this.skillLeft('war_power')})`}</button>` : ''}
         </div>
         <div class="war-hint">
           點選<strong>亮起來</strong>的地塊發動攻擊(有 ${targets.size} 格可打)<br>
@@ -292,8 +305,11 @@ Object.assign(StudentApp, {
           seq: (this.tSeq || 0) + 1,
           prev: last ? last.id : '',      // 第一筆沒有前一筆
           streak,
-          swaps: 0                        // 新的一次攻擊,換題次數歸零
+          swaps: 0,                       // 新的一次攻擊,換題次數歸零
+          // 靜心:用過就帶著它,規則據此放行這一次的冷卻
+          skillUseId: this.focusUseId || ''
         });
+      this.focusUseId = null;
       this.rememberAttempt(q.id, streak, 0);
     } catch (e) {
       console.warn('[領地戰] 登記作答失敗:', e.code || e.message);
@@ -304,6 +320,19 @@ Object.assign(StudentApp, {
       // 被擋下通常代表本機算的鏈接錯了,從伺服器重新接一次
       this.loadMyAttempts().then(() => { if (this.tab === 'war') this.render(); });
       return;
+    }
+
+    /* 猛擊要在「這一次攻擊」上生效,所以嘗試登記成功之後、顯示題目之前
+       就把技能登記掉,並記著它指向哪一筆嘗試。 */
+    this.warPowerUse = null;
+    if (this.armedSkill === 'war_power') {
+      try {
+        this.warPowerUse = await this.spendSkill('war_power', this.tAttemptId);
+        toast('⚔️ 猛擊已發動,這一題答對拿雙倍');
+      } catch (e) {
+        toast(this.skillError(e));
+      }
+      this.armedSkill = null;
     }
 
     this.tOpening = false;
@@ -599,7 +628,10 @@ Object.assign(StudentApp, {
     this.render();
 
     const groupIdx = this.myGroupIdx();
-    const points = DIFFICULTY[this.tQuestion.difficulty].points;
+    const base = DIFFICULTY[this.tQuestion.difficulty].points;
+    // 猛擊:佔領分 ×2。倍率由安全規則核對,前端只是照著算
+    const boosted = !!this.warPowerUse;
+    const points = boosted ? base * 2 : base;
     this.tTried.add(this.tQuestion.id);
 
     try {
@@ -611,10 +643,13 @@ Object.assign(StudentApp, {
         questionId: this.tQuestion.id,
         attemptId: this.tAttemptId,
         answer: this.tPickedAnswer,
-        points
+        points,
+        skillId: boosted ? 'war_power' : '',
+        skillUseId: boosted ? this.warPowerUse : ''
       });
       this.tSolved[this.tQuestion.id] = true;
-      showWarResult(true, `為第 ${groupIdx + 1} 組拿下 ${points} 佔領分`);
+      showWarResult(true, `為第 ${groupIdx + 1} 組拿下 ${points} 佔領分` +
+        (boosted ? '(⚔️ 猛擊雙倍)' : ''));
     } catch (e) {
       if (e.code === 'permission-denied') {
         // 答案由安全規則在伺服器端比對,被拒絕就代表答錯
@@ -622,7 +657,8 @@ Object.assign(StudentApp, {
         const pen = (TerritoryGame.config || {}).wrongPenalty || 0;
         showWarResult(false, '這一題答錯了' +
           (pen > 0 ? `,這一格倒扣 ${pen} 佔領分` : '') +
-          '。可以再挑戰這一題,但會先輪到還沒做過的題目' + this.cooldownNote());
+          '。可以再挑戰這一題,但會先輪到還沒做過的題目' + this.cooldownNote(),
+          pen > 0 ? this.shieldOffer(this.tAttemptId) : '');
       } else {
         console.error(e);
         showWarResult(null, '送出失敗:' + e.message);

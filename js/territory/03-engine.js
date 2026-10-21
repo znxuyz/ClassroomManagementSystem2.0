@@ -246,7 +246,7 @@ const Territory = {
      但期限只是兜底,所以放得很寬 —— 沒設時限時原本用 50 秒當期限,
      讀題慢的學生還在想,那一格就先被扣了(答完才又加回來),
      老師看起來就像「好幾塊正在進攻的地同時被扣分」。 */
-  failedAttempts(config, events, attempts, now, fails) {
+  failedAttempts(config, events, attempts, now, fails, shielded) {
     const penalty = config.wrongPenalty || 0;
     if (penalty <= 0) return [];
     attempts = attempts || [];
@@ -266,6 +266,8 @@ const Territory = {
 
     const out = [];
     const done = new Set();
+    // 守護獸的「護盾」技能:被罩住的那一次不倒扣(技能次數由安全規則把關)
+    const safe = shielded || new Set();
 
     /* (1) 有回報的失手。這一份自己就帶著「扣哪一格、哪一組、什麼時候」,
            所以不需要原本那筆嘗試紀錄 —— 學生端只訂這一條就夠了。 */
@@ -273,20 +275,21 @@ const Territory = {
       if (!f || !f.hexKey) return;
       if (won.has(f.id) || replaced.has(f.id)) return;
       done.add(f.id);
+      if (safe.has(f.id)) return;
       out.push({ ...f, points: -penalty, isPenalty: true });
     });
 
     /* (2) 沒回報又過了期限的。只有老師那一台拿得到嘗試紀錄,
            由它補寫成 (1) 的那種紀錄,其他人就看得到了。 */
     attempts.forEach(a => {
-      if (done.has(a.id) || won.has(a.id) || replaced.has(a.id)) return;
+      if (done.has(a.id) || won.has(a.id) || replaced.has(a.id) || safe.has(a.id)) return;
       if (a.at + window < now) out.push({ ...a, points: -penalty, isPenalty: true });
     });
 
     return out;
   },
 
-  replay(config, events, now, attempts, fails) {
+  replay(config, events, now, attempts, fails, shielded) {
     now = now || Date.now();
     const depth = this.depthOf(config);
 
@@ -314,7 +317,7 @@ const Territory = {
     });
 
     // 成功與失手合在一起依時間重播,順序才和實際發生的一致
-    const stream = (events || []).concat(this.failedAttempts(config, events, attempts, now, fails))
+    const stream = (events || []).concat(this.failedAttempts(config, events, attempts, now, fails, shielded))
       .sort((a, b) => a.at - b.at);
 
     stream.forEach(ev => {

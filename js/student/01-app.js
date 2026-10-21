@@ -25,6 +25,8 @@ const StudentApp = {
   myPurchases: [],        // 自己的兌換申請
   unsub: null,            // 班級即時監聽
   unsubPurchases: null,
+  unsubSkillGrants: null,
+  classSkills: null,      // 老師的技能設定(從班級資料來)
   lastScore: undefined,   // 用來偵測加分,跳出提示
 
   async enter(classInfo) {
@@ -35,6 +37,8 @@ const StudentApp = {
     this._warTabShown = false;
     this._warSig = null;
     this._warHistoryLoaded = false;
+    this.skillUses = [];
+    this.armedSkill = null;
     this.tTried = new Set();
     this.tSolved = {};
     this.stopAnswerTimer();
@@ -48,6 +52,7 @@ const StudentApp = {
     this.watch();
     this.watchPurchases();
     this.watchTerritory();
+    this.watchSkills();
     // 自己的領地戰紀錄等「真的有一局在跑」再讀,沒開局就不必花那些讀取
   },
 
@@ -89,6 +94,7 @@ const StudentApp = {
       this.student = this.findMe(this.allStudents);
 
       this.shopItems = blob.shopItems || [];
+      this.classSkills = blob.skills || null;
       this.readGroups(blob);
 
       // 正在作答時不要重繪,會把已經選好的答案清掉
@@ -118,6 +124,7 @@ const StudentApp = {
     this.student = this.findMe(this.allStudents);
     this.classRules = blob.rules || [];
     this.shopItems = blob.shopItems || [];
+    this.classSkills = blob.skills || null;
 
     this.readGroups(blob);
 
@@ -133,6 +140,7 @@ const StudentApp = {
       : await this.optional('守護獸選擇', () => Cloud.getMyPetChoice(classId, Cloud.uid), null);
 
     this.quizzes = await this.optional('測驗', () => Cloud.listQuizzesForStudent(classId), []);
+    await this.loadSkills();
 
     // 逐份查自己交過沒 — 開放中的測驗通常不多,這裡的查詢量很小
     this.submissions = {};
