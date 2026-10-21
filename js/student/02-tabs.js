@@ -80,10 +80,11 @@ Object.assign(StudentApp, {
   renderQuizSkills(q) {
     if (!this.skillsOn()) return '';
     const race = q.scoreMode === 'topN' || q.scoreMode === 'perQuestion';
-    const list = ['quiz_double', 'quiz_insure']
+    // 保險只對搶分類有意義(其他模式答對就有分,沒有「沒進名次」這回事)
+    const list = ['quiz_double', 'quiz_insure', 'quiz_gift']
       .filter(id => id !== 'quiz_insure' || race)
-      .map(id => SkillEngine.byId(id))
-      .filter(sk => SkillEngine.usesAt(sk.id, this.myStage()) > 0);
+      .filter(id => this.owns(id) && SkillEngine.usesAt(id, this.myStage()) > 0)
+      .map(id => SkillEngine.byId(id));
     if (list.length === 0) return '';
 
     return `
@@ -91,9 +92,10 @@ Object.assign(StudentApp, {
         ${list.map(sk => {
           const used = this.quizSkillUsed(sk.id, q.id);
           const left = this.skillLeft(sk.id);
+          const lv = SkillEngine.levelAt(sk.id, this.myStage());
           return `<button class="skill-chip ${used ? 'on' : ''}"
                     ${used || left <= 0 ? 'disabled' : ''}
-                    title="${escapeHtml(sk.desc)}"
+                    title="${escapeHtml(sk.desc + ' — ' + (lv.text || ''))}"
                     onclick="StudentApp.useQuizSkill('${sk.id}', '${q.id}')">
                     ${sk.icon} ${escapeHtml(sk.name)}${
                       used ? ' ✓' : `<small>剩 ${left}</small>`}</button>`;
@@ -130,6 +132,7 @@ Object.assign(StudentApp, {
           ${quiz.scoreMode === 'topN' && r.rank ? ` · 第 <strong>${r.rank}</strong> 名` : ''}
           ${r.awarded === 0 && quiz.scoreMode === 'topN'
             ? ' <span class="sqr-miss">(未進得分名額)</span>' : ''}
+          ${r.skillNote ? ` <span class="sqr-skill">${escapeHtml(r.skillNote)}</span>` : ''}
         </div>
         <div class="sqr-marks">${dots}</div>
         ${quiz.scoreMode === 'perQuestion'
@@ -224,11 +227,22 @@ Object.assign(StudentApp, {
   async buy(itemId) {
     const item = (this.shopItems || []).find(i => i.id === itemId);
     if (!item) return;
-    if (!confirm(`用 ${item.price} 點兌換「${item.name}」嗎?`)) return;
 
-    /* 技能要先登記,再把它的 id 寫進申請單 —— 老師結算時照著算。
-       取消或沒技能就是一般兌換。 */
-    const skill = this.skillsOn() ? await this.pickShopSkill(item.id) : null;
+    const fruit = SkillEngine.skillOfFruit(item.id);
+    if (fruit && SkillEngine.owns(this.student, fruit.id)) {
+      toast('這顆果實你已經有了,一個技能買一次就永久擁有');
+      return;
+    }
+    if (!confirm(fruit
+        ? `用 ${item.price} 點買「${item.name}」嗎?\n\n` +
+          `買一次就永久擁有,守護獸每進化一次這個技能就更強。\n\n` +
+          SkillEngine.fruitDescription(fruit)
+        : `用 ${item.price} 點兌換「${item.name}」嗎?`)) return;
+
+    /* 議價要先登記,再把它的 id 寫進申請單 —— 老師結算時照著打折。
+       取消或用不了就是原價兌換。技能果實本身不給打折(買一次就永久)。 */
+    const useId = (this.skillsOn() && !SkillEngine.isFruit(item.id))
+      ? await this.askDiscount(item) : null;
 
     try {
       await Cloud.createPurchase(this.classInfo.classId, Cloud.uid, {
@@ -238,11 +252,11 @@ Object.assign(StudentApp, {
         itemName: item.name,
         itemIcon: item.icon || '🎁',
         requestedPrice: item.price,
-        skillId: skill ? skill.skillId : '',
-        skillUseId: skill ? skill.skillUseId : ''
+        skillId: useId ? 'shop_discount' : '',
+        skillUseId: useId || ''
       });
-      toast(skill
-        ? `✦ 已送出兌換(帶著「${SkillEngine.byId(skill.skillId).name}」)`
+      toast(useId
+        ? '✦ 已送出兌換(帶著 🏷️ 議價)'
         : '✦ 已送出兌換,老師確認後就會扣點');
     } catch (e) {
       console.error(e);

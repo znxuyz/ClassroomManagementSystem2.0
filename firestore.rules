@@ -187,6 +187,21 @@ service cloud.firestore {
         function focusUse() {
           return get(/databases/$(database)/documents/classes/$(classId)/skilluses/$(request.resource.data.skillUseId)).data;
         }
+        /* 巧手:這一次攻擊可以多換幾題。
+           必須是自己的、而且指名這一次攻擊,否則不算。 */
+        function handUse() {
+          return get(/databases/$(database)/documents/classes/$(classId)/skilluses/$(request.resource.data.skillUseId)).data;
+        }
+        function handBonus() {
+          return (
+            request.resource.data.get('skillUseId', '') != ''
+            && exists(/databases/$(database)/documents/classes/$(classId)/skilluses/$(request.resource.data.skillUseId))
+            && handUse().uid == request.auth.uid
+            && handUse().skillId == 'war_hand'
+            && handUse().ref == request.resource.data.get('attackId', '')
+          ) ? handUse().power : 0;
+        }
+        function swapLimit() { return cfg().get('maxSwaps', 3) + handBonus(); }
         function coolN() { return cfg().get('cooldownWrong', 0); }
         function coolSec() { return cfg().get('cooldownSeconds', 0); }
 
@@ -207,7 +222,9 @@ service cloud.firestore {
                     request.resource.data.seq == 1
                       ? (request.resource.data.prev == ''
                            && request.resource.data.streak == 0
-                           && request.resource.data.get('swaps', 0) == 0)
+                           && request.resource.data.get('swaps', 0) == 0
+                           && (request.resource.data.get('attackId', '') == ''
+                               || request.resource.data.get('attackId', '') == attemptId))
                       : (
                           request.resource.data.seq > 1
                           && request.resource.data.prev
@@ -215,9 +232,25 @@ service cloud.firestore {
                           && exists(/databases/$(database)/documents/classes/$(classId)/tattempts/$(request.resource.data.prev))
                           // 連錯數不能自己填,由上一筆的結果推出來
                           && request.resource.data.streak == wantStreak()
-                          // 換題次數也不能自己填,而且不能超過老師設的上限
+                          // 換題次數也不能自己填
                           && request.resource.data.get('swaps', 0) == wantSwaps()
-                          && request.resource.data.get('swaps', 0) <= cfg().get('maxSwaps', 3)
+                          /* 換題上限 = 老師設的次數,再加上「巧手」的加成。
+                             巧手要指名「是哪一次攻擊」(ref == attackId),
+                             所以一次技能只加成那一次攻擊。 */
+                          && request.resource.data.get('swaps', 0) <= swapLimit()
+                          /* 攻擊代號:新的一次攻擊就是自己的 id,
+                             換題則必須沿用前一筆的 —— 這樣「同一次攻擊」
+                             才有一個規則驗得出來的身分。 */
+                          /* 沒帶代號也放行,但那樣就拿不到巧手的加成
+                             (巧手要比對代號)—— 所以舊的快取分頁仍然
+                             能正常玩,只是用不了巧手。 */
+                          && (
+                               request.resource.data.get('attackId', '') == ''
+                               || request.resource.data.get('attackId', '')
+                                  == (request.resource.data.get('swaps', 0) == 0
+                                        ? attemptId
+                                        : prevDoc().get('attackId', ''))
+                             )
                           // 連錯數踩到倍數就得等滿冷卻時間
                           && (
                                request.resource.data.streak == 0
@@ -303,7 +336,11 @@ service cloud.firestore {
           // 次數不能超過老師發的額度
           && request.resource.data.n is int
           && request.resource.data.n >= 1
-          && request.resource.data.n <= grants().g[request.resource.data.studentId][request.resource.data.skillId]
+          && request.resource.data.n <= grants().g[request.resource.data.studentId][request.resource.data.skillId].n
+          /* 強度(倍率/折扣/幾題)也要照授權表 —— 不然學生可以自稱是
+             守護神獸,把 ×2 說成 ×3。授權表是老師端依「買了哪些果實 ×
+             目前階段」算出來的,學生改不了。 */
+          && request.resource.data.power == grants().g[request.resource.data.studentId][request.resource.data.skillId].p
           /* 護盾只能罩自己的那一次作答 —— 不然可以拿去救別人,
              或是罩在一筆根本不存在的紀錄上。 */
           && (
@@ -390,7 +427,8 @@ service cloud.firestore {
                  ? request.resource.data.points == q().p
                  : (
                      request.resource.data.skillId == 'war_power'
-                     && request.resource.data.points == q().p * 2
+                     // 倍率以技能紀錄上的強度為準(那個欄位已經被核對過)
+                     && request.resource.data.points == q().p * skillUse().power
                      && exists(/databases/$(database)/documents/classes/$(classId)/skilluses/$(request.resource.data.skillUseId))
                      && skillUse().uid == request.auth.uid
                      && skillUse().skillId == 'war_power'

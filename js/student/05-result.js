@@ -39,7 +39,7 @@ function hideWarResult() {
 Object.assign(StudentApp, {
   shieldOffer(attemptId) {
     if (!this.skillsOn() || !attemptId) return '';
-    if (this.skillLeft('war_shield') <= 0) return '';
+    if (!this.canUse('war_shield')) return '';
     return `<button class="btn btn-accent btn-block war-result-shield"
               onclick="StudentApp.useShield('${attemptId}')">
               🛡️ 用護盾擋掉這次倒扣(剩 ${this.skillLeft('war_shield')})</button>`;

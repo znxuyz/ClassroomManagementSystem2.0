@@ -127,7 +127,7 @@ Object.assign(StudentApp, {
             還要等 <strong id="warCooldown">${Math.ceil(coolLeft / 1000)} 秒</strong>
             才能再出手。趁這段時間把題目看清楚吧!
           </div>
-          ${this.skillsOn() && this.skillLeft('war_focus') > 0 ? `
+          ${this.canUse('war_focus') ? `
             <button class="btn btn-accent btn-small"
                     onclick="StudentApp.useFocus()"
                     title="用掉一次靜心,立刻解除這次冷卻">
@@ -138,12 +138,12 @@ Object.assign(StudentApp, {
           <div class="war-my-group" style="color:${color}">我是第 ${groupIdx + 1} 組</div>
           <button class="btn btn-ghost btn-small"
                   onclick="centerOnGroup(${groupIdx})">⌖ 回到我的領地</button>
-          ${this.skillsOn() && SkillEngine.usesAt('war_power', this.myStage()) > 0 ? `
+          ${this.skillsOn() && this.owns('war_power') && this.skillPower('war_power') > 0 ? `
             <button class="btn btn-small ${this.armedSkill === 'war_power' ? 'btn-accent' : 'btn-ghost'}"
                     ${this.skillLeft('war_power') > 0 ? '' : 'disabled'}
                     onclick="StudentApp.armWarPower()"
-                    title="開啟後,下一題答對的佔領分變兩倍">
-              ⚔️ 猛擊${this.armedSkill === 'war_power'
+                    title="開啟後,下一題答對的佔領分變 ${this.skillPower('war_power')} 倍">
+              ⚔️ 猛擊 ×${this.skillPower('war_power')}${this.armedSkill === 'war_power'
                 ? ' 已待命' : `(剩 ${this.skillLeft('war_power')})`}</button>` : ''}
         </div>
         <div class="war-hint">
@@ -227,7 +227,10 @@ Object.assign(StudentApp, {
           prev,
           replaces: prev,         // 舊的那筆不算失手,不會倒扣
           streak,
-          swaps: swapsUsed
+          swaps: swapsUsed,
+          attackId: this.tAttackId || prev,
+          // 超過老師設的換題上限時,靠巧手放行
+          skillUseId: this.handUseId || ''
         });
       this.rememberAttempt(q.id, streak, swapsUsed);
     } catch (e) {
@@ -306,6 +309,8 @@ Object.assign(StudentApp, {
           prev: last ? last.id : '',      // 第一筆沒有前一筆
           streak,
           swaps: 0,                       // 新的一次攻擊,換題次數歸零
+          // 這一次攻擊的代號就是自己的 id(= {uid}_{seq}),換題時會一路帶著
+          attackId: `${Cloud.uid}_${(this.tSeq || 0) + 1}`,
           // 靜心:用過就帶著它,規則據此放行這一次的冷卻
           skillUseId: this.focusUseId || ''
         });
@@ -324,11 +329,19 @@ Object.assign(StudentApp, {
 
     /* 猛擊要在「這一次攻擊」上生效,所以嘗試登記成功之後、顯示題目之前
        就把技能登記掉,並記著它指向哪一筆嘗試。 */
+    /* 這一次攻擊的代號 = 第一筆嘗試的 id。換題時會一路帶著,
+       所以技能可以綁定「就是這一次攻擊」,不會被挪去別次用。 */
+    this.tAttackId = this.tAttemptId;
+    this.handUseId = null;
+
     this.warPowerUse = null;
+    this.warPowerMult = 1;
     if (this.armedSkill === 'war_power') {
       try {
+        const mult = this.skillPower('war_power');
         this.warPowerUse = await this.spendSkill('war_power', this.tAttemptId);
-        toast('⚔️ 猛擊已發動,這一題答對拿雙倍');
+        this.warPowerMult = mult;
+        toast(`⚔️ 猛擊已發動,這一題答對拿 ${mult} 倍`);
       } catch (e) {
         toast(this.skillError(e));
       }
@@ -580,6 +593,11 @@ Object.assign(StudentApp, {
             ? `<span class="war-q-penalty">答錯 −${c.wrongPenalty}</span>` : ''}
           ${this.tDeadline > 0 ? `<span class="war-q-timer" id="warCountdownBig">${
             Math.max(0, Math.ceil((this.tDeadline - Date.now()) / 1000))} 秒</span>` : ''}
+          ${this.canUse('war_hand') && !this.handUseId ? `
+            <button class="btn btn-ghost btn-small"
+                    onclick="StudentApp.useHand()"
+                    title="用掉一次巧手,這次攻擊可以多換 ${this.skillPower('war_hand')} 題">
+              ✋ 巧手 +${this.skillPower('war_hand')}(剩 ${this.skillLeft('war_hand')})</button>` : ''}
           ${this.tSwapsLeft > 0 ? `
             <button class="btn btn-ghost btn-small" ${this.tSwapping ? 'disabled' : ''}
                     onclick="StudentApp.swapQuestion()"
@@ -629,9 +647,10 @@ Object.assign(StudentApp, {
 
     const groupIdx = this.myGroupIdx();
     const base = DIFFICULTY[this.tQuestion.difficulty].points;
-    // 猛擊:佔領分 ×2。倍率由安全規則核對,前端只是照著算
+    // 猛擊:倍率看守護獸的階段。規則會拿技能紀錄上的強度核對,前端只是照著算
     const boosted = !!this.warPowerUse;
-    const points = boosted ? base * 2 : base;
+    const mult = boosted ? (this.warPowerMult || 1) : 1;
+    const points = base * mult;
     this.tTried.add(this.tQuestion.id);
 
     try {
@@ -649,7 +668,7 @@ Object.assign(StudentApp, {
       });
       this.tSolved[this.tQuestion.id] = true;
       showWarResult(true, `為第 ${groupIdx + 1} 組拿下 ${points} 佔領分` +
-        (boosted ? '(⚔️ 猛擊雙倍)' : ''));
+        (boosted ? `(⚔️ 猛擊 ×${mult})` : ''));
     } catch (e) {
       if (e.code === 'permission-denied') {
         // 答案由安全規則在伺服器端比對,被拒絕就代表答錯

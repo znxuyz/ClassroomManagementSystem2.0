@@ -1,69 +1,131 @@
 /* ============================================
    守護獸技能 — 定義與純邏輯
    ────────────────────────────────────────────
-   進化要有意義:每進一階,就多一項「真的能改變結果」的能力。
+   進化要有意義:技能不是「解鎖就固定」,而是**跟著守護獸一起變強**。
+   同一個技能,幼獸用是 ×2,守護神獸用就是 ×3。
 
-   設計上的三條底線:
-   1. 技能是「次數」,不是「永久加成」。用完就沒了,下個賽季才回來 ——
-      所以強的技能不會讓差距滾雪球,只會讓關鍵時刻更有感。
-   2. 每一次使用都要在伺服器留下一筆紀錄,文件 id 含「第幾次」,
+   取得方式是去商店買一顆「技能果實」,一個技能買一次就永久擁有 ——
+   所以積分有了新的去處,而且買下去之後,養獸的動力會延續:
+   同一顆果實,獸越強越好用。
+
+   三條底線(和領地戰防作弊同一套思路):
+   1. 技能是「次數」,每週一歸零。用完就沒,強技能不會讓差距滾雪球。
+   2. 每次使用都在伺服器留一筆紀錄,文件 id 含「這週第幾次」,
       id 唯一 + 不准修改 = 用不超過上限。改前端沒有用。
-   3. 技能只加成「自己答對/自己兌換」,不會傷害別人 ——
-      小學生的班級經營裡,能互相扣分的機制只會製造糾紛。
+   3. 技能只加成自己,不會傷害別人 —— 小學班級裡,能互相扣分的機制
+      只會製造糾紛。
 
    這個檔案不碰畫面、不碰雲端,全部是純函式,可以單獨測試。
 ============================================ */
 
-/* uses 的索引就是守護獸階段(0 靈卵 / 1 幼獸 / 2 成獸 / 3 守護神獸),
-   值是「這個賽季可以用幾次」。0 代表這一階還沒解鎖。
-   靈卵階段一律是 0 —— 不然「進化」就沒有意義了。 */
+/* levels 的索引就是守護獸階段:
+     0 靈卵 / 1 幼獸 / 2 成獸 / 3 守護神獸
+   n = 這一週可以用幾次(0 = 這一階還不能用)
+   p = 強度(倍率、折扣、幾題…,依技能而異)
+   text = 寫給學生看的「這一階是什麼效果」 */
 const PET_SKILLS = [
   /* ---------- 領地戰 ---------- */
   {
     id: 'war_power', area: 'war', icon: '⚔️', name: '猛擊',
-    short: '佔領分 ×2',
-    desc: '指定一題,答對的佔領分變兩倍。開題前決定,答錯無效。',
-    uses: [0, 1, 2, 3]
+    short: '答對的佔領分加倍',
+    desc: '開題前發動,這一題答對的佔領分會變成好幾倍。答錯無效。',
+    price: 30,
+    levels: [
+      { n: 0 },
+      { n: 1, p: 2, text: '佔領分 ×2,每週 1 次' },
+      { n: 2, p: 2, text: '佔領分 ×2,每週 2 次' },
+      { n: 2, p: 3, text: '佔領分 ×3,每週 2 次' }
+    ]
   },
   {
     id: 'war_shield', area: 'war', icon: '🛡️', name: '護盾',
-    short: '擋掉一次倒扣',
+    short: '擋掉一次答錯的倒扣',
     desc: '答錯之後使用,抵銷那一次的佔領分倒扣。只能擋自己的。',
-    uses: [0, 0, 1, 2]
+    price: 35,
+    levels: [
+      { n: 0 },
+      { n: 0 },
+      { n: 1, p: 1, text: '擋掉倒扣,每週 1 次' },
+      { n: 2, p: 1, text: '擋掉倒扣,每週 2 次' }
+    ]
   },
   {
     id: 'war_focus', area: 'war', icon: '🌀', name: '靜心',
-    short: '解除連錯冷卻',
-    desc: '連錯被罰等待時使用,立刻可以再出手。',
-    uses: [0, 0, 0, 2]
+    short: '立刻解除連錯冷卻',
+    desc: '連錯被罰等待時使用,不用等就能再出手。',
+    price: 25,
+    levels: [
+      { n: 0 },
+      { n: 1, p: 1, text: '解除冷卻,每週 1 次' },
+      { n: 1, p: 1, text: '解除冷卻,每週 1 次' },
+      { n: 2, p: 1, text: '解除冷卻,每週 2 次' }
+    ]
+  },
+  {
+    id: 'war_hand', area: 'war', icon: '✋', name: '巧手',
+    short: '這次攻擊多幾次換題機會',
+    desc: '攻打一格時發動,這一次的換題次數變多。遇到還沒教過的單元就靠它。',
+    price: 20,
+    levels: [
+      { n: 0 },
+      { n: 1, p: 1, text: '多換 1 題,每週 1 次' },
+      { n: 2, p: 1, text: '多換 1 題,每週 2 次' },
+      { n: 2, p: 2, text: '多換 2 題,每週 2 次' }
+    ]
   },
 
   /* ---------- 測驗 ---------- */
   {
     id: 'quiz_double', area: 'quiz', icon: '📘', name: '專注',
-    short: '這份測驗得分 ×2',
-    desc: '交卷前指定一份測驗,結算時這份的得分變兩倍。',
-    uses: [0, 1, 1, 2]
+    short: '這份測驗得分加倍',
+    desc: '結算前指定一份測驗,那一份的得分會變成好幾倍。',
+    price: 30,
+    levels: [
+      { n: 0 },
+      { n: 1, p: 2, text: '得分 ×2,每週 1 次' },
+      { n: 2, p: 2, text: '得分 ×2,每週 2 次' },
+      { n: 2, p: 3, text: '得分 ×3,每週 2 次' }
+    ]
   },
   {
     id: 'quiz_insure', area: 'quiz', icon: '🧷', name: '保險',
-    short: '沒進名次也有一半',
-    desc: '搶分類測驗專用。沒搶進名次時,仍拿到應得分數的一半(無條件捨去)。',
-    uses: [0, 0, 1, 1]
+    short: '搶分沒進名次也有分',
+    desc: '搶分類測驗專用。沒搶進名次時,照答對題數算的分數還是拿得到。',
+    price: 35,
+    // p 是「拿幾成」:0.5 = 一半,1 = 全拿
+    levels: [
+      { n: 0 },
+      { n: 0 },
+      { n: 1, p: 0.5, text: '沒進名次拿一半,每週 1 次' },
+      { n: 1, p: 1,   text: '沒進名次全額拿,每週 1 次' }
+    ]
+  },
+  {
+    id: 'quiz_gift', area: 'quiz', icon: '🎀', name: '送分',
+    short: '直接多算一題答對',
+    desc: '結算前指定一份測驗,那一份直接多算一題答對(不會超過總題數)。',
+    price: 30,
+    levels: [
+      { n: 0 },
+      { n: 0 },
+      { n: 1, p: 1, text: '送 1 題,每週 1 次' },
+      { n: 1, p: 1, text: '送 1 題,每週 1 次' }
+    ]
   },
 
   /* ---------- 商店 ---------- */
   {
     id: 'shop_discount', area: 'shop', icon: '🏷️', name: '議價',
-    short: '兌換打 8 折',
-    desc: '兌換一項獎品時使用,價格打八折(無條件捨去)。',
-    uses: [0, 1, 1, 2]
-  },
-  {
-    id: 'shop_jump', area: 'shop', icon: '⚡', name: '優先',
-    short: '插隊優先發放',
-    desc: '兌換時使用,這張申請單排到待發放清單的最前面。',
-    uses: [0, 0, 0, 1]
+    short: '兌換獎品打折',
+    desc: '兌換一項獎品時發動,那一次的價格打折(無條件捨去)。',
+    price: 25,
+    // p 是折扣倍率:0.9 = 九折
+    levels: [
+      { n: 0 },
+      { n: 1, p: 0.9, text: '指定一項 9 折,每週 1 次' },
+      { n: 1, p: 0.8, text: '指定一項 8 折,每週 1 次' },
+      { n: 1, p: 0.7, text: '指定一項 7 折,每週 1 次' }
+    ]
   }
 ];
 
@@ -73,12 +135,14 @@ const SKILL_AREAS = {
   shop: { name: '商店',   icon: '🎁' }
 };
 
-/* 預設設定。整套預設是「關閉」—— 已經在跑的班級不會因為更新就突然多出
-   一堆新規則,老師自己決定什麼時候開。 */
+/* 技能果實在商店裡的 id 前綴。用前綴而不是另開一個集合,
+   是為了直接沿用現有的兌換流程(申請 → 老師確認 → 扣點 → 進背包),
+   連安全規則都不必動。 */
+const SKILL_FRUIT_PREFIX = 'fruit_';
+
 const SKILL_DEFAULTS = {
-  enabled: false,
-  weeks: 1,          // 幾週刷新一次
-  startAt: 0         // 第一個賽季的起算時間,0 = 還沒開始
+  enabled: false,    // 預設關閉:已經在跑的班級不會因為更新就突然多出新規則
+  weeks: 1           // 幾週算一季(1 = 每週一刷新)
 };
 
 const SkillEngine = {
@@ -94,61 +158,115 @@ const SkillEngine = {
     return { ...SKILL_DEFAULTS, ...(skills || {}) };
   },
 
-  /* 這個階段能用的技能(次數 > 0 的才算解鎖) */
-  unlocked(stage) {
-    return PET_SKILLS.filter(s => (s.uses[stage] || 0) > 0);
-  },
-
-  /* 下一階會多解鎖哪些 —— 用來告訴學生「再進化一次會拿到什麼」 */
-  nextUnlocks(stage) {
-    const now = this.unlocked(stage).map(s => s.id);
-    return this.unlocked(stage + 1).filter(s => !now.includes(s.id));
-  },
-
-  usesAt(skillId, stage) {
+  /* ---------- 等級 ----------
+     同一個技能在不同階段是不同的東西,所以查「次數」與「強度」
+     一律走這裡,不要在別處自己算。 */
+  levelAt(skillId, stage) {
     const s = this.byId(skillId);
-    return s ? (s.uses[stage] || 0) : 0;
+    if (!s) return { n: 0, p: 0 };
+    return s.levels[stage] || { n: 0, p: 0 };
+  },
+
+  usesAt(skillId, stage) { return this.levelAt(skillId, stage).n || 0; },
+  powerAt(skillId, stage) { return this.levelAt(skillId, stage).p || 0; },
+
+  /* 這一階還能不能用(買了果實也要獸夠強才有次數) */
+  activeAt(skillId, stage) { return this.usesAt(skillId, stage) > 0; },
+
+  /* ---------- 技能果實 ----------
+     果實是商店裡的一般獎品,只是多帶一個 skillId。
+     買過的進背包(student.inventory),一個技能買一次就永久擁有。 */
+  fruitId(skillId) { return SKILL_FRUIT_PREFIX + skillId; },
+
+  skillOfFruit(itemId) {
+    if (!itemId || itemId.indexOf(SKILL_FRUIT_PREFIX) !== 0) return null;
+    return this.byId(itemId.slice(SKILL_FRUIT_PREFIX.length));
+  },
+
+  isFruit(itemId) { return !!this.skillOfFruit(itemId); },
+
+  /* 果實的說明要把四個階段全部寫出來 ——
+     學生要看得到「我現在是什麼效果、進化之後會變成什麼」。 */
+  fruitDescription(skill) {
+    const lines = skill.levels.map((lv, i) =>
+      `${STAGE_NAMES[i]}:${lv.n > 0 ? lv.text : '還不能用'}`);
+    return `${skill.desc}\n\n【各階段效果】\n${lines.join('\n')}`;
+  },
+
+  /* 產生所有果實的商店資料。老師按一次上架就有,價格之後可以自己改。 */
+  fruitItems() {
+    return PET_SKILLS.map(s => ({
+      id: this.fruitId(s.id),
+      name: `${s.name}果實`,
+      icon: s.icon,
+      price: s.price,
+      stock: null,                 // 不限量:每個人本來就只能買一次
+      description: this.fruitDescription(s),
+      active: true,
+      skillId: s.id                // 認得出它是果實的依據
+    }));
+  },
+
+  owns(student, skillId) {
+    return ((student && student.inventory) || []).includes(this.fruitId(skillId));
+  },
+
+  ownedSkills(student) {
+    return PET_SKILLS.filter(s => this.owns(student, s.id));
   },
 
   /* ---------- 賽季 ----------
-     賽季編號只跟時間有關,算式前後端一致,所以不需要誰去「結算」它。
-     技能使用紀錄的文件 id 含賽季編號,換季等於整批重新計數 ——
-     不必刪任何資料,舊紀錄留著還能當歷程看。 */
+     每週一 00:00 刷新。算式只跟時間有關,前後端一致,
+     所以不需要誰去「結算」它 —— 時間到了自然換季。
+     使用紀錄的文件 id 含週序號,換季等於整批重新計數,不必刪資料。 */
+
+  /* 這個時間點所屬那一週的週一 00:00(本地時間) */
+  mondayOf(now) {
+    const d = new Date(now || Date.now());
+    d.setHours(0, 0, 0, 0);
+    const dow = (d.getDay() + 6) % 7;      // 週一 = 0 … 週日 = 6
+    d.setDate(d.getDate() - dow);
+    return d.getTime();
+  },
+
+  /* 週序號:以 1970-01-05(那天是星期一)為第 0 週 */
+  weekIndex(now) {
+    return Math.round((this.mondayOf(now) - this.mondayOf(345600000)) / 604800000);
+  },
 
   seasonOf(skills, now) {
-    const c = this.cfg(skills);
-    if (!c.startAt) return 0;
-    const span = Math.max(1, c.weeks) * 7 * 24 * 60 * 60 * 1000;
-    return Math.max(0, Math.floor(((now || Date.now()) - c.startAt) / span));
+    const weeks = Math.max(1, this.cfg(skills).weeks);
+    return Math.floor(this.weekIndex(now) / weeks);
   },
 
   seasonRange(skills, now) {
-    const c = this.cfg(skills);
-    const span = Math.max(1, c.weeks) * 7 * 24 * 60 * 60 * 1000;
+    const weeks = Math.max(1, this.cfg(skills).weeks);
     const i = this.seasonOf(skills, now);
-    const from = c.startAt + i * span;
-    return { index: i, from, to: from + span };
+    const firstWeek = i * weeks;
+    const from = this.mondayOf(345600000) + firstWeek * 604800000;
+    return { index: i, weeks, from, to: from + weeks * 604800000 };
   },
 
   /* ---------- 授權表 ----------
-     老師端算好「每個學生這一季各技能幾次」寫到雲端,安全規則照著它驗。
-     放在一份小文件裡,學生讀一筆就夠,也不必讓規則去翻整個班級資料。 */
+     老師端算好「每個學生這一季各技能幾次、多強」寫到雲端,
+     安全規則照著它驗。強度也要寫進去 —— 不然學生可以自稱是守護神獸,
+     把 ×2 說成 ×3。 */
   grantsFor(students, skills, now) {
     const season = this.seasonOf(skills, now);
     const g = {};
     (students || []).forEach(s => {
       const stage = PetEngine.getStage(s.totalPoints || 0);
       const row = {};
-      PET_SKILLS.forEach(sk => {
-        const n = sk.uses[stage] || 0;
-        if (n > 0) row[sk.id] = n;
+      this.ownedSkills(s).forEach(sk => {
+        const lv = this.levelAt(sk.id, stage);
+        if (lv.n > 0) row[sk.id] = { n: lv.n, p: lv.p };
       });
       if (Object.keys(row).length > 0) g[s.id] = row;
     });
     return { season, g, at: now || Date.now() };
   },
 
-  /* 授權表需不需要重寫:換季了,或有人進化/轉入轉出 */
+  /* 授權表需不需要重寫:換季、有人進化、有人買了果實、名單變動 */
   grantsStale(current, students, skills, now) {
     const next = this.grantsFor(students, skills, now);
     if (!current) return true;
@@ -158,13 +276,12 @@ const SkillEngine = {
 
   /* ---------- 使用紀錄 ----------
      文件 id = {uid}_{賽季}_{技能}_{第幾次}。
-     id 唯一而且不准修改,所以「第幾次」不可能重複 ——
-     上限檢查只要比對這個數字,不必去數文件有幾筆(規則也數不了)。 */
+     id 唯一而且不准修改,所以「第幾次」不會重複 ——
+     上限只要比對那個數字,不必去數文件有幾筆(規則本來也數不了)。 */
   useId(uid, season, skillId, n) {
     return `${uid}_${season}_${skillId}_${n}`;
   },
 
-  /* 把使用紀錄整理成 { skillId: 已用次數 },只算這一季的 */
   usedMap(uses, season) {
     const out = {};
     (uses || []).forEach(u => {
@@ -178,27 +295,31 @@ const SkillEngine = {
     return Math.max(0, this.usesAt(skillId, stage) - ((used || {})[skillId] || 0));
   },
 
-  /* 這一季我手上有哪些技能、各剩幾次 */
-  mySkills(stage, used) {
-    return this.unlocked(stage).map(s => ({
-      ...s,
-      total: s.uses[stage],
-      left: this.remaining(s.id, stage, used)
-    }));
+  /* 我這一季手上有哪些技能、各剩幾次、現在多強 */
+  mySkills(student, stage, used) {
+    return this.ownedSkills(student).map(s => {
+      const lv = this.levelAt(s.id, stage);
+      return {
+        ...s,
+        total: lv.n || 0,
+        power: lv.p || 0,
+        levelText: lv.n > 0 ? lv.text : '守護獸還不夠強,再進化一次就能用',
+        left: this.remaining(s.id, stage, used)
+      };
+    });
+  },
+
+  /* 還沒買的果實(商店要顯示) */
+  notOwned(student) {
+    return PET_SKILLS.filter(s => !this.owns(student, s.id));
   },
 
   /* ---------- 領地戰:技能對重播的影響 ----------
-     重播是所有人共用的,所以技能效果也必須是「從事件推得出來」的,
-     不能存在任何一台裝置的記憶裡。 */
+     重播是所有人共用的,所以技能效果必須是「從事件推得出來」的,
+     不能存在任何一台裝置的記憶裡。
 
-  /* 猛擊:那一題的佔領分 ×2。事件上記著它用了哪一筆技能,
-     安全規則會核對倍率,所以客戶端照著算就好。 */
-  warMultiplier(ev) {
-    return ev && ev.skillId === 'war_power' ? 2 : 1;
-  },
-
-  /* 護盾:被擋掉的那些嘗試不產生倒扣。
-     回傳一個 Set,裡面是「有護盾罩著」的嘗試 id。 */
+     猛擊的倍率已經寫進事件的 points(安全規則核對過),
+     所以重播什麼都不用做 —— 這裡只要處理護盾。 */
   shieldedAttempts(uses) {
     const out = new Set();
     (uses || []).forEach(u => {

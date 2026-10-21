@@ -256,12 +256,34 @@ const PurchaseWatch = {
     if (!item) return no('這項獎品已被移除');
     if (!item.active) return no('這項獎品已下架');
     if (item.stock !== null && item.stock <= 0) return no('獎品已兌換完畢');
-    // 以老師端的價格為準,不採用申請單上的 —— 學生送出後老師可能改價
-    if (student.currentPoints < item.price) {
-      return no(`可用積分不足(需要 ${item.price} 分)`);
+
+    /* 技能果實:一個技能買一次就永久擁有,所以重複申請要擋下來 ——
+       不然學生多按幾次就白白被扣好幾次點數。 */
+    const fruit = SkillEngine.skillOfFruit(item.id);
+    if (fruit && SkillEngine.owns(student, fruit.id)) {
+      return no('已經有這顆果實了,一個技能買一次就好');
     }
 
-    student.currentPoints -= item.price;
+    /* 議價:價格打折。折扣倍率記在技能使用紀錄上(已被安全規則核對),
+       而且同一筆技能只能吃掉一次 —— 所以重複結算不會重複打折。
+       果實本身不給打折。 */
+    let price = item.price;
+    let discountNote = '';
+    if (!fruit && p.skillUseId && typeof SkillAdmin !== 'undefined' && SkillAdmin.on()) {
+      const use = SkillAdmin.byId(p.skillUseId);
+      if (use && use.skillId === 'shop_discount' && use.power > 0
+          && SkillAdmin.claim(p.skillUseId, student.id, 'shop_discount')) {
+        price = Math.floor(item.price * use.power);
+        discountNote = `(🏷️ 議價 ${Math.round(use.power * 10)} 折,原價 ${item.price})`;
+      }
+    }
+
+    // 以老師端的價格為準,不採用申請單上的 —— 學生送出後老師可能改價
+    if (student.currentPoints < price) {
+      return no(`可用積分不足(需要 ${price} 分)`);
+    }
+
+    student.currentPoints -= price;
     if (item.stock !== null) item.stock -= 1;
 
     if (!student.inventory) student.inventory = [];
@@ -272,12 +294,11 @@ const PurchaseWatch = {
       itemId: item.id,
       itemName: item.name,
       time: Date.now(),
-      price: item.price
+      price
     };
     state.shopHistory.push(record);
 
-    const price = item.price;
-    toast(`${student.name} 兌換了「${item.name}」`);
+    toast(`${student.name} 兌換了「${item.name}」${discountNote}`);
     return {
       result: { status: 'paid', settledPrice: price, settledAt: Date.now() },
       revert: () => {
