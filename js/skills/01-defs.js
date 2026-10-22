@@ -222,9 +222,10 @@ const SkillEngine = {
   /* 果實的說明要把四個階段全部寫出來 ——
      學生要看得到「我現在是什麼效果、進化之後會變成什麼」。 */
   fruitDescription(skill) {
+    // 每一階一行。商店那邊的 CSS 會保留換行,所以這裡排版就是學生看到的樣子
     const lines = skill.levels.map((lv, i) =>
-      `${STAGE_NAMES[i]}:${lv.n > 0 ? lv.text : '還不能用'}`);
-    return `${skill.desc}\n\n【各階段效果】\n${lines.join('\n')}`;
+      `　${STAGE_NAMES[i]}　${lv.n > 0 ? lv.text : '還不能用'}`);
+    return `${skill.desc}\n\n【守護獸各階段的效果】\n${lines.join('\n')}`;
   },
 
   /* 產生所有果實的商店資料。老師按一次上架就有,價格之後可以自己改。 */

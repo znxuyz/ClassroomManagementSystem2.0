@@ -140,3 +140,63 @@
   .help-way { flex-direction: column; gap: 2px; }
   .help-way b { width: auto; }
 }
+
+/* ============================================
+   說明頁裡的技能四階效果表
+   ────────────────────────────────────────────
+   內容由 PET_SKILLS 現場產生,所以程式改了說明就跟著改,
+   不會出現「文件寫的跟實際不一樣」。
+   用 grid 而不是 table,窄螢幕才好收。
+============================================ */
+.help-skill-table {
+  margin-top: 8px;
+  border: 1px solid var(--paper-shadow);
+  border-radius: var(--control-r);
+  overflow: hidden;
+  font-size: 11.5px;
+}
+
+.help-skill-row {
+  display: grid;
+  grid-template-columns: 1.4fr repeat(4, 1fr);
+  gap: 1px;
+  background: var(--paper-shadow);
+}
+
+.help-skill-row > span {
+  background: var(--paper);
+  padding: 6px 8px;
+  line-height: 1.5;
+}
+
+.help-skill-row.is-head > span {
+  background: var(--paper-warm);
+  font-weight: 700;
+  text-align: center;
+  font-size: 11px;
+}
+
+.help-skill-row.is-head > span:first-child { text-align: left; }
+
+.help-skill-name {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.help-skill-name small {
+  display: block;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+
+.help-skill-row > span.is-off {
+  color: var(--ink-muted);
+  opacity: .5;
+  text-align: center;
+}
+
+@media (max-width: 560px) {
+  .help-skill-table { font-size: 10.5px; }
+  .help-skill-row { grid-template-columns: 1.2fr repeat(4, 1fr); }
+  .help-skill-row > span { padding: 5px 4px; }
+}

@@ -33,7 +33,7 @@ Object.assign(StudentApp, {
     }
     const results = (this.student && this.student.quizResults) || {};
 
-    return this.quizzes.map(q => {
+    return `<div class="quiz-grid">` + this.quizzes.map(q => {
       const race = q.scoreMode === 'perQuestion';
       const answered = race ? (this.qProgress[q.id] || 0) : 0;
       const done = race ? answered >= q.questions.length : !!this.submissions[q.id];
@@ -71,7 +71,7 @@ Object.assign(StudentApp, {
         </div>
         ${action}
       </div>`;
-    }).join('');
+    }).join('') + `</div>`;
   },
 
   /* 測驗卡片上的技能。只在「還沒結算」時給用 ——
@@ -158,10 +158,12 @@ Object.assign(StudentApp, {
           const soldOut  = item.stock !== null && item.stock <= 0;
           const tooPoor  = points < item.price;
           const waiting  = pendingIds.includes(item.id);
-          const disabled = soldOut || tooPoor || waiting;
-
           // 技能果實用技能自己的圖示(帶統一外框),其他獎品照舊用 emoji
           const fruitOf = SkillEngine.skillOfFruit(item.id);
+          // 已經有的果實不能再買。按下去本來就會被擋,但按鈕該先變灰 ——
+          // 讓學生按了才被拒絕是很差的體驗
+          const owned = !!fruitOf && SkillEngine.owns(this.student, fruitOf.id);
+          const disabled = soldOut || tooPoor || waiting || owned;
 
           return `
           <div class="prize-card ${disabled ? 'disabled' : ''} ${fruitOf ? 'is-fruit' : ''}">
@@ -169,9 +171,7 @@ Object.assign(StudentApp, {
               ? skillIconHtml(fruitOf, 56)
               : escapeHtml(item.icon || '🎁')}</div>
             <div class="prize-body">
-              <div class="prize-name">${escapeHtml(item.name)}${
-                fruitOf && SkillEngine.owns(this.student, fruitOf.id)
-                  ? ' <span class="prize-owned">已擁有</span>' : ''}</div>
+              <div class="prize-name">${escapeHtml(item.name)}</div>
               ${item.description
                 ? `<div class="prize-desc">${escapeHtml(item.description)}</div>` : ''}
               <div class="prize-meta">
@@ -183,7 +183,7 @@ Object.assign(StudentApp, {
             </div>
             <button class="btn btn-accent btn-small" ${disabled ? 'disabled' : ''}
                     onclick="StudentApp.buy('${item.id}')">
-              ${waiting ? '處理中' : soldOut ? '已兌完' : tooPoor ? `還差 ${item.price - points} 點` : '兌換'}
+              ${owned ? '已擁有' : waiting ? '處理中' : soldOut ? '已兌完' : tooPoor ? `還差 ${item.price - points} 點` : '兌換'}
             </button>
           </div>`;
         }).join('');
@@ -193,7 +193,7 @@ Object.assign(StudentApp, {
         <span>我的可用積分</span>
         <strong>${points}</strong>
       </div>
-      ${cards}
+      <div class="prize-grid">${cards}</div>
       ${this.renderMyPurchases()}`;
   },
 

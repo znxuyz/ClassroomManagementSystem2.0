@@ -58,10 +58,67 @@
   flex-shrink: 0;
 }
 
+/* ---------- 版面寬度 ----------
+   原本整頁限寬 560px:在手機上剛好,但在教室的單槍或筆電上,
+   兩側會空掉一大半。改成放寬容器 + 讓內容自己排成多欄 ——
+   單純把一欄拉寬只會變成一條條很空的橫條,不是「滿版」。
+
+   每一欄仍然有最小寬度,所以視窗縮小時會自動疊回單欄,手機照舊好看。 */
 .student-main {
-  max-width: 560px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 20px 16px 60px;
+}
+
+/* 排行榜維持置中窄版。
+   這不是偷懶 —— 學生端刻意只顯示前三名加自己(見 feature-leaderboard.js),
+   為的是不要讓後段的孩子每天被攤在全班面前。既然沒有更多內容,
+   把它拉寬只是把同樣的東西攤平,不會比較好看。 */
+.student-pane.pane-rank {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* 說明頁:放寬 + 排成多欄。
+   每一段(積分怎麼拿、經驗哪裡來、技能、領地戰規則…)本身是獨立的,
+   所以適合並排;單欄的話學生要一直往下捲才找得到想看的那一段。 */
+.pane-help .help-wrap { max-width: none; }
+
+@media (min-width: 900px) {
+  .pane-help .help-sections {
+    columns: 2;
+    column-gap: 20px;
+  }
+  .pane-help .help-sec {
+    break-inside: avoid;
+    margin-bottom: 20px;
+  }
+}
+
+@media (min-width: 1400px) {
+  .pane-help .help-sections { columns: 3; }
+}
+
+/* 測驗與獎品排成格狀 */
+.quiz-grid,
+.prize-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  align-items: start;
+}
+
+/* 守護獸分頁:寬螢幕時獸在左、技能與紀錄在右 */
+@media (min-width: 960px) {
+  .pane-pet {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+  /* 獸的卡片佔滿左欄(跨技能面板與積分紀錄兩列) */
+  .pane-pet > .student-pet-section { grid-row: 1 / span 2; }
+  .pane-pet > .skill-panel { margin-top: 0; }
 }
 
 /* ---------- 守護獸 ---------- */
@@ -461,13 +518,9 @@
 
 /* ============================================
    領地戰:地圖要大
-   ────────────────────────────────────────────
-   學生端整頁限寬 560px,對守護獸和測驗剛好,但地圖被勒得只剩一條。
-   只有領地戰這個分頁放寬。
 ============================================ */
 
 .student-main.is-war {
-  max-width: 1240px;
   padding-left: 12px;
   padding-right: 12px;
 }

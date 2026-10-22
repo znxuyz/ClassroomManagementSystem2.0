@@ -344,3 +344,15 @@
   margin-left: 6px;
   white-space: nowrap;
 }
+
+/* 果實的說明含「各階段效果」的換行(\n)。
+   HTML 預設會把換行吃掉,四個階段就全部擠成一團看不懂 ——
+   所以技能果實的說明要保留換行。只影響果實,一般獎品照舊。 */
+.prize-card.is-fruit .prize-desc {
+  white-space: pre-line;
+  line-height: 1.75;
+}
+
+/* 果實的說明有四行階段效果,卡片會變高 —— 圖示和按鈕要靠上,
+   不然會浮在卡片中間,看起來像沒對齊。 */
+.prize-card.is-fruit { align-items: flex-start; }

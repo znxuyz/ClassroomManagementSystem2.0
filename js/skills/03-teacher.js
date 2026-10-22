@@ -171,7 +171,7 @@ function skillBoardHtml() {
         <small>${SKILL_AREAS[sk.area].name}</small></td>
       ${sk.levels.map(lv => `
         <td class="${lv.n > 0 ? '' : 'skill-tb-off'}">
-          ${lv.n > 0 ? escapeHtml(lv.text.replace(',每週', '<br>每週')) : '—'}
+          ${lv.n > 0 ? escapeHtml(lv.text).replace(',每週', '<br>每週') : '—'}
         </td>`).join('')}
       <td class="skill-tb-price">${sk.price} 點</td>
     </tr>`).join('');

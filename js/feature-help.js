@@ -86,6 +86,23 @@ function helpRuleSections(rules) {
       ]
     },
     {
+      icon: '✦',
+      title: '守護獸技能',
+      items: skillsOnForHelp() ? [
+        '技能要<strong>去兌換分頁買「技能果實」</strong>才學得會,' +
+          '一個技能<strong>買一次就永久擁有</strong>。',
+        '買了之後,<strong>守護獸每進化一階,同一個技能就更強</strong> ——' +
+          '所以進化不只是外觀變化,而是真的會讓你更強。',
+        '每個技能有<strong>次數</strong>限制,<strong>每週一 00:00 回滿</strong>。' +
+          '用完就要等下週,所以留在關鍵時刻用比較划算。',
+        '目前的技能與各階段效果:' + skillTableForHelp(),
+        '<strong>靈卵階段一個技能都不能用</strong> —— 先把守護獸養到幼獸(15 分)再說。'
+      ] : [
+        '老師還沒開啟這個功能。開啟之後,你可以用積分在兌換分頁買「技能果實」,' +
+          '學會之後守護獸每進化一階,技能就會更強。'
+      ]
+    },
+    {
       icon: '⬡',
       title: '領地戰的計分規則',
       items: [
@@ -145,6 +162,10 @@ const HELP = {
           '<strong>累積經驗</strong> — 只會增加,決定守護獸進化到哪一階。<br>' +
           '<strong>可用積分</strong> — 拿去商店換東西會變少。',
         '所以<strong>換獎品不會讓守護獸退化</strong>,放心換。',
+        '進化不只是外觀變化 —— <strong>你的技能會跟著一起變強</strong>。' +
+          '同一個技能,幼獸用是 ×2,守護神獸用就是 ×3。',
+        '守護獸的<strong>心情</strong>看的是「多久沒被加分」:超過 3 天會微恙、超過 7 天會生病。' +
+          '被加分就會恢復。',
         '第一次進來如果還沒有守護獸,可以自己挑一隻。'
       ]
     },
@@ -168,7 +189,12 @@ const HELP = {
           '<strong>整份前幾名</strong> — 先比答對總題數,同分就比誰先交卷。',
         '<strong>逐題搶答送出後不能改,也不會馬上告訴你對不對</strong> —— 不然先答完的人就能把答案傳出去了。',
         '老師如果設了統一結算時間,交卷後會顯示「○/○ 公布」,到時間才會算分。',
-        '成績公布後,卡片上會顯示你答對幾題、每一題的 ✓ ✗,逐題搶答還會標出那一題你是第幾個答對的。<strong>但看不到正確答案</strong>。'
+        '成績公布後,卡片上會顯示你答對幾題、每一題的 ✓ ✗,逐題搶答還會標出那一題你是第幾個答對的。<strong>但看不到正確答案</strong>。',
+        '買了技能果實的話,測驗卡片上會出現技能按鈕:<br>' +
+          '<strong>📘 專注</strong> — 這份測驗的得分變好幾倍。<br>' +
+          '<strong>🧷 保險</strong> — 搶分類測驗沒搶進名次時,照答對題數算的分數還是拿得到。<br>' +
+          '<strong>🎀 送分</strong> — 這份直接多算一題答對。<br>' +
+          '技能要<strong>在成績公布前</strong>用,用了就不能收回。'
       ]
     },
     {
@@ -177,7 +203,12 @@ const HELP = {
       items: [
         '用<strong>可用積分</strong>換老師上架的獎品。',
         '按下兌換只是送出申請,<strong>實際發放由老師確認</strong>,所以按了之後請等老師處理。',
-        '點數不夠、獎品兌完、或已經送出申請的,按鈕會變灰色。'
+        '點數不夠、獎品兌完、或已經送出申請的,按鈕會變灰色。',
+        '架上如果有<strong>技能果實</strong>,那是用來學技能的 ——' +
+          '一個技能買一次就永久擁有,卡片上會寫出守護獸各階段的效果。' +
+          '已經買過的會標「已擁有」。',
+        '學會<strong>🏷️ 議價</strong>之後,兌換時會問你要不要用 —— 用了那一次就打折。' +
+          '(技能果實本身不給打折。)'
       ]
     },
     {
@@ -188,7 +219,21 @@ const HELP = {
         '點地圖上<strong>亮起來(會呼吸)</strong>的格子就能攻擊 —— 只有自己領地旁邊的格子打得到。',
         '答對會累積<strong>佔領分</strong>,題目越難分數越高;累積到門檻那一格才會變成你們這組的。',
         '別組的格子也能搶。被攻擊的格子會進入<strong>交戰</strong>,時間內分數最高的那一組拿走。',
-        '每一題<strong>每個人只能答一次</strong>,答錯就換一格再試。',
+        '<strong>答對過的題目不會再出現</strong>(再答也不會再得分);' +
+          '<strong>答錯的可以再挑戰同一題</strong>,但系統會先讓你輪完還沒做過的。',
+        '老師可能會設<strong>答錯倒扣</strong>。倒扣<strong>只扣你答錯的那一格</strong>,' +
+          '你同時在打的其他格子不會被扣,而且是答錯的當下就扣,不會延後才冒出來。',
+        '<strong>連續答錯幾題會被罰等待</strong>(預設連錯 3 題等 60 秒)。' +
+          '答對一次就歸零 —— 認真讀題的人碰不到這條規則,它是用來擋「不看題目一直猜」的。',
+        '遇到<strong>還沒教過</strong>的題目可以<strong>換題</strong>。' +
+          '換到的題目難度與分數都會降一階,這就是換題的代價。每次攻擊的換題次數有上限。',
+        '老師如果開了<strong>嚴格作答</strong>,點開題目會進入全螢幕,' +
+          '<strong>離開全螢幕或切到別的分頁,這一題就作廢</strong>。點開之前會先提醒你。',
+        '學會技能的話,領地戰裡可以用:<br>' +
+          '<strong>⚔️ 猛擊</strong> — 開題前按,這一題答對的佔領分變好幾倍。<br>' +
+          '<strong>🛡️ 護盾</strong> — 答錯之後在提示框裡按,擋掉那一次的倒扣。<br>' +
+          '<strong>🌀 靜心</strong> — 被罰等待時按,立刻就能再出手。<br>' +
+          '<strong>✋ 巧手</strong> — 攻打時按,這一次可以多換幾題。',
         '找不到自己的領地?按右上角的<strong>「⌖ 回到我的領地」</strong>。地圖可以用 ＋ － 縮放,按「整張」看全貌。',
         '灰色斜線是還沒開放的區域,★ 是各組基地(不能被攻佔)。'
       ]
@@ -199,6 +244,11 @@ const HELP = {
       items: [
         '<strong>看不到測驗或領地戰</strong> — 老師還沒開放,或領地戰還沒分組。',
         '<strong>積分沒有增加</strong> — 測驗要等老師結算,或等統一結算時間到。',
+        '<strong>技能按下去說用不了</strong> — 可能是這週的次數用完了、守護獸還不夠強,' +
+          '或是老師那邊的技能表還沒更新(請老師開一下系統)。',
+        '<strong>買了果實卻不能用</strong> — 看一下守護獸是第幾階。' +
+          '靈卵一個技能都不能用,有些技能要成獸或守護神獸才解鎖。',
+        '<strong>技能次數什麼時候回來</strong> — 每週一 00:00。守護獸分頁上會寫還有幾天。',
         '<strong>畫面怪怪的</strong> — 先按右上角「重新整理」;還是不行就告訴老師。'
       ]
     }
@@ -257,11 +307,18 @@ const HELP = {
         '<strong>換題</strong>(預設每次攻擊 3 次):學生遇到還沒教到的單元可以換一題,' +
           '換到的難度降一階、分數也降一階,代價內建在規則裡,所以不另外處罰。' +
           '換掉的那題不算答錯、不會倒扣。設 0 就是不開放換題。',
-        '<strong>守護獸技能</strong>(預設關閉,在「積分規則」頁開):' +
+        '<strong>守護獸技能</strong>(預設關閉,在<strong>「設定」</strong>頁開):' +
           '學生花積分在商店買「技能果實」學技能,一個技能買一次就永久擁有,' +
           '之後<strong>守護獸每進化一階,同一個技能就更強</strong> —— ' +
           '所以養獸的動力會延續,不會進化完就沒事做。技能分成領地戰、測驗、商店三類,' +
-          '次數每週一 00:00 歸零。次數與強度都由安全規則把關,學生改前端沒有用。',
+          '次數<strong>每週一 00:00 歸零</strong>。次數與強度都由安全規則把關,學生改前端沒有用。',
+        '開啟之後記得按<strong>「上架技能果實」</strong>,八顆果實才會出現在商店裡。' +
+          '價格之後可以在「商店任務」頁自己改 —— 原則是「存一兩週買得起一顆」,' +
+          '太便宜會一次買完就沒有取捨了。',
+        '技能表、各階效果、這一季誰用了什麼,都在設定頁那個面板上看得到。',
+        '授權表(誰這週幾次、多強)是你的電腦算好寫上去的,所以<strong>每週一換季之後' +
+          '要開一下系統</strong>,學生的次數才會刷新。正常上課日一定會開,實務上不是問題;' +
+          '學生說「技能用不了」時,先想到這件事。',
         '<strong>連錯冷卻</strong>(預設連錯 3 題 → 冷卻 60 秒):專治亂猜。答對一次就歸零,' +
           '換題不算答錯,所以正常作答的學生碰不到。這條由安全規則強制 —— ' +
           '每筆作答紀錄都接在前一筆後面(編號連號、不准修改),學生重新整理或換裝置都躲不掉。' +
@@ -315,6 +372,35 @@ const HELP = {
 };
 
 /* 規則在前、操作在後:學生最想知道的是「怎麼拿分」 */
+/* 技能有沒有開。說明要跟著實際設定走,不然會教到不存在的功能。 */
+function skillsOnForHelp() {
+  if (typeof SkillEngine === 'undefined') return false;
+  // 學生端讀 StudentApp.classSkills,老師端讀 state.skills
+  const cfg = (typeof StudentApp !== 'undefined' && StudentApp.classSkills)
+    || (typeof state !== 'undefined' && state.skills) || null;
+  return !!SkillEngine.cfg(cfg).enabled;
+}
+
+/* 四階效果表。寫死一份文件會跟程式脫節,所以直接從 PET_SKILLS 產生。 */
+function skillTableForHelp() {
+  if (typeof PET_SKILLS === 'undefined') return '';
+  return `
+    <div class="help-skill-table">
+      <div class="help-skill-row is-head">
+        <span>技能</span>
+        ${STAGE_NAMES.map(n => `<span>${n}</span>`).join('')}
+      </div>
+      ${PET_SKILLS.map(sk => `
+        <div class="help-skill-row">
+          <span class="help-skill-name">${sk.icon} ${escapeHtml(sk.name)}
+            <small>${SKILL_AREAS[sk.area].name}</small></span>
+          ${sk.levels.map(lv => `<span class="${lv.n > 0 ? '' : 'is-off'}">${
+            lv.n > 0 ? escapeHtml(lv.text).replace(',每週 ', '<br>每週 ') : '—'
+          }</span>`).join('')}
+        </div>`).join('')}
+    </div>`;
+}
+
 function renderHelpFull(which, rules) {
   return renderHelpSections(helpRuleSections(rules)) +
          renderHelpSections(HELP[which]);
@@ -323,13 +409,14 @@ function renderHelpFull(which, rules) {
 function renderHelpSections(list) {
   // 有些項目會依當下的對局設定決定要不要出現,空的就不要留一個空點
   list = list.map(sec => ({ ...sec, items: sec.items.filter(Boolean) }));
-  return list.map(sec => `
+  // 外面包一層,寬螢幕時才能把各段排成多欄(CSS columns)
+  return '<div class="help-sections">' + list.map(sec => `
     <section class="help-sec">
       <h3 class="help-sec-title"><span class="help-icon">${sec.icon}</span>${escapeHtml(sec.title)}</h3>
       <ul class="help-list">
         ${sec.items.map(i => `<li>${i}</li>`).join('')}
       </ul>
-    </section>`).join('');
+    </section>`).join('') + '</div>';
 }
 
 /* 老師端的「使用說明」分頁 */

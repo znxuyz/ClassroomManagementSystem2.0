@@ -231,12 +231,14 @@ const StudentApp = {
               `${escapeHtml(d.label)}(${d.why})`).join('、')}。<br>
             守護獸與積分不受影響,請告訴老師看看。
           </div>` : ''}
-        ${this.tab === 'pet'  ? this.renderPetTab()  : ''}
-        ${this.tab === 'rank' ? this.renderRankTab() : ''}
-        ${this.tab === 'quiz' ? this.renderQuizTab() : ''}
-        ${this.tab === 'shop' ? this.renderShopTab() : ''}
-        ${this.tab === 'war'  ? this.renderWarTab()  : ''}
-        ${this.tab === 'help' ? renderHelpFull('student', this.classRules) : ''}
+        <div class="student-pane pane-${this.tab}">
+          ${this.tab === 'pet'  ? this.renderPetTab()  : ''}
+          ${this.tab === 'rank' ? this.renderRankTab() : ''}
+          ${this.tab === 'quiz' ? this.renderQuizTab() : ''}
+          ${this.tab === 'shop' ? this.renderShopTab() : ''}
+          ${this.tab === 'war'  ? this.renderWarTab()  : ''}
+          ${this.tab === 'help' ? renderHelpFull('student', this.classRules) : ''}
+        </div>
       </main>
     `;
   },
