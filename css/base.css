@@ -76,10 +76,17 @@ body {
   align-items: center;
   justify-content: space-between;
   border-bottom: 3px solid var(--gold);
+  /* 固定的是外層的 .app-topbar(兩排一起),這裡不再各自 sticky */
+  box-shadow: var(--shadow-md);
+}
+
+/* 兩排導覽一起固定在最上面。
+   包成一層而不是各自 sticky:頁首在窄螢幕會換行變高,
+   分開固定就得去算它的高度,算錯會露出縫或蓋住內容。 */
+.app-topbar {
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: var(--shadow-md);
 }
 
 .brand {
@@ -203,16 +210,56 @@ body {
 
 .view {
   display: none;
-  animation: viewFadeIn 0.4s var(--ease-out);
+  animation: viewSlideIn 0.26s var(--ease-out);
 }
 
 .view.active {
   display: block;
 }
 
-@keyframes viewFadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+/* ============================================
+   切換的滑動動畫
+   ────────────────────────────────────────────
+   選單是橫向排列的,所以切換時從右邊滑進來,方向上才對得起來
+   (原本是由下往上淡入,和「左右切分頁」的動作不一致)。
+
+   刻意做得快(0.26 秒):老師一節課要切十幾次,動畫慢一點點
+   就會變成每次都在等它跑完。
+============================================ */
+/* 位移方向刻意往「左」。
+   往右位移會把內容推出可視範圍,瀏覽器就長出一條橫向捲軸,
+   動畫期間畫面會抖一下(實測確認過)。在由左至右的版面裡,
+   向左的溢出不會列入可捲動範圍,所以不會有這個副作用。 */
+@keyframes viewSlideIn {
+  from { opacity: 0; transform: translateX(-18px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* 子分頁(第二排)切換:幅度小一點,因為只換了內容的一部分。
+
+   學生端的 .student-pane 要加 .is-switching 才會動 ——
+   它在「每一次重繪」都會重建(老師一加分、戰況一更新就重繪),
+   無條件動畫的話畫面會一直滑來滑去。只有真的切分頁時才加那個 class。 */
+.sub-view.active,
+.help-group.active,
+.student-pane.is-switching {
+  animation: paneSlideIn 0.22s var(--ease-out);
+}
+
+@keyframes paneSlideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* 作業系統設了「減少動態效果」就不要動 ——
+   有些孩子對畫面滑動會不舒服,這個設定要尊重。 */
+@media (prefers-reduced-motion: reduce) {
+  .view,
+  .sub-view.active,
+  .help-group.active,
+  .student-pane.is-switching {
+    animation: none;
+  }
 }
 
 .view-header {

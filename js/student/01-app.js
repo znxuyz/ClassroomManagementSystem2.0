@@ -231,7 +231,7 @@ const StudentApp = {
               `${escapeHtml(d.label)}(${d.why})`).join('、')}。<br>
             守護獸與積分不受影響,請告訴老師看看。
           </div>` : ''}
-        <div class="student-pane pane-${this.tab}">
+        <div class="student-pane pane-${this.tab}${this._paneAnim ? ' is-switching' : ''}">
           ${this.tab === 'pet'  ? this.renderPetTab()  : ''}
           ${this.tab === 'rank' ? this.renderRankTab() : ''}
           ${this.tab === 'quiz' ? this.renderQuizTab() : ''}
@@ -245,6 +245,10 @@ const StudentApp = {
 
   setTab(tab) {
     this.tab = tab;
+    /* 只有「真的切分頁」時才播滑動動畫。
+       render() 在老師加分、戰況更新時也會跑,那些不該動。 */
+    this._paneAnim = true;
     this.render();
+    this._paneAnim = false;
   },
 };
