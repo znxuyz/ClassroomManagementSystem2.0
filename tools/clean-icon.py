@@ -59,14 +59,14 @@ def background_mask(rgb, alpha, tol):
 
     ref = rgb[border].reshape(-1, 3).astype(float)
     if looks_checkerboard(rgb, border):
-        # 棋盤格:取那兩種灰當基準
-        lo, hi = np.percentile(ref.mean(axis=1), [10, 90])
-        refs = [np.array([lo] * 3), np.array([hi] * 3)]
+        # 棋盤格有兩種灰,中間還有過渡色 —— 用顏色比對會留下格線。
+        # 改用「這個像素是不是灰的」:背景全灰,主體是高飽和霓虹。
+        # 主體裡的白色高光也是灰的,但它被彩色包著、連不到邊緣,所以安全。
+        spread = rgb.max(axis=2).astype(int) - rgb.min(axis=2).astype(int)
+        similar = spread < 22
     else:
-        refs = [np.median(ref, axis=0)]
-
-    diff = np.min([np.abs(rgb.astype(float) - r).max(axis=2) for r in refs], axis=0)
-    similar = diff <= tol
+        r0 = np.median(ref, axis=0)
+        similar = np.abs(rgb.astype(float) - r0).max(axis=2) <= tol
 
     # 從邊緣往內擴散,只有「連到邊緣」的同色區才算背景
     bg = similar & border
