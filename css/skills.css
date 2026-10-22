@@ -277,3 +277,70 @@
   .skill-grid { grid-template-columns: 1fr; }
   .skill-panel { padding: 14px 14px; }
 }
+
+/* ============================================
+   技能圖示外框
+   ────────────────────────────────────────────
+   外框一律在這裡畫,不靠圖片自己帶 —— AI 每張生出來的底板都不一樣
+   (有的有深色圓角板、有的沒有),交給 CSS 才會八張完全一致。
+
+   尺寸由 --ico 控制,所以同一套樣式可以用在 44px 的技能卡、
+   22px 的測驗小按鈕、28px 的教師端表格,不必各寫一份。
+============================================ */
+.skill-ico {
+  --ico: 44px;
+  width: var(--ico);
+  height: var(--ico);
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  /* 圓角與邊框跟著尺寸等比,小尺寸才不會顯得笨重 */
+  border-radius: calc(var(--ico) * 0.22);
+  border: 1px solid var(--paper-shadow);
+  background: var(--paper-warm);
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.skill-ico img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* 退回 emoji 時,字級跟著外框等比 */
+.skill-ico.is-emoji {
+  font-size: calc(var(--ico) * 0.56);
+  line-height: 1;
+}
+
+/* 用完的技能整張淡掉,圖示也要跟著 */
+.skill-card.spent .skill-ico { opacity: .6; }
+
+/* 還不能用的(守護獸不夠強):去彩度,一眼看得出是鎖著的 */
+.skill-card.locked .skill-ico {
+  filter: grayscale(1);
+  opacity: .5;
+  border-style: dashed;
+}
+
+/* 商店裡的技能果實:圖示換成技能自己的,並標出已擁有的 */
+.prize-card.is-fruit .prize-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.prize-owned {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--forest);
+  border: 1px solid var(--paper-shadow);
+  border-radius: 999px;
+  padding: 1px 8px;
+  margin-left: 6px;
+  white-space: nowrap;
+}

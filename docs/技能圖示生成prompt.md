@@ -43,7 +43,14 @@ python3 tools/clean-icon.py 你的資料夾/ -o assets/skill/ --key 00ff00 --cor
 - 青藍／紫色的霓虹色調（對應系統配色）
 - 厚實的圓潤輪廓、柔和的內發光
 - **不要用任何綠色或螢光黃綠** ← 這條是為了保住去背的 margin
+- **主體必須懸空漂在綠底上** ← 不要任何底板、卡牌、徽章、圓角方塊
 - 不要外框、不要文字、不要外圈封閉的光暈輪廓
+
+> **外框由程式畫,不要畫進圖裡。**
+> 實測 AI 不太遵守 `no frame`:同一批生出來的,有的帶深色圓角底板、
+> 有的沒有,八張不可能一致。所以外框統一由 CSS 畫 ——
+> 不管你生出來長怎樣,系統顯示時都是同一個外框、同一個尺寸、同一個圓角。
+> 你只要確保**主體本身乾淨地浮在綠底上**就好。
 
 ---
 
@@ -58,7 +65,7 @@ rim light, thick rounded silhouette, gentle inner glow, centered with a small ma
 Background: solid flat pure green #00FF00 chroma key green screen, perfectly uniform,
 no gradient, no vignette, no shadow or glow spilling onto the background, no
 transparency checkerboard pattern. The subject must contain no green or lime colors at
-all. No frame, no border, no text, no watermark, no outer glow outline, no enclosing
+all. No plate, no badge, no rounded square panel behind the subject, no card, no medallion — the subject floats freely on the green background. No frame, no border, no text, no watermark, no outer glow outline, no enclosing
 contour, subject only. Clean icon art readable at 32 pixels. 1024x1024.
 ```
 
@@ -75,7 +82,7 @@ neon palette, soft rim light, thick rounded silhouette, gentle inner glow, cente
 a small margin. Background: solid flat pure green #00FF00 chroma key green screen,
 perfectly uniform, no gradient, no vignette, no shadow or glow spilling onto the
 background, no transparency checkerboard pattern. The subject must contain no green or
-lime colors at all. No frame, no border, no text, no watermark, no outer glow outline,
+lime colors at all. No plate, no badge, no rounded square panel behind the subject, no card, no medallion — the subject floats freely on the green background. No frame, no border, no text, no watermark, no outer glow outline,
 no enclosing contour, subject only. Clean icon art readable at 32 pixels. 1024x1024.
 ```
 
@@ -92,7 +99,7 @@ neon palette, soft rim light, thick rounded silhouette, gentle inner glow, cente
 a small margin. Background: solid flat pure green #00FF00 chroma key green screen,
 perfectly uniform, no gradient, no vignette, no shadow or glow spilling onto the
 background, no transparency checkerboard pattern. The subject must contain no green or
-lime colors at all. No frame, no border, no text, no watermark, no outer glow outline,
+lime colors at all. No plate, no badge, no rounded square panel behind the subject, no card, no medallion — the subject floats freely on the green background. No frame, no border, no text, no watermark, no outer glow outline,
 no enclosing contour, subject only. Clean icon art readable at 32 pixels. 1024x1024.
 ```
 
@@ -109,7 +116,7 @@ soft rim light, thick rounded silhouette, gentle inner glow, centered with a sma
 margin. Background: solid flat pure green #00FF00 chroma key green screen, perfectly
 uniform, no gradient, no vignette, no shadow or glow spilling onto the background, no
 transparency checkerboard pattern. The subject must contain no green or lime colors at
-all. No frame, no border, no text, no watermark, no outer glow outline, no enclosing
+all. No plate, no badge, no rounded square panel behind the subject, no card, no medallion — the subject floats freely on the green background. No frame, no border, no text, no watermark, no outer glow outline, no enclosing
 contour, subject only. Clean icon art readable at 32 pixels. 1024x1024.
 ```
 
@@ -126,7 +133,7 @@ soft rim light, thick rounded silhouette, gentle inner glow, centered with a sma
 margin. Background: solid flat pure green #00FF00 chroma key green screen, perfectly
 uniform, no gradient, no vignette, no shadow or glow spilling onto the background, no
 transparency checkerboard pattern. The subject must contain no green or lime colors at
-all. No frame, no border, no text, no watermark, no outer glow outline, no enclosing
+all. No plate, no badge, no rounded square panel behind the subject, no card, no medallion — the subject floats freely on the green background. No frame, no border, no text, no watermark, no outer glow outline, no enclosing
 contour, subject only. Clean icon art readable at 32 pixels. 1024x1024.
 ```
 
@@ -142,8 +149,7 @@ falling star. Semi-realistic 3D render, deep teal-blue and violet neon palette, 
 light, thick rounded silhouette, gentle inner glow, centered with a small margin.
 Background: solid flat pure green #00FF00 chroma key green screen, perfectly uniform, no
 gradient, no vignette, no shadow or glow spilling onto the background, no transparency
-checkerboard pattern. The subject must contain no green or lime colors at all. No frame,
-no border, no text, no watermark, no outer glow outline, no enclosing contour, subject
+checkerboard pattern. The subject must contain no green or lime colors at all. No plate, no badge, no rounded square panel behind the subject, no card, no medallion — the subject floats freely on the green background. No frame, no border, no text, no watermark, no outer glow outline, no enclosing contour, subject
 only. Clean icon art readable at 32 pixels. 1024x1024.
 ```
 
@@ -159,8 +165,7 @@ light. Semi-realistic 3D render, deep teal-blue and violet neon palette, soft ri
 thick rounded silhouette, gentle inner glow, centered with a small margin. Background:
 solid flat pure green #00FF00 chroma key green screen, perfectly uniform, no gradient,
 no vignette, no shadow or glow spilling onto the background, no transparency
-checkerboard pattern. The subject must contain no green or lime colors at all. No frame,
-no border, no text, no watermark, no outer glow outline, no enclosing contour, subject
+checkerboard pattern. The subject must contain no green or lime colors at all. No plate, no badge, no rounded square panel behind the subject, no card, no medallion — the subject floats freely on the green background. No frame, no border, no text, no watermark, no outer glow outline, no enclosing contour, subject
 only. Clean icon art readable at 32 pixels. 1024x1024.
 ```
 
@@ -176,8 +181,7 @@ light beside it. Semi-realistic 3D render, deep teal-blue and violet neon palett
 rim light, thick rounded silhouette, gentle inner glow, centered with a small margin.
 Background: solid flat pure green #00FF00 chroma key green screen, perfectly uniform, no
 gradient, no vignette, no shadow or glow spilling onto the background, no transparency
-checkerboard pattern. The subject must contain no green or lime colors at all. No frame,
-no border, no text, no watermark, no outer glow outline, no enclosing contour, subject
+checkerboard pattern. The subject must contain no green or lime colors at all. No plate, no badge, no rounded square panel behind the subject, no card, no medallion — the subject floats freely on the green background. No frame, no border, no text, no watermark, no outer glow outline, no enclosing contour, subject
 only. Clean icon art readable at 32 pixels. 1024x1024.
 ```
 
@@ -225,6 +229,7 @@ python3 tools/clean-icon.py power.png -o assets/skill/power.png --key 00ff00 --c
 | 邊緣鋸齒 | `--key-soft` 調大（80～120） |
 | 主體被挖掉一塊 | 主體用到綠色了。在 prompt 加 `absolutely no green, no lime, no chartreuse anywhere in the subject` |
 | 又畫出棋盤格 | 加 `never draw a transparency checkerboard, the background is opaque solid green` |
+| 主體下面有深色圓角底板 | 加 `absolutely no plate or panel behind the subject` 再生一次。**但不必太執著** —— 外框本來就由程式畫,底板只要不是太大、不影響主體辨識,裁切時會一起留著,八張看起來仍然一致 |
 | 細節太多縮小看不清 | 加 `minimal detail, bold simple shapes, high contrast` |
 | 畫出文字或數字 | 加 `absolutely no letters, no numbers, no typography` |
 
@@ -246,7 +251,7 @@ inner glow, centered with a small margin. Background: solid flat pure green #00F
 chroma key green screen, perfectly uniform, no gradient, no vignette, no shadow or glow
 spilling onto the background, no transparency checkerboard pattern. The subject must
 contain no green or lime colors at all — the leaf should be teal or violet, not green.
-No frame, no border, no text, no watermark, no outer glow outline, no enclosing contour,
+No plate, no badge, no rounded square panel behind the subject, no card, no medallion — the subject floats freely on the green background. No frame, no border, no text, no watermark, no outer glow outline, no enclosing contour,
 subject only. Clean icon art readable at 32 pixels. 1024x1024.
 ```
 

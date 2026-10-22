@@ -163,7 +163,7 @@ function skillBoardHtml() {
   // 四階效果總表:一眼看完哪一階能用什麼、多強
   const rows = PET_SKILLS.map(sk => `
     <tr>
-      <td class="skill-tb-name">${sk.icon} ${escapeHtml(sk.name)}
+      <td class="skill-tb-name">${skillIconHtml(sk, 26)} ${escapeHtml(sk.name)}
         <small>${SKILL_AREAS[sk.area].name}</small></td>
       ${sk.levels.map(lv => `
         <td class="${lv.n > 0 ? '' : 'skill-tb-off'}">
@@ -182,7 +182,7 @@ function skillBoardHtml() {
     .map(u => {
       const sk = SkillEngine.byId(u.skillId);
       return `<div class="skill-use-row">
-        <span>${sk ? sk.icon : '•'} ${escapeHtml(u.studentName || u.studentId)}</span>
+        <span>${sk ? skillIconHtml(sk, 20) : '•'} ${escapeHtml(u.studentName || u.studentId)}</span>
         <span class="skill-stage-meta">${sk ? escapeHtml(sk.name) : u.skillId}${
           u.power ? ' ×' + u.power : ''}</span>
       </div>`;

@@ -97,7 +97,7 @@ Object.assign(StudentApp, {
                     ${used || left <= 0 ? 'disabled' : ''}
                     title="${escapeHtml(sk.desc + ' — ' + (lv.text || ''))}"
                     onclick="StudentApp.useQuizSkill('${sk.id}', '${q.id}')">
-                    ${sk.icon} ${escapeHtml(sk.name)}${
+                    ${skillIconHtml(sk, 18)} ${escapeHtml(sk.name)}${
                       used ? ' ✓' : `<small>剩 ${left}</small>`}</button>`;
         }).join('')}
       </div>`;
@@ -160,11 +160,18 @@ Object.assign(StudentApp, {
           const waiting  = pendingIds.includes(item.id);
           const disabled = soldOut || tooPoor || waiting;
 
+          // 技能果實用技能自己的圖示(帶統一外框),其他獎品照舊用 emoji
+          const fruitOf = SkillEngine.skillOfFruit(item.id);
+
           return `
-          <div class="prize-card ${disabled ? 'disabled' : ''}">
-            <div class="prize-icon">${escapeHtml(item.icon || '🎁')}</div>
+          <div class="prize-card ${disabled ? 'disabled' : ''} ${fruitOf ? 'is-fruit' : ''}">
+            <div class="prize-icon">${fruitOf
+              ? skillIconHtml(fruitOf, 56)
+              : escapeHtml(item.icon || '🎁')}</div>
             <div class="prize-body">
-              <div class="prize-name">${escapeHtml(item.name)}</div>
+              <div class="prize-name">${escapeHtml(item.name)}${
+                fruitOf && SkillEngine.owns(this.student, fruitOf.id)
+                  ? ' <span class="prize-owned">已擁有</span>' : ''}</div>
               ${item.description
                 ? `<div class="prize-desc">${escapeHtml(item.description)}</div>` : ''}
               <div class="prize-meta">

@@ -26,7 +26,7 @@
 const PET_SKILLS = [
   /* ---------- 領地戰 ---------- */
   {
-    id: 'war_power', area: 'war', icon: '⚔️', name: '猛擊',
+    id: 'war_power', area: 'war', icon: '⚔️', img: 'power', name: '猛擊',
     short: '答對的佔領分加倍',
     desc: '開題前發動,這一題答對的佔領分會變成好幾倍。答錯無效。',
     price: 30,
@@ -38,7 +38,7 @@ const PET_SKILLS = [
     ]
   },
   {
-    id: 'war_shield', area: 'war', icon: '🛡️', name: '護盾',
+    id: 'war_shield', area: 'war', icon: '🛡️', img: 'shield', name: '護盾',
     short: '擋掉一次答錯的倒扣',
     desc: '答錯之後使用,抵銷那一次的佔領分倒扣。只能擋自己的。',
     price: 35,
@@ -50,7 +50,7 @@ const PET_SKILLS = [
     ]
   },
   {
-    id: 'war_focus', area: 'war', icon: '🌀', name: '靜心',
+    id: 'war_focus', area: 'war', icon: '🌀', img: 'focus', name: '靜心',
     short: '立刻解除連錯冷卻',
     desc: '連錯被罰等待時使用,不用等就能再出手。',
     price: 25,
@@ -62,7 +62,7 @@ const PET_SKILLS = [
     ]
   },
   {
-    id: 'war_hand', area: 'war', icon: '✋', name: '巧手',
+    id: 'war_hand', area: 'war', icon: '✋', img: 'hand', name: '巧手',
     short: '這次攻擊多幾次換題機會',
     desc: '攻打一格時發動,這一次的換題次數變多。遇到還沒教過的單元就靠它。',
     price: 20,
@@ -76,7 +76,7 @@ const PET_SKILLS = [
 
   /* ---------- 測驗 ---------- */
   {
-    id: 'quiz_double', area: 'quiz', icon: '📘', name: '專注',
+    id: 'quiz_double', area: 'quiz', icon: '📘', img: 'double', name: '專注',
     short: '這份測驗得分加倍',
     desc: '結算前指定一份測驗,那一份的得分會變成好幾倍。',
     price: 30,
@@ -88,7 +88,7 @@ const PET_SKILLS = [
     ]
   },
   {
-    id: 'quiz_insure', area: 'quiz', icon: '🧷', name: '保險',
+    id: 'quiz_insure', area: 'quiz', icon: '🧷', img: 'insure', name: '保險',
     short: '搶分沒進名次也有分',
     desc: '搶分類測驗專用。沒搶進名次時,照答對題數算的分數還是拿得到。',
     price: 35,
@@ -101,7 +101,7 @@ const PET_SKILLS = [
     ]
   },
   {
-    id: 'quiz_gift', area: 'quiz', icon: '🎀', name: '送分',
+    id: 'quiz_gift', area: 'quiz', icon: '🎀', img: 'gift', name: '送分',
     short: '直接多算一題答對',
     desc: '結算前指定一份測驗,那一份直接多算一題答對(不會超過總題數)。',
     price: 30,
@@ -115,7 +115,7 @@ const PET_SKILLS = [
 
   /* ---------- 商店 ---------- */
   {
-    id: 'shop_discount', area: 'shop', icon: '🏷️', name: '議價',
+    id: 'shop_discount', area: 'shop', icon: '🏷️', img: 'discount', name: '議價',
     short: '兌換獎品打折',
     desc: '兌換一項獎品時發動,那一次的價格打折(無條件捨去)。',
     price: 25,
@@ -128,6 +128,13 @@ const PET_SKILLS = [
     ]
   }
 ];
+
+/* 圖示檔放在 assets/skill/{img}.png。
+   外框一律由 CSS 畫,不靠圖片自己帶 —— AI 每張畫出來的底板都不一樣,
+   交給程式才會八張完全一致,也才能隨主題與尺寸變化。
+   圖檔還沒放進去時自動退回 emoji,所以不會開天窗。 */
+const SKILL_ICON_DIR = 'assets/skill/';
+let SKILL_ICON_MISSING = {};        // 載入失敗的記在這裡,之後直接用 emoji
 
 const SKILL_AREAS = {
   war:  { name: '領地戰', icon: '🗺️' },
@@ -145,7 +152,31 @@ const SKILL_DEFAULTS = {
   weeks: 1           // 幾週算一季(1 = 每週一刷新)
 };
 
+/* 技能圖示的 HTML。size 是外框邊長(px)。
+   圖載不到就把整個 <span> 換成 emoji —— 不會留下破圖。 */
+function skillIconHtml(skill, size) {
+  const px = size || 44;
+  if (!skill) return '';
+  if (!skill.img || SKILL_ICON_MISSING[skill.id]) {
+    return `<span class="skill-ico is-emoji" style="--ico:${px}px">${skill.icon}</span>`;
+  }
+  return `<span class="skill-ico" style="--ico:${px}px"><img
+    src="${SKILL_ICON_DIR}${skill.img}.png" alt="${escapeHtml(skill.name)}"
+    onerror="SkillEngine.iconFailed('${skill.id}', this)" /></span>`;
+}
+
 const SkillEngine = {
+  /* 圖載不到就記下來,並當場換成 emoji。只記一次,不會一直重試。 */
+  iconFailed(skillId, img) {
+    SKILL_ICON_MISSING[skillId] = true;
+    const s = this.byId(skillId);
+    const box = img.parentElement;
+    if (box && s) {
+      box.classList.add('is-emoji');
+      box.textContent = s.icon;
+    }
+  },
+
   byId(id) {
     return PET_SKILLS.find(s => s.id === id) || null;
   },

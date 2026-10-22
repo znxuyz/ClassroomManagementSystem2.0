@@ -139,7 +139,7 @@ Object.assign(StudentApp, {
           <div class="skill-grid">
             ${mine.map(s => `
               <div class="skill-card ${s.total === 0 ? 'locked' : s.left > 0 ? '' : 'spent'}">
-                <span class="skill-icon">${s.icon}</span>
+                ${skillIconHtml(s, 44)}
                 <div class="skill-body">
                   <div class="skill-name">${escapeHtml(s.name)}
                     <span class="skill-area">${SKILL_AREAS[s.area].icon} ${SKILL_AREAS[s.area].name}</span>
@@ -158,7 +158,7 @@ Object.assign(StudentApp, {
         ${unbought.length > 0 ? `
           <div class="skill-shop-hint">
             還有 <strong>${unbought.length}</strong> 顆技能果實沒買:
-            ${unbought.map(s => `${s.icon}${escapeHtml(s.name)}`).join('、')}
+            ${unbought.map(s => `${skillIconHtml(s, 18)}${escapeHtml(s.name)}`).join(' ')}
             —— 在<strong>兌換</strong>分頁。
           </div>` : ''}
       </section>`;
@@ -174,9 +174,9 @@ Object.assign(StudentApp, {
       const now = SkillEngine.levelAt(s.id, stage);
       const next = SkillEngine.levelAt(s.id, stage + 1);
       if (!next.n) return null;
-      if (!now.n) return `${s.icon} <strong>${escapeHtml(s.name)}</strong> 解鎖 —— ${escapeHtml(next.text)}`;
+      if (!now.n) return `${skillIconHtml(s, 20)} <strong>${escapeHtml(s.name)}</strong> 解鎖 —— ${escapeHtml(next.text)}`;
       if (now.n === next.n && now.p === next.p) return null;
-      return `${s.icon} <strong>${escapeHtml(s.name)}</strong> ${escapeHtml(now.text)}
+      return `${skillIconHtml(s, 20)} <strong>${escapeHtml(s.name)}</strong> ${escapeHtml(now.text)}
               → <strong>${escapeHtml(next.text)}</strong>`;
     }).filter(Boolean);
 
