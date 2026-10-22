@@ -251,11 +251,11 @@ function showImportTemplateHint() {
 /* ============================================
    題庫 Excel 匯入
    ────────────────────────────────────────────
-   領地戰與一般測驗共用同一份解析,只是欄位用到的不同:
+   蜂巢戰紀與一般測驗共用同一份解析,只是欄位用到的不同:
      題目 | 選項A | 選項B | 選項C | 選項D | 正確答案 | 難度 | 題型
 
    · 正確答案:填 A/B/C/D,或 1/2/3/4;是非題填 O/X
-   · 難度:簡單/普通/困難(只有領地戰會用到)
+   · 難度:簡單/普通/困難(只有蜂巢戰紀會用到)
    · 題型:選擇/是非/簡答(只有一般測驗會用到,留空當選擇題)
 ============================================ */
 
@@ -396,11 +396,11 @@ const QuestionImport = {
     XLSX.utils.book_append_sheet(wb, ws, '題庫');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(notes), '填寫說明');
 
-    XLSX.writeFile(wb, isWar ? '領地戰題庫範本.xlsx' : '測驗題庫範本.xlsx');
+    XLSX.writeFile(wb, isWar ? '蜂巢戰紀題庫範本.xlsx' : '測驗題庫範本.xlsx');
   }
 };
 
-/* ---------- 領地戰題庫 ---------- */
+/* ---------- 蜂巢戰紀題庫 ---------- */
 
 function importTerritoryQuestionsFromExcel() {
   ExcelImport.pickFile((rows, filename) => {

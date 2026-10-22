@@ -1,5 +1,5 @@
 /* ============================================
-   領地佔領戰 — 老師端介面
+   蜂巢戰紀 — 老師端介面
    ────────────────────────────────────────────
    題庫管理、戰況看板、遊戲中調整設定、手動開放/封鎖。
    只有老師會用到,學生端不載入這一段也能運作。
@@ -45,7 +45,7 @@ async function publishTerritoryQuestions() {
   try {
     await Cloud.publishTerritoryQuestions(state.classId, state.territoryQuestions);
   } catch (e) {
-    console.error('[領地戰] 題庫發布失敗:', e);
+    console.error('[蜂巢戰紀] 題庫發布失敗:', e);
     toast('題庫同步失敗:' + e.message);
   }
 }
@@ -83,7 +83,7 @@ function renderTerritoryQuestions() {
 /* ---------- 開局 / 控制 ---------- */
 
 async function startTerritoryGame() {
-  if (!isCloudMode()) { toast('需要登入雲端才能進行領地戰'); return; }
+  if (!isCloudMode()) { toast('需要登入雲端才能進行蜂巢戰紀'); return; }
 
   const groups = state.currentGroups && state.currentGroups.length
     ? state.currentGroups
@@ -115,7 +115,7 @@ async function startTerritoryGame() {
     await publishTerritoryQuestions();
     await Cloud.clearTerritoryEvents(state.classId);
     await Cloud.saveTerritoryConfig(state.classId, config);  // config 本身不含 snapshot,等於重置
-    toast(`✦ 領地戰開始!${MAP_SHAPES[config.shape].name} ${Territory.cellsOf(config).length} 格,${groups.length} 組`);
+    toast(`✦ 蜂巢戰紀開始!${MAP_SHAPES[config.shape].name} ${Territory.cellsOf(config).length} 格,${groups.length} 組`);
   } catch (e) {
     console.error(e);
     toast('開局失敗:' + e.message);
@@ -127,7 +127,7 @@ async function endTerritoryGame() {
   if (!confirm('確定結束這一局?')) return;
   await Cloud.saveTerritoryConfig(state.classId,
     { ...TerritoryGame.config, status: 'ended', endedAt: Date.now() });
-  toast('領地戰已結束');
+  toast('蜂巢戰紀已結束');
 }
 
 /* 手動模式下,老師按一次往中心多開一圈 */
@@ -144,7 +144,7 @@ function renderTerritoryBoard() {
   if (!el) return;
 
   if (!isCloudMode()) {
-    el.innerHTML = '<div class="empty-state">需要登入雲端才能進行領地戰</div>';
+    el.innerHTML = '<div class="empty-state">需要登入雲端才能進行蜂巢戰紀</div>';
     return;
   }
   const c = TerritoryGame.config;

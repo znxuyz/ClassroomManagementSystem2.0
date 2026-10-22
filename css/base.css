@@ -446,3 +446,64 @@ select.setup-input {
     mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
   }
 }
+
+/* ============================================
+   兩層導覽
+   ────────────────────────────────────────────
+   原本 13 個分頁擠在一排,標題一長就會把後面的擠掉(踩過)。
+   改成 7 個分類 + 第二排項目,兩排都放得下,也不必再靠縮小字級硬塞。
+============================================ */
+.nav-tab-icon {
+  font-size: 13px;
+  line-height: 1;
+  margin-right: 5px;
+  opacity: .85;
+}
+
+.nav-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 10px 24px;
+  background: var(--paper-warm);
+  border-bottom: 1px solid var(--paper-shadow);
+}
+
+/* 只有一個項目的分類(系統設定)不會畫第二排,這時整條收起來 */
+.nav-subtabs:empty {
+  display: none;
+}
+
+.nav-sub {
+  min-height: 32px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+
+.nav-sub:hover { background: var(--paper); border-color: var(--paper-shadow); }
+
+.nav-sub.active {
+  background: var(--paper);
+  border-color: var(--forest);
+  color: var(--forest);
+}
+
+@media (max-width: 720px) {
+  .nav-subtabs { padding: 8px 12px; gap: 5px; }
+  .nav-sub { font-size: 12px; padding: 0 11px; min-height: 30px; }
+}
+
+/* 原本每個頁面自己那排子分頁,現在由上方第二排取代。
+   刻意保留在 DOM 裡而不是刪掉 —— switchSubTab() 與 renderActiveView()
+   都靠 .sub-tab.active 判斷現在停在哪一個子分頁。
+   刪掉要改十幾個 render 函式,留著只是不顯示,風險小得多。 */
+.sub-tabs { display: none; }

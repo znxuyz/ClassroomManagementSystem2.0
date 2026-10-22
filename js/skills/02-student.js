@@ -188,7 +188,7 @@ Object.assign(StudentApp, {
       </div>`;
   },
 
-  /* ---------- 領地戰:猛擊 ----------
+  /* ---------- 蜂巢戰紀:猛擊 ----------
      開題之前先按,因為倍率要寫進那一次作答的紀錄裡。 */
   armWarPower() {
     if (!this.canUse('war_power')) { toast('猛擊現在用不了'); return; }
@@ -196,7 +196,7 @@ Object.assign(StudentApp, {
     this.render();
   },
 
-  /* ---------- 領地戰:巧手 ----------
+  /* ---------- 蜂巢戰紀:巧手 ----------
      攻打中才用得上 —— 這一次攻擊的換題次數變多。
      ref 指名「是哪一次攻擊」,所以一次技能只加成那一次。 */
   async useHand() {
@@ -213,7 +213,7 @@ Object.assign(StudentApp, {
     }
   },
 
-  /* ---------- 領地戰:護盾 ----------
+  /* ---------- 蜂巢戰紀:護盾 ----------
      答錯之後才用得上,所以放在結果提示框裡。 */
   async useShield(attemptId) {
     if (!attemptId) return;
@@ -228,7 +228,7 @@ Object.assign(StudentApp, {
     }
   },
 
-  /* ---------- 領地戰:靜心 ----------
+  /* ---------- 蜂巢戰紀:靜心 ----------
      冷卻中才用得上。ref 指名「是哪一次冷卻」,規則據此確認一次只解一次。 */
   async useFocus() {
     const last = this.tLastAttempt;

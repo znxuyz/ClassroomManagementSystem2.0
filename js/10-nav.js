@@ -4,7 +4,12 @@
 function switchView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById(name + 'View').classList.add('active');
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view === name));
+
+  /* 導覽改成兩層之後,上面那排按的是「分類」不是畫面。
+     switchView 也可能從別處被呼叫(換班後重畫、程式內部跳頁),
+     所以這裡要把兩排導覽校正到對的位置 —— 否則會出現
+     「畫面換了但選單還停在上一個」。 */
+  if (typeof navSyncTo === 'function') navSyncTo(name);
   
   if (name === 'projector') renderProjector();
   if (name === 'overview') renderOverviewView();
@@ -20,7 +25,7 @@ function switchView(name) {
 
 /* 重畫目前停留的那一頁。
    renderAll() 只負責後台、測驗、報表那幾塊;座位表、點名、聯絡簿、
-   商店、領地戰是切到該分頁時才畫的,所以換班之後若不補這一下,
+   商店、蜂巢戰紀是切到該分頁時才畫的,所以換班之後若不補這一下,
    畫面會停在上一個班級的內容。 */
 function renderActiveView() {
   const view = document.querySelector('.view.active');

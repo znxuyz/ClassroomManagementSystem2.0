@@ -9,28 +9,28 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700;900&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 
 <!-- 樣式表 -->
-<link rel="stylesheet" href="css/base.css?v=20261022e">
-<link rel="stylesheet" href="css/components.css?v=20261022e">
-<link rel="stylesheet" href="css/dashboard.css?v=20261022e">
-<link rel="stylesheet" href="css/tools.css?v=20261022e">
-<link rel="stylesheet" href="css/management.css?v=20261022e">
-<link rel="stylesheet" href="css/contact.css?v=20261022e">
-<link rel="stylesheet" href="css/shop.css?v=20261022e">
-<link rel="stylesheet" href="css/ai.css?v=20261022e">
-<link rel="stylesheet" href="css/report.css?v=20261022e">
-<link rel="stylesheet" href="css/projector.css?v=20261022e">
-<link rel="stylesheet" href="css/settings.css?v=20261022e">
-<link rel="stylesheet" href="css/auth.css?v=20261022e">
-<link rel="stylesheet" href="css/quiz.css?v=20261022e">
-<link rel="stylesheet" href="css/student.css?v=20261022e">
-<link rel="stylesheet" href="css/pet-picker.css?v=20261022e">
-<link rel="stylesheet" href="css/leaderboard.css?v=20261022e">
-<link rel="stylesheet" href="css/territory.css?v=20261022e">
-<link rel="stylesheet" href="css/help.css?v=20261022e">
-<link rel="stylesheet" href="css/skills.css?v=20261022e">
-<link rel="stylesheet" href="css/hud.css?v=20261022e">
+<link rel="stylesheet" href="css/base.css?v=20261023a">
+<link rel="stylesheet" href="css/components.css?v=20261023a">
+<link rel="stylesheet" href="css/dashboard.css?v=20261023a">
+<link rel="stylesheet" href="css/tools.css?v=20261023a">
+<link rel="stylesheet" href="css/management.css?v=20261023a">
+<link rel="stylesheet" href="css/contact.css?v=20261023a">
+<link rel="stylesheet" href="css/shop.css?v=20261023a">
+<link rel="stylesheet" href="css/ai.css?v=20261023a">
+<link rel="stylesheet" href="css/report.css?v=20261023a">
+<link rel="stylesheet" href="css/projector.css?v=20261023a">
+<link rel="stylesheet" href="css/settings.css?v=20261023a">
+<link rel="stylesheet" href="css/auth.css?v=20261023a">
+<link rel="stylesheet" href="css/quiz.css?v=20261023a">
+<link rel="stylesheet" href="css/student.css?v=20261023a">
+<link rel="stylesheet" href="css/pet-picker.css?v=20261023a">
+<link rel="stylesheet" href="css/leaderboard.css?v=20261023a">
+<link rel="stylesheet" href="css/territory.css?v=20261023a">
+<link rel="stylesheet" href="css/help.css?v=20261023a">
+<link rel="stylesheet" href="css/skills.css?v=20261023a">
+<link rel="stylesheet" href="css/hud.css?v=20261023a">
 <!-- 主題:掛在 <html data-theme> 上,一定要放最後才蓋得過前面的規則 -->
-<link rel="stylesheet" href="css/theme-aurora.css?v=20261022e">
+<link rel="stylesheet" href="css/theme-aurora.css?v=20261023a">
 <script>
   // 在 CSS 之後、畫面之前就決定主題,避免載入瞬間閃一下舊配色
   document.documentElement.dataset.theme =
@@ -108,21 +108,9 @@
       <div class="brand-tagline">CLASSROOM · GUARDIANS</div>
     </div>
     
-    <nav class="nav-tabs">
-      <button class="nav-tab active" data-view="dashboard" onclick="switchView('dashboard')">老師後台</button>
-      <button class="nav-tab" data-view="tools" onclick="switchView('tools')">課堂工具</button>
-      <button class="nav-tab" data-view="quiz" onclick="switchView('quiz')">作業測驗</button>
-      <button class="nav-tab" data-view="territory" onclick="switchView('territory')">領地戰</button>
-      <button class="nav-tab" data-view="contact" onclick="switchView('contact')">聯絡簿</button>
-      <button class="nav-tab" data-view="management" onclick="switchView('management')">班級管理</button>
-      <button class="nav-tab" data-view="shop" onclick="switchView('shop')">商店任務</button>
-      <button class="nav-tab" data-view="ai" onclick="switchView('ai')">AI 助手</button>
-      <button class="nav-tab" data-view="projector" onclick="switchView('projector')">投影模式</button>
-      <button class="nav-tab" data-view="rules" onclick="switchView('rules')">積分規則</button>
-      <button class="nav-tab" data-view="overview" onclick="switchView('overview')">總覽報表</button>
-      <button class="nav-tab" data-view="help" onclick="switchView('help')">使用說明</button>
-      <button class="nav-tab" data-view="settings" onclick="switchView('settings')">設定</button>
-    </nav>
+    <!-- 兩層導覽。內容由 js/10b-nav-groups.js 的 NAV_GROUPS 產生,
+         要調順序或換分類只改那張表,不必動這裡。 -->
+    <nav class="nav-tabs" id="navTabs"></nav>
     
     <div class="class-badge">
       <!-- 雲端模式下班級名稱由 #classSwitcher 的下拉顯示,這個只在單機模式出現 -->
@@ -132,6 +120,9 @@
     </div>
   </header>
   
+  <!-- 第二排:目前分類底下的項目。同樣由 NAV_GROUPS 產生 -->
+  <nav class="nav-subtabs" id="navSubTabs"></nav>
+
   <main class="app-main">
     
     <!-- 老師後台 -->
@@ -179,7 +170,7 @@
     <section id="toolsView" class="view">
       <div class="view-header">
         <div>
-          <div class="view-title">課堂工具</div>
+          <div class="view-title">班級管理</div>
           <div class="view-subtitle">日常課堂的得力助手</div>
         </div>
       </div>
@@ -382,7 +373,7 @@
     <section id="quizView" class="view">
       <div class="view-header">
         <div>
-          <div class="view-title">作業測驗</div>
+          <div class="view-title">學生測驗</div>
           <div class="view-subtitle">出題後開放作答,學生用 Google 帳號登入作答,答對自動累積守護獸積分</div>
         </div>
       </div>
@@ -456,12 +447,12 @@
     </section>
 
     <!-- ============================================
-         領地佔領戰
+         蜂巢戰紀
     ============================================ -->
     <section id="territoryView" class="view">
       <div class="view-header">
         <div>
-          <div class="view-title">領地佔領戰</div>
+          <div class="view-title">蜂巢戰紀</div>
           <div class="view-subtitle">分組後才能玩。各組答題累積佔領分,搶下相鄰的地塊</div>
         </div>
       </div>
@@ -647,7 +638,7 @@
     <section id="shopView" class="view">
       <div class="view-header">
         <div>
-          <div class="view-title">商店任務</div>
+          <div class="view-title">兌換商店</div>
           <div class="view-subtitle">用積分養護你的守護獸,完成全班共同目標</div>
         </div>
       </div>
@@ -869,7 +860,7 @@
     <section id="overviewView" class="view">
       <div class="view-header">
         <div>
-          <div class="view-title">總覽報表</div>
+          <div class="view-title">數據成果</div>
           <div class="view-subtitle">班級整體狀態與每位學生的學期成長報告</div>
         </div>
       </div>
@@ -960,7 +951,7 @@
     <section id="settingsView" class="view">
       <div class="view-header">
         <div>
-          <div class="view-title">設定</div>
+          <div class="view-title">系統設定</div>
           <div class="view-subtitle">管理班級資料</div>
         </div>
       </div>
@@ -982,7 +973,7 @@
         <div class="panel-title">資料備份</div>
         <div class="text-muted" style="font-size: 12px; line-height: 1.9; margin-bottom: 12px;">
           ✦ 每天第一次開啟這個班級時,系統會自動留一份當天的快照(保留最近 30 份)。<br>
-          ✦ 學生的交卷、逐題作答、領地戰紀錄是各自獨立存放的,不在這份快照裡,
+          ✦ 學生的交卷、逐題作答、蜂巢戰紀紀錄是各自獨立存放的,不在這份快照裡,
             也不會被任何更新覆蓋。<br>
           ✦ 還原會把班級資料整個換成那一天的樣子,請先確認再按。
         </div>
@@ -1089,56 +1080,57 @@
 
 
 <!-- 應用程式邏輯(載入順序很重要) -->
-<script src="js/00-firebase.js?v=20261022e"></script>
-<script src="js/00b-session.js?v=20261022e"></script>
-<script src="js/00c-auth-ui.js?v=20261022e"></script>
-<script src="js/00d-switch-hud.js?v=20261022e"></script>
-<script src="js/01-constants.js?v=20261022e"></script>
-<script src="js/skills/01-defs.js?v=20261022e"></script>
-<script src="js/02-state.js?v=20261022e"></script>
-<script src="js/03-storage.js?v=20261022e"></script>
-<script src="js/04-utils.js?v=20261022e"></script>
-<script src="js/05-pet-engine.js?v=20261022e"></script>
-<script src="js/06-ai.js?v=20261022e"></script>
-<script src="js/06b-ai-hud.js?v=20261022e"></script>
-<script src="js/07-excel.js?v=20261022e"></script>
-<script src="js/10-nav.js?v=20261022e"></script>
-<script src="js/feature-setup.js?v=20261022e"></script>
-<script src="js/feature-students.js?v=20261022e"></script>
-<script src="js/feature-dashboard.js?v=20261022e"></script>
-<script src="js/feature-batch-award.js?v=20261022e"></script>
-<script src="js/feature-attendance.js?v=20261022e"></script>
-<script src="js/feature-picker.js?v=20261022e"></script>
-<script src="js/feature-timer.js?v=20261022e"></script>
-<script src="js/feature-seating.js?v=20261022e"></script>
-<script src="js/feature-grouping.js?v=20261022e"></script>
-<script src="js/feature-quiz.js?v=20261022e"></script>
-<script src="js/territory/01-hex.js?v=20261022e"></script>
-<script src="js/territory/02-shapes.js?v=20261022e"></script>
-<script src="js/territory/03-engine.js?v=20261022e"></script>
-<script src="js/territory/04-map-view.js?v=20261022e"></script>
-<script src="js/territory/05-game.js?v=20261022e"></script>
-<script src="js/territory/06-teacher.js?v=20261022e"></script>
-<script src="js/feature-leaderboard.js?v=20261022e"></script>
-<script src="js/student/01-app.js?v=20261022e"></script>
-<script src="js/student/02-tabs.js?v=20261022e"></script>
-<script src="js/skills/02-student.js?v=20261022e"></script>
-<script src="js/student/03-quiz.js?v=20261022e"></script>
-<script src="js/student/04-war.js?v=20261022e"></script>
-<script src="js/student/05-result.js?v=20261022e"></script>
-<script src="js/skills/03-teacher.js?v=20261022e"></script>
-<script src="js/feature-contact-book.js?v=20261022e"></script>
-<script src="js/feature-homework.js?v=20261022e"></script>
-<script src="js/feature-shop.js?v=20261022e"></script>
-<script src="js/feature-class-tasks.js?v=20261022e"></script>
-<script src="js/feature-ai-features.js?v=20261022e"></script>
-<script src="js/feature-projector.js?v=20261022e"></script>
-<script src="js/feature-overview.js?v=20261022e"></script>
-<script src="js/feature-report.js?v=20261022e"></script>
-<script src="js/feature-rules.js?v=20261022e"></script>
-<script src="js/feature-help.js?v=20261022e"></script>
-<script src="js/feature-settings.js?v=20261022e"></script>
-<script src="js/99-app.js?v=20261022e"></script>
+<script src="js/00-firebase.js?v=20261023a"></script>
+<script src="js/00b-session.js?v=20261023a"></script>
+<script src="js/00c-auth-ui.js?v=20261023a"></script>
+<script src="js/00d-switch-hud.js?v=20261023a"></script>
+<script src="js/01-constants.js?v=20261023a"></script>
+<script src="js/skills/01-defs.js?v=20261023a"></script>
+<script src="js/02-state.js?v=20261023a"></script>
+<script src="js/03-storage.js?v=20261023a"></script>
+<script src="js/04-utils.js?v=20261023a"></script>
+<script src="js/05-pet-engine.js?v=20261023a"></script>
+<script src="js/06-ai.js?v=20261023a"></script>
+<script src="js/06b-ai-hud.js?v=20261023a"></script>
+<script src="js/07-excel.js?v=20261023a"></script>
+<script src="js/10-nav.js?v=20261023a"></script>
+<script src="js/10b-nav-groups.js?v=20261023a"></script>
+<script src="js/feature-setup.js?v=20261023a"></script>
+<script src="js/feature-students.js?v=20261023a"></script>
+<script src="js/feature-dashboard.js?v=20261023a"></script>
+<script src="js/feature-batch-award.js?v=20261023a"></script>
+<script src="js/feature-attendance.js?v=20261023a"></script>
+<script src="js/feature-picker.js?v=20261023a"></script>
+<script src="js/feature-timer.js?v=20261023a"></script>
+<script src="js/feature-seating.js?v=20261023a"></script>
+<script src="js/feature-grouping.js?v=20261023a"></script>
+<script src="js/feature-quiz.js?v=20261023a"></script>
+<script src="js/territory/01-hex.js?v=20261023a"></script>
+<script src="js/territory/02-shapes.js?v=20261023a"></script>
+<script src="js/territory/03-engine.js?v=20261023a"></script>
+<script src="js/territory/04-map-view.js?v=20261023a"></script>
+<script src="js/territory/05-game.js?v=20261023a"></script>
+<script src="js/territory/06-teacher.js?v=20261023a"></script>
+<script src="js/feature-leaderboard.js?v=20261023a"></script>
+<script src="js/student/01-app.js?v=20261023a"></script>
+<script src="js/student/02-tabs.js?v=20261023a"></script>
+<script src="js/skills/02-student.js?v=20261023a"></script>
+<script src="js/student/03-quiz.js?v=20261023a"></script>
+<script src="js/student/04-war.js?v=20261023a"></script>
+<script src="js/student/05-result.js?v=20261023a"></script>
+<script src="js/skills/03-teacher.js?v=20261023a"></script>
+<script src="js/feature-contact-book.js?v=20261023a"></script>
+<script src="js/feature-homework.js?v=20261023a"></script>
+<script src="js/feature-shop.js?v=20261023a"></script>
+<script src="js/feature-class-tasks.js?v=20261023a"></script>
+<script src="js/feature-ai-features.js?v=20261023a"></script>
+<script src="js/feature-projector.js?v=20261023a"></script>
+<script src="js/feature-overview.js?v=20261023a"></script>
+<script src="js/feature-report.js?v=20261023a"></script>
+<script src="js/feature-rules.js?v=20261023a"></script>
+<script src="js/feature-help.js?v=20261023a"></script>
+<script src="js/feature-settings.js?v=20261023a"></script>
+<script src="js/99-app.js?v=20261023a"></script>
 
 </body>
 </html>

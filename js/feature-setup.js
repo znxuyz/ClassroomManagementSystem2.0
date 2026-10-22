@@ -10,6 +10,7 @@ function showApp() {
   hideAllTopViews();
   document.getElementById('appView').classList.remove('hidden');
   renderClassSwitcher();
+  renderNavTabs();          // 兩層導覽要先畫出來,否則上面是空的
   renderAll();
 }
 

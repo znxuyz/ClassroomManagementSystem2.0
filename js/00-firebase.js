@@ -526,7 +526,7 @@ const Cloud = {
       }, err => console.warn('[Cloud] 兌換監聽中斷:', err.message));
   },
 
-  /* ---------- 領地佔領戰 ----------
+  /* ---------- 蜂巢戰紀 ----------
      地圖不存在任何地方 —— 它是由 tevents 重播出來的。
      所以這裡只有三種資料:設定、題目、作答事件。
 
@@ -542,7 +542,7 @@ const Cloud = {
     return this.db.collection('classes').doc(classId)
       .collection('territory').doc('config')
       .onSnapshot(snap => cb(snap.exists ? snap.data() : null),
-        err => console.warn('[領地戰] 設定監聽中斷:', err.message));
+        err => console.warn('[蜂巢戰紀] 設定監聽中斷:', err.message));
   },
 
   /* 一次寫兩份:給學生看的(不含答案)與給規則核對的(含答案) */
@@ -566,7 +566,7 @@ const Cloud = {
     return this.db.collection('classes').doc(classId)
       .collection('territory').doc('questions')
       .onSnapshot(snap => cb(snap.exists ? (snap.data().questions || []) : []),
-        err => console.warn('[領地戰] 題庫監聽中斷:', err.message));
+        err => console.warn('[蜂巢戰紀] 題庫監聽中斷:', err.message));
   },
 
   /* 送出一次攻擊。答錯的話會被安全規則擋下來,
@@ -623,7 +623,7 @@ const Cloud = {
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   },
 
-  /* 全班的技能使用。老師端看得到誰用了什麼;領地戰的護盾也要靠它重播,
+  /* 全班的技能使用。老師端看得到誰用了什麼;蜂巢戰紀的護盾也要靠它重播,
      所以學生端在有人用過護盾時也需要 —— 一季的量很小。 */
   watchSkillUses(classId, season, cb) {
     return this.db.collection('classes').doc(classId)
@@ -634,7 +634,7 @@ const Cloud = {
 
   /* 用掉一次技能。n 是「這一季的第幾次」,由呼叫端算好 ——
      撞號代表同一次被送了兩遍,規則會擋下來(不准修改既有文件)。
-     回傳文件 id,領地戰的事件要附上它,規則才查得到這次加成。 */
+     回傳文件 id,蜂巢戰紀的事件要附上它,規則才查得到這次加成。 */
   async useSkill(classId, uid, payload) {
     const id = `${uid}_${payload.season}_${payload.skillId}_${payload.n}`;
     await this.db.collection('classes').doc(classId)
@@ -672,7 +672,7 @@ const Cloud = {
           out[d.id] = { id: d.id, ...data, at: data.at.toMillis() };
         });
         cb(out);
-      }, err => console.warn('[領地戰] 失手監聽中斷:', err.message));
+      }, err => console.warn('[蜂巢戰紀] 失手監聽中斷:', err.message));
   },
 
   /* 連錯冷卻只需要「我最後一筆嘗試」,不需要整串。
@@ -733,7 +733,7 @@ const Cloud = {
         });
         list.sort((a, b) => a.at - b.at);
         cb(list);
-      }, err => console.warn('[領地戰] 嘗試監聽中斷:', err.message));
+      }, err => console.warn('[蜂巢戰紀] 嘗試監聽中斷:', err.message));
   },
 
   /* 文件 id 固定為 {uid}_{題目id}:同一題每個人只能答一次。
@@ -768,7 +768,7 @@ const Cloud = {
           list.push({ id: d.id, ...data, at: data.at.toMillis() });
         });
         cb(list);
-      }, err => console.warn('[領地戰] 事件監聽中斷:', err.message));
+      }, err => console.warn('[蜂巢戰紀] 事件監聽中斷:', err.message));
   },
 
   /* 重新開局時清掉上一局的事件與作答嘗試 */

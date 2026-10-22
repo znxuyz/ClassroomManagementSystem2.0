@@ -53,7 +53,7 @@ const StudentApp = {
     this.watchPurchases();
     this.watchTerritory();
     this.watchSkills();
-    // 自己的領地戰紀錄等「真的有一局在跑」再讀,沒開局就不必花那些讀取
+    // 自己的蜂巢戰紀紀錄等「真的有一局在跑」再讀,沒開局就不必花那些讀取
   },
 
   /* 老師結算兌換後,狀態會即時反映在學生畫面上 */
@@ -219,7 +219,7 @@ const StudentApp = {
                 onclick="StudentApp.setTab('shop')">兌換</button>
         ${TerritoryGame.config && TerritoryGame.config.status === 'running' ? `
         <button class="student-tab war ${this.tab === 'war' ? 'active' : ''}"
-                onclick="StudentApp.setTab('war')">領地戰</button>` : ''}
+                onclick="StudentApp.setTab('war')">蜂巢戰紀</button>` : ''}
         <button class="student-tab ${this.tab === 'help' ? 'active' : ''}"
                 onclick="StudentApp.setTab('help')" title="使用說明">說明</button>
       </nav>

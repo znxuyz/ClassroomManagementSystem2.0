@@ -1,5 +1,5 @@
 /* ============================================
-   領地佔領戰 — 連線與重播
+   蜂巢戰紀 — 連線與重播
    ────────────────────────────────────────────
    訂閱雲端的設定/事件/嘗試,變動時重新重播。
    這裡是唯一持有「目前這一局」狀態的地方。
@@ -27,7 +27,7 @@ const TerritoryGame = {
   onUpdate: null,      // 學生端掛自己的重繪
 
   // classId 要能外傳:學生端不會設定 state.classId(那是老師端載入班級才有的),
-  // 所以不能沿用 isCloudMode(),否則學生永遠收不到戰況、看不到領地戰分頁。
+  // 所以不能沿用 isCloudMode(),否則學生永遠收不到戰況、看不到蜂巢戰紀分頁。
   start(onUpdate, classId) {
     this.stop();
     const cid = classId || state.classId;
@@ -186,9 +186,9 @@ const TerritoryGame = {
       battles: Territory.battlesOf(this.map),
       compactedAt: since
     }).then(() => {
-      console.info(`[領地戰] 已自動壓縮 ${n} 筆戰況,之後只讀新的`);
+      console.info(`[蜂巢戰紀] 已自動壓縮 ${n} 筆戰況,之後只讀新的`);
     }).catch(e => {
-      console.warn('[領地戰] 自動壓縮失敗:', e.message);
+      console.warn('[蜂巢戰紀] 自動壓縮失敗:', e.message);
       this._lastCompact = 0;        // 失敗就讓它下次再試
     });
   },

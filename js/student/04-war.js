@@ -1,5 +1,5 @@
 /* ============================================
-   學生端:領地佔領戰
+   學生端:蜂巢戰紀
    ────────────────────────────────────────────
    地圖和老師端跑同一份重播,所以兩邊看到的必然一致。
    答錯時安全規則會擋下寫入(permission-denied),據此判定對錯 ——
@@ -34,7 +34,7 @@ Object.assign(StudentApp, {
   watchTerritory() {
     // 重播引擎由老師端與學生端共用,這裡只是掛上自己的重繪
     // 老師開戰/收工時,分頁列本身要跟著出現或消失 —— 不能只在已經站在
-    // 領地戰分頁時才重繪,否則學生會一直看不到那個分頁。
+    // 蜂巢戰紀分頁時才重繪,否則學生會一直看不到那個分頁。
     TerritoryGame.start(() => {
       const running = !!(TerritoryGame.config && TerritoryGame.config.status === 'running');
       /* 開了局才去讀自己的作答紀錄(答過哪些題、連錯幾題)。
@@ -92,7 +92,7 @@ Object.assign(StudentApp, {
         if (g != null && centerOnGroup(g, { instant: true })) this._warCentered = true;
       });
     }
-    if (!c) return '<div class="student-empty">老師還沒開始領地戰</div>';
+    if (!c) return '<div class="student-empty">老師還沒開始蜂巢戰紀</div>';
 
     const map = TerritoryGame.map;
     const groupIdx = this.myGroupIdx();
@@ -234,7 +234,7 @@ Object.assign(StudentApp, {
         });
       this.rememberAttempt(q.id, streak, swapsUsed);
     } catch (e) {
-      console.warn('[領地戰] 換題失敗:', e.code || e.message);
+      console.warn('[蜂巢戰紀] 換題失敗:', e.code || e.message);
       this.tSwapping = false;
       toast('換題失敗:' + (e.message || e.code));
       // 被擋下通常代表本機算的鏈接錯了,從伺服器重新接一次
@@ -317,7 +317,7 @@ Object.assign(StudentApp, {
       this.focusUseId = null;
       this.rememberAttempt(q.id, streak, 0);
     } catch (e) {
-      console.warn('[領地戰] 登記作答失敗:', e.code || e.message);
+      console.warn('[蜂巢戰紀] 登記作答失敗:', e.code || e.message);
       this.tOpening = false;
       toast(e.code === 'permission-denied'
         ? '開啟題目被拒絕 —— 可能是冷卻還沒結束,或請老師確認 Firestore 安全性規則已重新發布'
@@ -425,7 +425,7 @@ Object.assign(StudentApp, {
       studentName: this.classInfo.name,
       groupIdx: this.myGroupIdx(),
       hexKey, questionId, why
-    }).catch(e => console.warn('[領地戰] 回報失手失敗:', e.code || e.message));
+    }).catch(e => console.warn('[蜂巢戰紀] 回報失手失敗:', e.code || e.message));
   },
 
   /* 答錯之後要講清楚現在連錯幾題、還差幾題就要等 ——
@@ -491,7 +491,7 @@ Object.assign(StudentApp, {
         await box.requestFullscreen();
       }
     } catch (e) {
-      console.warn('[領地戰] 無法進入全螢幕:', e.message);
+      console.warn('[蜂巢戰紀] 無法進入全螢幕:', e.message);
     }
 
     this._onLeave = () => {

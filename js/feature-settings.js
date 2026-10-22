@@ -224,7 +224,7 @@ async function restoreBackup(backupId) {
     `要把「${state.className}」還原成 ${backupId} 的樣子嗎?\n\n` +
     `學生名單、積分、點名、分組、聯絡簿、作業、商店、測驗題目都會回到那一天。\n` +
     `那天之後的這些異動會消失。\n\n` +
-    `(學生的交卷、逐題作答、領地戰紀錄是分開存的,不受影響)`
+    `(學生的交卷、逐題作答、蜂巢戰紀紀錄是分開存的,不受影響)`
   )) return;
   if (!confirm(`最後確認:真的要還原到 ${backupId} 嗎?`)) return;
 
@@ -263,7 +263,7 @@ function exportClassBackup() {
     匯出時間: new Date().toISOString(),
     班級: state.className,
     老師: state.teacherName,
-    說明: '這是班級資料的完整備份。學生的交卷與領地戰紀錄存在雲端的子集合,不在這個檔案裡。',
+    說明: '這是班級資料的完整備份。學生的交卷與蜂巢戰紀紀錄存在雲端的子集合,不在這個檔案裡。',
     blob: serializeState()
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
