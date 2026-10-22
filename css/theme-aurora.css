@@ -171,10 +171,17 @@ html[data-theme="aurora"] .nav-tab {
   border-radius: 8px;
 }
 
-html[data-theme="aurora"] .nav-tab.active {
+/* 底色改由會滑動的高亮負責,所以漸層掛到它身上,
+   按鈕自己只留文字顏色 */
+html[data-theme="aurora"] .nav-tabs .nav-ind {
   background: linear-gradient(180deg, #3d59e8 0%, #2f4bd8 100%);
-  color: #fff;
   box-shadow: var(--glow);
+}
+
+html[data-theme="aurora"] .nav-tab.active {
+  background: transparent;
+  color: #fff;
+  box-shadow: none;
 }
 
 html[data-theme="aurora"] .brand-tagline { color: #98a5bd; }

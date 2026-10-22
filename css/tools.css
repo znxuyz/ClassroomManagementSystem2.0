@@ -449,3 +449,36 @@
   font-size: 12px;
   color: var(--ink-soft);
 }
+
+/* ============================================
+   窄螢幕:點名的那一排要能換行
+   ────────────────────────────────────────────
+   日期、統計、按鈕原本靠 space-between 擠在同一排,
+   手機上放不下就整個溢出(實測 142px)。
+============================================ */
+@media (max-width: 760px) {
+  .attendance-header {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+
+  .attendance-summary {
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  /* 固定寬度的輸入框要跟著容器縮。
+     實測元凶是 .bulk-actions 那一排(不是我原本猜的 .attendance-header)——
+     它是 flex 但不換行,裡面的輸入框又是固定寬,所以整個撐出畫面。 */
+  .attendance-header .rule-editor-input,
+  .bulk-actions .rule-editor-input {
+    min-width: 0;
+    max-width: 100%;
+    flex: 1 1 140px;
+  }
+
+  .bulk-actions {
+    flex-wrap: wrap;
+  }
+}

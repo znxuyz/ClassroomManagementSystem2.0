@@ -210,57 +210,38 @@ body {
 
 .view {
   display: none;
-  animation: viewSlideIn 0.26s var(--ease-out);
+  animation: viewFadeIn 0.3s var(--ease-out);
 }
 
 .view.active {
   display: block;
 }
 
-/* ============================================
-   切換的滑動動畫
-   ────────────────────────────────────────────
-   選單是橫向排列的,所以切換時從右邊滑進來,方向上才對得起來
-   (原本是由下往上淡入,和「左右切分頁」的動作不一致)。
-
-   刻意做得快(0.26 秒):老師一節課要切十幾次,動畫慢一點點
-   就會變成每次都在等它跑完。
-============================================ */
-/* 位移方向刻意往「左」。
-   往右位移會把內容推出可視範圍,瀏覽器就長出一條橫向捲軸,
-   動畫期間畫面會抖一下(實測確認過)。在由左至右的版面裡,
-   向左的溢出不會列入可捲動範圍,所以不會有這個副作用。 */
-@keyframes viewSlideIn {
-  from { opacity: 0; transform: translateX(-18px); }
-  to   { opacity: 1; transform: translateX(0); }
+/* 切換畫面是淡入(由下往上一點點)。
+   「滑動」的部分做在按鈕上 —— 高亮會從舊的按鈕滑到新的那一顆,
+   整個畫面跟著滑反而會暈,而且往右位移還會長出橫向捲軸。 */
+@keyframes viewFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-/* 子分頁(第二排)切換:幅度小一點,因為只換了內容的一部分。
-
-   學生端的 .student-pane 要加 .is-switching 才會動 ——
-   它在「每一次重繪」都會重建(老師一加分、戰況一更新就重繪),
-   無條件動畫的話畫面會一直滑來滑去。只有真的切分頁時才加那個 class。 */
 .sub-view.active,
 .help-group.active,
 .student-pane.is-switching {
-  animation: paneSlideIn 0.22s var(--ease-out);
+  animation: viewFadeIn 0.24s var(--ease-out);
 }
 
-@keyframes paneSlideIn {
-  from { opacity: 0; transform: translateX(-10px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-
-/* 作業系統設了「減少動態效果」就不要動 ——
-   有些孩子對畫面滑動會不舒服,這個設定要尊重。 */
 @media (prefers-reduced-motion: reduce) {
   .view,
   .sub-view.active,
   .help-group.active,
-  .student-pane.is-switching {
-    animation: none;
+  .student-pane.is-switching,
+  .nav-ind {
+    animation: none !important;
+    transition: none !important;
   }
 }
+
 
 .view-header {
   display: flex;
@@ -550,4 +531,68 @@ select.setup-input {
 @media (max-width: 720px) {
   .nav-subtabs { padding: 8px 12px; gap: 5px; }
   .nav-sub { font-size: 12px; padding: 0 11px; min-height: 30px; }
+}
+
+/* ============================================
+   會滑動的高亮
+   ────────────────────────────────────────────
+   按鈕本身不畫底色,底色由這一塊絕對定位的方塊負責 ——
+   切換時它會從舊的按鈕滑到新的那一顆。
+
+   寬度與高度都是用 JS 量出來的(見 slideIndicator),因為中文字數不同、
+   按鈕寬度就不同,純 CSS 算不出來。
+============================================ */
+.nav-tabs,
+.nav-subtabs,
+.help-nav {
+  position: relative;
+}
+
+.nav-ind {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 999px;
+  /* 顏色由各排自己指定(見下面)—— 三排的選中樣式本來就不一樣:
+     頁首是深底配金色、第二排是淺底配綠框、說明側欄是綠底配白字。 */
+  background: var(--gold);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+  transition: transform .3s var(--ease-out),
+              width .3s var(--ease-out),
+              height .3s var(--ease-out),
+              opacity .2s linear;
+}
+
+/* 按鈕要疊在高亮上面,文字才看得到 */
+.nav-tabs > button,
+.nav-subtabs > button,
+.help-nav > button {
+  position: relative;
+  z-index: 1;
+}
+
+/* 底色交給高亮,按鈕自己只負責文字顏色 */
+.nav-tab.active,
+.nav-sub.active,
+.help-nav-btn.active {
+  background: transparent;
+}
+
+/* 第二排:淺底 + 綠框(維持原本的樣子) */
+.nav-subtabs .nav-ind {
+  background: var(--paper);
+  border: 1px solid var(--forest);
+}
+
+.nav-sub.active { border-color: transparent; }
+
+/* 說明頁的分類:綠底白字 */
+.help-nav .nav-ind { background: var(--forest); }
+.help-nav-btn.active { border-color: transparent; }
+
+/* 說明頁在寬螢幕是直的,高亮的圓角跟著按鈕變方一點 */
+@media (min-width: 1100px) {
+  .help-nav .nav-ind { border-radius: var(--control-r); }
 }

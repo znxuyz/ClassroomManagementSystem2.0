@@ -489,6 +489,7 @@ function renderHelpFull(which, rules) {
   return `
     <div class="help-layout">
     <nav class="help-nav" role="tablist">
+      ${navIndicatorHtml()}
       ${live.map((g, i) => `
         <button class="help-nav-btn ${i === 0 ? 'active' : ''}"
                 role="tab" data-help-nav="${g.key}"
@@ -510,6 +511,8 @@ function renderHelpFull(which, rules) {
 function setHelpGroup(key) {
   document.querySelectorAll('[data-help-nav]').forEach(b =>
     b.classList.toggle('active', b.dataset.helpNav === key));
+  // 高亮滑到新的那一顆
+  document.querySelectorAll('.help-nav').forEach(slideIndicator);
   document.querySelectorAll('[data-help-group]').forEach(d =>
     d.classList.toggle('active', d.dataset.helpGroup === key));
   // 切到比較長的分類時,從頭開始看
@@ -542,4 +545,9 @@ function renderHelpView() {
      (技能開了沒、倒扣幾分、每週獎勵發多少),畫一次就不再更新的話
      老師改了設定卻看到舊的說明。重畫一次很便宜,不值得為它冒這個險。 */
   el.innerHTML = renderHelpFull(which === 'helpStudent' ? 'student' : 'teacher', state.rules);
+  // 剛畫出來,高亮直接就位(不要從別的地方滑過來)
+  el.querySelectorAll('.help-nav').forEach(n => {
+    n.dataset.fresh = '1';
+    slideIndicator(n);
+  });
 }

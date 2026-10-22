@@ -116,15 +116,24 @@ function navSyncTo(view) {
   renderNavTabs();
 }
 
+/* 上面那一排的內容是固定的(分類不會變),所以只建一次,
+   之後切換只改 .active —— 重建按鈕的話,高亮就沒有東西可以「滑」。 */
 function renderNavTabs() {
   const top = document.getElementById('navTabs');
   if (!top) return;
-  top.innerHTML = NAV_GROUPS.map(g => `
-    <button class="nav-tab ${g.key === _navGroup ? 'active' : ''}"
-            data-nav-group="${g.key}" onclick="navGoGroup('${g.key}')">
-      <span class="nav-tab-icon">${g.icon}</span>${escapeHtml(g.name)}
-    </button>`).join('');
+
+  if (!top.dataset.built) {
+    top.innerHTML = navIndicatorHtml() + NAV_GROUPS.map(g => `
+      <button class="nav-tab" data-nav-group="${g.key}" onclick="navGoGroup('${g.key}')">
+        <span class="nav-tab-icon">${g.icon}</span>${escapeHtml(g.name)}
+      </button>`).join('');
+    top.dataset.built = '1';
+  }
+  top.querySelectorAll('[data-nav-group]').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.navGroup === _navGroup));
+
   renderNavSubTabs();
+  slideIndicator(top);
 }
 
 function renderNavSubTabs() {
@@ -138,15 +147,73 @@ function renderNavSubTabs() {
   const curSub = active ? (active.querySelector('.sub-tab.active') || {}).dataset : null;
 
   // 只有一個項目(例如系統設定)就不必再畫一排
-  if (g.items.length <= 1) { row.innerHTML = ''; return; }
+  if (g.items.length <= 1) { row.innerHTML = ''; row.dataset.group = ''; return; }
 
-  row.innerHTML = g.items.map(it => {
-    const on = it.view === curView && (!it.sub || !curSub || curSub.subtab === it.sub);
-    return `<button class="nav-sub ${on ? 'active' : ''}"
-              onclick="navGoItem('${g.key}', '${it.view}', '${it.sub || ''}')">
-              ${escapeHtml(it.name)}</button>`;
-  }).join('');
+  /* 同一個分類裡換項目,只改 .active 就好(高亮才滑得動);
+     換了分類才重建 —— 那時候按鈕本來就不一樣,沒有「滑」可言。 */
+  if (row.dataset.group !== g.key) {
+    row.innerHTML = navIndicatorHtml() + g.items.map(it =>
+      `<button class="nav-sub" data-nav-item="${it.view}:${it.sub || ''}"
+         onclick="navGoItem('${g.key}', '${it.view}', '${it.sub || ''}')">
+         ${escapeHtml(it.name)}</button>`).join('');
+    row.dataset.group = g.key;
+    row.dataset.fresh = '1';      // 剛重建,這一次不要有過渡動畫
+  }
+
+  row.querySelectorAll('[data-nav-item]').forEach(btn => {
+    const [v, sub] = btn.dataset.navItem.split(':');
+    const on = v === curView && (!sub || !curSub || curSub.subtab === sub);
+    btn.classList.toggle('active', on);
+  });
+  slideIndicator(row);
 }
+
+/* ============================================
+   會滑動的高亮
+   ────────────────────────────────────────────
+   按鈕本身不畫底色,底色由一塊絕對定位的方塊負責 ——
+   切換時它會從舊的按鈕滑到新的那一顆。
+
+   這一塊共用:上面那排、第二排、說明頁的分類都用同一套
+   (說明頁在寬螢幕是直的,所以垂直方向也要能滑)。
+============================================ */
+function navIndicatorHtml() {
+  return '<span class="nav-ind" aria-hidden="true"></span>';
+}
+
+function slideIndicator(container) {
+  if (!container) return;
+  const ind = container.querySelector(':scope > .nav-ind');
+  const active = container.querySelector(':scope > .active');
+  if (!ind) return;
+
+  if (!active) { ind.style.opacity = '0'; return; }
+
+  // 剛重建的那一次直接就位,不要從上一個位置滑過來(看起來會很怪)
+  const fresh = container.dataset.fresh === '1';
+  if (fresh) {
+    ind.style.transition = 'none';
+    delete container.dataset.fresh;
+  }
+
+  ind.style.opacity = '1';
+  ind.style.width = active.offsetWidth + 'px';
+  ind.style.height = active.offsetHeight + 'px';
+  ind.style.transform =
+    `translate(${active.offsetLeft - container.clientLeft}px, ` +
+    `${active.offsetTop - container.clientTop}px)`;
+
+  if (fresh) {
+    // 下一個影格再把過渡打開,否則這一次的就位也會被動畫化
+    requestAnimationFrame(() => { ind.style.transition = ''; });
+  }
+}
+
+/* 視窗大小改變時按鈕會換行、寬度也會變,高亮要跟著重新量 */
+window.addEventListener('resize', () => {
+  ['navTabs', 'navSubTabs'].forEach(id => slideIndicator(document.getElementById(id)));
+  document.querySelectorAll('.help-nav').forEach(slideIndicator);
+});
 
 /* 點上面那一排:切到該分類的第一個項目 */
 function navGoGroup(key) {

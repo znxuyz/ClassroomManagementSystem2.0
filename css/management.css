@@ -355,3 +355,23 @@
   padding-top: 16px;
   border-top: 1px solid var(--paper-shadow);
 }
+
+/* ============================================
+   窄螢幕:座位表退回單欄
+   ────────────────────────────────────────────
+   220px 的控制區 + 1fr 的座位板,手機上第二欄會被擠出去
+   (實測溢出 99px)。座位板本身再讓它橫向捲 ——
+   28 個座位硬塞進 358px 會小到看不清楚,寧可左右滑。
+============================================ */
+@media (max-width: 900px) {
+  .seating-layout-wrapper {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .seating-board {
+    padding: 14px;
+    min-height: 0;
+    overflow-x: auto;
+  }
+}
