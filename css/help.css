@@ -200,3 +200,54 @@
   .help-skill-row { grid-template-columns: 1.2fr repeat(4, 1fr); }
   .help-skill-row > span { padding: 5px 4px; }
 }
+
+/* ============================================
+   分類切換
+   ────────────────────────────────────────────
+   十幾段說明一次全攤出來沒有人會看。上面一排分類,點了只看那一類。
+   按鈕做得夠大(至少 36px 高),小學生用平板點得到。
+============================================ */
+.help-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--paper-shadow);
+}
+
+.help-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--paper-shadow);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+
+.help-nav-btn:hover { border-color: var(--forest-light); }
+
+.help-nav-btn.active {
+  background: var(--forest);
+  border-color: var(--forest);
+  color: #fff;
+}
+
+.help-nav-icon { font-size: 15px; line-height: 1; }
+
+/* 只顯示選中的那一類 */
+.help-group { display: none; }
+.help-group.active { display: block; }
+
+@media (max-width: 480px) {
+  .help-nav { gap: 6px; }
+  .help-nav-btn { font-size: 12.5px; padding: 0 11px; }
+}

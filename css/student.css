@@ -79,25 +79,16 @@
   margin: 0 auto;
 }
 
-/* 說明頁:放寬 + 排成多欄。
-   每一段(積分怎麼拿、經驗哪裡來、技能、領地戰規則…)本身是獨立的,
-   所以適合並排;單欄的話學生要一直往下捲才找得到想看的那一段。 */
+/* 說明頁:內容置中,寬度以「好讀」為準。
+   這裡刻意不追求滿版 —— 試過排成多欄,段落被切得七零八落,
+   閱讀順序還會在欄位間跳來跳去,比單欄更難找。
+   改成上面一排分類,點了只看那一類(見 feature-help.js)。 */
+.pane-help {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
 .pane-help .help-wrap { max-width: none; }
-
-@media (min-width: 900px) {
-  .pane-help .help-sections {
-    columns: 2;
-    column-gap: 20px;
-  }
-  .pane-help .help-sec {
-    break-inside: avoid;
-    margin-bottom: 20px;
-  }
-}
-
-@media (min-width: 1400px) {
-  .pane-help .help-sections { columns: 3; }
-}
 
 /* 測驗與獎品排成格狀 */
 .quiz-grid,

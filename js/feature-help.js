@@ -401,22 +401,98 @@ function skillTableForHelp() {
     </div>`;
 }
 
+/* ============================================
+   說明的分類
+   ────────────────────────────────────────────
+   說明有十幾段,一次全部攤出來沒有人會看 ——
+   試過排成多欄,結果段落被切得七零八落,閱讀順序還會在欄位間跳來跳去,
+   反而更難找。改成「上面一排分類,點了只看那一類」。
+
+   分類用標題對應,而不是在每一段裡加欄位 ——
+   這樣改分類不用動到內容,也不會有人加了新段落卻忘記標分類
+   (沒對應到的會自動歸到最後一類,不會憑空消失)。
+============================================ */
+const HELP_GROUPS = {
+  student: [
+    { key: 'start',  icon: '🔑', name: '開始',   titles: ['怎麼進來'] },
+    { key: 'points', icon: '✦',  name: '積分',   titles: ['積分怎麼拿', '守護獸的經驗怎麼來'] },
+    { key: 'pet',    icon: '🐣', name: '守護獸', titles: ['我的守護獸', '守護獸技能'] },
+    { key: 'quiz',   icon: '✎',  name: '測驗',   titles: ['測驗'] },
+    { key: 'shop',   icon: '🎁', name: '兌換',   titles: ['兌換商店'] },
+    { key: 'war',    icon: '⬡',  name: '領地戰', titles: ['領地戰', '領地戰的計分規則'] },
+    { key: 'rank',   icon: '🏆', name: '排行榜', titles: ['排行榜'] },
+    { key: 'help',   icon: '?',  name: '問題',   titles: ['遇到問題'] }
+  ],
+  teacher: [
+    { key: 'start',  icon: '🔑', name: '開始之前', titles: ['開始之前'] },
+    { key: 'points', icon: '✦',  name: '積分規則', titles: ['積分怎麼拿', '守護獸的經驗怎麼來', '發放積分'] },
+    { key: 'pet',    icon: '🐣', name: '守護獸技能', titles: ['守護獸技能'] },
+    { key: 'quiz',   icon: '✎',  name: '測驗',     titles: ['線上測驗'] },
+    { key: 'war',    icon: '⬡',  name: '領地戰',   titles: ['領地佔領戰', '領地戰的計分規則'] },
+    { key: 'shop',   icon: '🎁', name: '商店',     titles: ['獎品商店'] },
+    { key: 'class',  icon: '☰',  name: '班級管理', titles: ['班級管理與課堂工具'] },
+    { key: 'safe',   icon: '🛡', name: '資料安全', titles: ['多班級與資料安全'] }
+  ]
+};
+
 function renderHelpFull(which, rules) {
-  return renderHelpSections(helpRuleSections(rules)) +
-         renderHelpSections(HELP[which]);
+  const all = [...helpRuleSections(rules), ...HELP[which]]
+    .map(sec => ({ ...sec, items: sec.items.filter(Boolean) }))
+    .filter(sec => sec.items.length > 0);
+
+  /* 段落順序照分類裡 titles 的順序排,而不是照 all 的原始順序 ——
+     否則「規則」那幾段會一律排到前面,變成先講技能表再講「我的守護獸是什麼」。 */
+  const groups = (HELP_GROUPS[which] || []).map(g => ({
+    ...g,
+    secs: g.titles
+      .map(t => all.find(sec => sec.title === t))
+      .filter(Boolean)
+  }));
+
+  // 沒被分到類的段落(例如之後新增卻忘了標)丟進「其他」,不要讓它憑空消失
+  const taken = new Set(groups.flatMap(g => g.secs.map(s => s.title)));
+  const rest = all.filter(sec => !taken.has(sec.title));
+  if (rest.length) groups.push({ key: 'other', icon: '•', name: '其他', secs: rest });
+
+  const live = groups.filter(g => g.secs.length > 0);
+  if (live.length === 0) return '';
+
+  return `
+    <nav class="help-nav" role="tablist">
+      ${live.map((g, i) => `
+        <button class="help-nav-btn ${i === 0 ? 'active' : ''}"
+                role="tab" data-help-nav="${g.key}"
+                onclick="setHelpGroup('${g.key}')">
+          <span class="help-nav-icon">${g.icon}</span>${escapeHtml(g.name)}
+        </button>`).join('')}
+    </nav>
+    ${live.map((g, i) => `
+      <div class="help-group ${i === 0 ? 'active' : ''}" data-help-group="${g.key}">
+        ${renderHelpSections(g.secs)}
+      </div>`).join('')}`;
+}
+
+/* 切換分類。直接改 class 而不是重繪整個畫面 ——
+   重繪會把學生捲到的位置、正在作答的狀態一起打掉。 */
+function setHelpGroup(key) {
+  document.querySelectorAll('[data-help-nav]').forEach(b =>
+    b.classList.toggle('active', b.dataset.helpNav === key));
+  document.querySelectorAll('[data-help-group]').forEach(d =>
+    d.classList.toggle('active', d.dataset.helpGroup === key));
+  // 切到比較長的分類時,從頭開始看
+  const main = document.querySelector('.student-main') || document.querySelector('.view.active');
+  if (main) main.scrollTop = 0;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function renderHelpSections(list) {
-  // 有些項目會依當下的對局設定決定要不要出現,空的就不要留一個空點
-  list = list.map(sec => ({ ...sec, items: sec.items.filter(Boolean) }));
-  // 外面包一層,寬螢幕時才能把各段排成多欄(CSS columns)
-  return '<div class="help-sections">' + list.map(sec => `
+  return list.map(sec => `
     <section class="help-sec">
       <h3 class="help-sec-title"><span class="help-icon">${sec.icon}</span>${escapeHtml(sec.title)}</h3>
       <ul class="help-list">
         ${sec.items.map(i => `<li>${i}</li>`).join('')}
       </ul>
-    </section>`).join('') + '</div>';
+    </section>`).join('');
 }
 
 /* 老師端的「使用說明」分頁 */
