@@ -84,6 +84,40 @@ def background_mask(rgb, alpha, tol):
     return bg
 
 
+# ---------------------------------------------------------------- 綠幕去背
+
+def chroma_key(rgb, key, tol, soft):
+    """指定背景色的精確去背(綠幕原理)。
+
+    和「猜哪裡是背景」完全不同:背景色是事先約定好的,所以這裡是計算,
+    不是判斷 —— 不會留格線,也不會誤殺主體。
+
+    回傳 (新的 rgb, alpha)。rgb 會順便去掉邊緣的溢色:
+    半透明的邊緣像素混到了背景色,不處理的話圖示周圍會有一圈綠邊。
+    """
+    f = rgb.astype(float)
+    k = np.array(key, float)
+
+    # 離背景色多遠(取三通道最大差,對平塗背景最乾淨)
+    dist = np.abs(f - k).max(axis=2)
+    alpha = np.clip((dist - tol) / max(soft, 1e-6), 0, 1)
+    alpha = alpha * alpha * (3 - 2 * alpha)        # smoothstep,邊緣不鋸齒
+
+    # 去溢色:只動半透明的邊緣。
+    # 實心的主體像素不可能混到背景色,壓它只會把本來就偏青綠的地方弄髒
+    # (實測平均色差會從 3 跳到 23)。所以用「透明度」當權重:
+    # 越透明的像素混到越多背景色,就壓得越多。
+    dom = int(np.argmax(k))
+    others = [i for i in range(3) if i != dom]
+    cap = np.maximum(f[..., others[0]], f[..., others[1]])
+    w = np.clip(1.0 - alpha, 0, 1)                  # 全不透明 = 0,全透明 = 1
+    out = f.copy()
+    pulled = np.minimum(f[..., dom], cap)
+    out[..., dom] = f[..., dom] * (1 - w) + pulled * w
+
+    return np.clip(out, 0, 255).astype(np.uint8), (alpha * 255).astype(np.uint8)
+
+
 # ---------------------------------------------------------------- 霧氣削除
 
 def strip_haze(rgb, alpha, haze):
@@ -183,14 +217,18 @@ def clean(path, out_path, args):
     rgb, alpha = a[..., :3], a[..., 3]
 
     report = []
-    if (alpha == 255).mean() > 0.995:
+    if args.key:
+        rgb, alpha = chroma_key(rgb, args.key, args.key_tol, args.key_soft)
+        a[..., :3] = rgb
+        report.append(f'綠幕去背 {(alpha == 0).mean() * 100:.0f}%')
+    elif (alpha == 255).mean() > 0.995:
         bg = background_mask(rgb, alpha, args.tol)
         alpha = np.where(bg, 0, alpha).astype(np.uint8)
-        report.append(f'去背 {bg.mean() * 100:.0f}%')
+        report.append(f'猜背景去背 {bg.mean() * 100:.0f}%')
     else:
         report.append(f'原本就有透明({(alpha == 0).mean() * 100:.0f}% 全透)')
 
-    if not args.keep_glow:
+    if not args.keep_glow and not args.key:
         before = (alpha > 8).mean()
         alpha = strip_haze(rgb, alpha, args.haze)
         report.append(f'削霧 {(before - (alpha > 8).mean()) * 100:.0f}%')
@@ -207,10 +245,23 @@ def clean(path, out_path, args):
           f'[{" · ".join(report)}]')
 
 
+def hexcolor(v):
+    v = v.lstrip('#')
+    if len(v) != 6:
+        raise argparse.ArgumentTypeError('顏色要寫成六位十六進位,例如 00ff00')
+    return tuple(int(v[i:i + 2], 16) for i in (0, 2, 4))
+
+
 def main():
     ap = argparse.ArgumentParser(description='技能圖示清理')
     ap.add_argument('src', help='圖片檔或資料夾')
     ap.add_argument('-o', '--out', required=True, help='輸出檔或資料夾')
+    ap.add_argument('--key', type=hexcolor, default=None,
+                    help='背景色(綠幕去背),例如 --key 00ff00。有指定就用精確計算,不用猜')
+    ap.add_argument('--key-tol', type=float, default=60,
+                    help='背景色容差(預設 60)。生成器的平塗通常有輕微雜訊,所以要留一點')
+    ap.add_argument('--key-soft', type=float, default=55,
+                    help='邊緣羽化寬度(預設 55)。太小會鋸齒,太大邊緣會透')
     ap.add_argument('--haze', type=float, default=0.25, help='霧氣門檻 0~1(預設 0.25)')
     ap.add_argument('--tol', type=float, default=26, help='背景顏色容差(預設 26)')
     ap.add_argument('--core', action='store_true', help='只留中心那一團')

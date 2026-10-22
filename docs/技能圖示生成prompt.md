@@ -1,28 +1,49 @@
-# 技能圖示 — 去背圖片生成 Prompt
+# 技能圖示 — 生成 Prompt（綠幕版）
 
-八個技能各一張。目前系統用的是 emoji，換成圖片之後會更有「果實／技能」的質感。
+八個技能各一張。
+
+## 為什麼改成綠幕
+
+第一版叫 AI「輸出透明背景」，結果它**把透明示意用的棋盤格當成背景畫進圖裡** ——
+檔案完全不透明，邊緣是兩種灰交替。那種圖只能用猜的去背，格子交界還會留下格線。
+
+改成**綠幕**：指定一個主體絕對不會用到的背景色，去背就從「猜」變成「算」。
+
+為什麼選純綠 `#00FF00`：拿你那八張圖的 80 萬個主體像素實測，
+離純綠最近的也差了 **124**（其他候選只有 54～96）—— margin 最大，誤殺機率最低。
+
+---
 
 ## 怎麼用
 
 1. 把下面每一段貼進圖片生成工具（Midjourney / DALL·E / Firefly / Imagen 都可以）
-2. 存成 **PNG（透明背景）**，檔名照表格的「檔名」欄
-3. 放到 `assets/skills/` 資料夾
-4. 告訴我放好了，我把程式從 emoji 換成圖片（一行設定的事）
+2. **不用自己去背**，直接存原圖，檔名照每段標的「檔名」
+3. 全部丟進一個資料夾，執行：
+
+```bash
+python3 tools/clean-icon.py 你的資料夾/ -o assets/skill/ --key 00ff00 --core
+```
+
+4. 推上 GitHub（或把原圖丟給我，我跑完再放進去）
 
 > **建議尺寸 1024×1024**，正方形。系統會縮到 26px～64px 顯示，所以**造型要夠簡單** ——
 > 細節太多縮小後會糊成一團。
 
 ---
 
-## 共用風格（每一段都已經含在裡面）
+## 共用規格（每一段都已經含在裡面）
 
-為了八張看起來像同一套，所有 prompt 都包含同一組風格描述：
+**背景**
+- 純綠 `#00FF00` 平塗，完全均勻
+- 不要漸層、不要暗角、不要在背景上留陰影或光暈
+- **不要畫棋盤格**（這是第一版踩到的坑）
 
+**主體**
 - 半寫實的奇幻遊戲技能圖示
-- 深色霓虹光暈 + 青藍／紫色的極光色調（對應系統的介面配色）
+- 青藍／紫色的霓虹色調（對應系統配色）
 - 厚實的圓潤輪廓、柔和的內發光
-- **透明背景、沒有外框、沒有文字、沒有外圈光暈輪廓**
-- 置中、留一點邊距
+- **不要用任何綠色或螢光黃綠** ← 這條是為了保住去背的 margin
+- 不要外框、不要文字、不要外圈封閉的光暈輪廓
 
 ---
 
@@ -32,10 +53,13 @@
 
 ```
 A fantasy game skill icon of a glowing crystal fist striking forward with a burst of
-impact energy, semi-realistic 3D render, deep teal and violet aurora color palette,
-soft neon rim light, thick rounded silhouette, gentle inner glow, centered composition
-with small margin, transparent background, no frame, no border, no text, no watermark,
-no outer glow outline, no surrounding aura shape, no enclosing contour, subject only, clean icon art suitable for small sizes, 1024x1024, PNG with alpha channel
+impact energy. Semi-realistic 3D render, deep teal-blue and violet neon palette, soft
+rim light, thick rounded silhouette, gentle inner glow, centered with a small margin.
+Background: solid flat pure green #00FF00 chroma key green screen, perfectly uniform,
+no gradient, no vignette, no shadow or glow spilling onto the background, no
+transparency checkerboard pattern. The subject must contain no green or lime colors at
+all. No frame, no border, no text, no watermark, no outer glow outline, no enclosing
+contour, subject only. Clean icon art readable at 32 pixels. 1024x1024.
 ```
 
 ---
@@ -45,13 +69,14 @@ no outer glow outline, no surrounding aura shape, no enclosing contour, subject 
 **檔名：`shield.png`**
 
 ```
-A fantasy game skill icon of a translucent hexagonal energy shield with a soft ripple
-of deflected light across its surface, semi-realistic 3D render, deep teal and violet
-aurora color palette, soft neon rim light, thick rounded silhouette, gentle inner glow,
-centered composition with small margin, transparent background, no frame, no border,
-no text, no watermark, no outer glow outline, no surrounding aura shape, no enclosing
-contour, subject only, clean icon art suitable for small sizes, 1024x1024, PNG with
-alpha channel
+A fantasy game skill icon of a translucent hexagonal energy shield with a soft ripple of
+deflected light across its surface. Semi-realistic 3D render, deep teal-blue and violet
+neon palette, soft rim light, thick rounded silhouette, gentle inner glow, centered with
+a small margin. Background: solid flat pure green #00FF00 chroma key green screen,
+perfectly uniform, no gradient, no vignette, no shadow or glow spilling onto the
+background, no transparency checkerboard pattern. The subject must contain no green or
+lime colors at all. No frame, no border, no text, no watermark, no outer glow outline,
+no enclosing contour, subject only. Clean icon art readable at 32 pixels. 1024x1024.
 ```
 
 ---
@@ -61,13 +86,14 @@ alpha channel
 **檔名：`focus.png`**
 
 ```
-A fantasy game skill icon of a calm glowing spiral vortex with a single bright point
-at its center, like a meditating mind, semi-realistic 3D render, deep teal and violet
-aurora color palette, soft neon rim light, thick rounded silhouette, gentle inner glow,
-centered composition with small margin, transparent background, no frame, no border,
-no text, no watermark, no outer glow outline, no surrounding aura shape, no enclosing
-contour, subject only, clean icon art suitable for small sizes, 1024x1024, PNG with
-alpha channel
+A fantasy game skill icon of a calm glowing spiral vortex with a single bright point at
+its center, like a meditating mind. Semi-realistic 3D render, deep teal-blue and violet
+neon palette, soft rim light, thick rounded silhouette, gentle inner glow, centered with
+a small margin. Background: solid flat pure green #00FF00 chroma key green screen,
+perfectly uniform, no gradient, no vignette, no shadow or glow spilling onto the
+background, no transparency checkerboard pattern. The subject must contain no green or
+lime colors at all. No frame, no border, no text, no watermark, no outer glow outline,
+no enclosing contour, subject only. Clean icon art readable at 32 pixels. 1024x1024.
 ```
 
 ---
@@ -77,11 +103,14 @@ alpha channel
 **檔名：`hand.png`**
 
 ```
-A fantasy game skill icon of an open glowing hand shuffling three floating cards or
-runestones above the palm, semi-realistic 3D render, deep teal and violet aurora color
-palette, soft neon rim light, thick rounded silhouette, gentle inner glow, centered
-composition with small margin, transparent background, no frame, no border, no text,
-no watermark, no outer glow outline, no surrounding aura shape, no enclosing contour, subject only, clean icon art suitable for small sizes, 1024x1024, PNG with alpha channel
+A fantasy game skill icon of an open glowing hand shuffling three floating runestone
+cards above the palm. Semi-realistic 3D render, deep teal-blue and violet neon palette,
+soft rim light, thick rounded silhouette, gentle inner glow, centered with a small
+margin. Background: solid flat pure green #00FF00 chroma key green screen, perfectly
+uniform, no gradient, no vignette, no shadow or glow spilling onto the background, no
+transparency checkerboard pattern. The subject must contain no green or lime colors at
+all. No frame, no border, no text, no watermark, no outer glow outline, no enclosing
+contour, subject only. Clean icon art readable at 32 pixels. 1024x1024.
 ```
 
 ---
@@ -92,10 +121,13 @@ no watermark, no outer glow outline, no surrounding aura shape, no enclosing con
 
 ```
 A fantasy game skill icon of an open glowing book with a bright double-chevron of light
-rising from its pages, semi-realistic 3D render, deep teal and violet aurora color
-palette, soft neon rim light, thick rounded silhouette, gentle inner glow, centered
-composition with small margin, transparent background, no frame, no border, no text,
-no watermark, no outer glow outline, no surrounding aura shape, no enclosing contour, subject only, clean icon art suitable for small sizes, 1024x1024, PNG with alpha channel
+rising from its pages. Semi-realistic 3D render, deep teal-blue and violet neon palette,
+soft rim light, thick rounded silhouette, gentle inner glow, centered with a small
+margin. Background: solid flat pure green #00FF00 chroma key green screen, perfectly
+uniform, no gradient, no vignette, no shadow or glow spilling onto the background, no
+transparency checkerboard pattern. The subject must contain no green or lime colors at
+all. No frame, no border, no text, no watermark, no outer glow outline, no enclosing
+contour, subject only. Clean icon art readable at 32 pixels. 1024x1024.
 ```
 
 ---
@@ -106,11 +138,13 @@ no watermark, no outer glow outline, no surrounding aura shape, no enclosing con
 
 ```
 A fantasy game skill icon of a glowing safety net woven from light, catching a single
-falling star, semi-realistic 3D render, deep teal and violet aurora color palette, soft
-neon rim light, thick rounded silhouette, gentle inner glow, centered composition with
-small margin, transparent background, no frame, no border, no text, no watermark,
-no outer glow outline, no surrounding aura shape, no enclosing contour, subject only,
-clean icon art suitable for small sizes, 1024x1024, PNG with alpha channel
+falling star. Semi-realistic 3D render, deep teal-blue and violet neon palette, soft rim
+light, thick rounded silhouette, gentle inner glow, centered with a small margin.
+Background: solid flat pure green #00FF00 chroma key green screen, perfectly uniform, no
+gradient, no vignette, no shadow or glow spilling onto the background, no transparency
+checkerboard pattern. The subject must contain no green or lime colors at all. No frame,
+no border, no text, no watermark, no outer glow outline, no enclosing contour, subject
+only. Clean icon art readable at 32 pixels. 1024x1024.
 ```
 
 ---
@@ -120,11 +154,14 @@ clean icon art suitable for small sizes, 1024x1024, PNG with alpha channel
 **檔名：`gift.png`**
 
 ```
-A fantasy game skill icon of a small glowing gift ribbon bow releasing a sparkling
-checkmark of light, semi-realistic 3D render, deep teal and violet aurora color palette,
-soft neon rim light, thick rounded silhouette, gentle inner glow, centered composition
-with small margin, transparent background, no frame, no border, no text, no watermark,
-no outer glow outline, no surrounding aura shape, no enclosing contour, subject only, clean icon art suitable for small sizes, 1024x1024, PNG with alpha channel
+A fantasy game skill icon of a glowing ribbon bow releasing a sparkling checkmark of
+light. Semi-realistic 3D render, deep teal-blue and violet neon palette, soft rim light,
+thick rounded silhouette, gentle inner glow, centered with a small margin. Background:
+solid flat pure green #00FF00 chroma key green screen, perfectly uniform, no gradient,
+no vignette, no shadow or glow spilling onto the background, no transparency
+checkerboard pattern. The subject must contain no green or lime colors at all. No frame,
+no border, no text, no watermark, no outer glow outline, no enclosing contour, subject
+only. Clean icon art readable at 32 pixels. 1024x1024.
 ```
 
 ---
@@ -134,97 +171,89 @@ no outer glow outline, no surrounding aura shape, no enclosing contour, subject 
 **檔名：`discount.png`**
 
 ```
-A fantasy game skill icon of a glowing price tag with a soft downward arrow of light
-beside it, semi-realistic 3D render, deep teal and violet aurora color palette, soft
-neon rim light, thick rounded silhouette, gentle inner glow, centered composition with
-small margin, transparent background, no frame, no border, no text, no watermark,
-no outer glow outline, no surrounding aura shape, no enclosing contour, subject only,
-clean icon art suitable for small sizes, 1024x1024, PNG with alpha channel
+A fantasy game skill icon of a glowing crystal price tag with a soft downward arrow of
+light beside it. Semi-realistic 3D render, deep teal-blue and violet neon palette, soft
+rim light, thick rounded silhouette, gentle inner glow, centered with a small margin.
+Background: solid flat pure green #00FF00 chroma key green screen, perfectly uniform, no
+gradient, no vignette, no shadow or glow spilling onto the background, no transparency
+checkerboard pattern. The subject must contain no green or lime colors at all. No frame,
+no border, no text, no watermark, no outer glow outline, no enclosing contour, subject
+only. Clean icon art readable at 32 pixels. 1024x1024.
 ```
 
 ---
 
-## 生出來不用自己修 —— 丟給我就好
+## 處理工具
 
-AI 生的圖常有兩個毛病,我寫了一支工具處理:
+```bash
+# 整個資料夾,綠幕去背 + 只留中心那一團
+python3 tools/clean-icon.py 下載資料夾/ -o assets/skill/ --key 00ff00 --core
 
-```
-python3 tools/clean-icon.py 你的圖.png -o assets/skills/discount.png
-```
-
-或整個資料夾一次處理:
-
-```
-python3 tools/clean-icon.py 下載資料夾/ -o assets/skills/ --core
+# 單張
+python3 tools/clean-icon.py power.png -o assets/skill/power.png --key 00ff00 --core
 ```
 
-它會做三件事:
-
-| 毛病 | 工具怎麼處理 |
-| --- | --- |
-| 根本沒去背(背景是純色或棋盤格) | 從四邊往內判斷哪些是背景,所以圖中央同色的部分不會被誤殺 |
-| 主體外面罩著一層霧 | 依「亮度 × 飽和度」重算透明度 —— 暗而濁的霧消失,亮而鮮的主體留著 |
-| 外面有一圈封閉的霓虹輪廓 | 加 `--core`,只留中心那一團,外圍分離的光圈整個丟掉 |
-
-處理完會自動裁掉空白、置中、縮成正方形。
-
-常用參數:
+常用參數：
 
 | 參數 | 用途 |
 | --- | --- |
-| `--haze 0.35` | 霧削得更兇(預設 0.25)。數字越大邊緣越利,但太大會啃到主體 |
-| `--core` | 只留中心那一團 |
-| `--keep-glow` | 只去背,不削霧 —— 想保留整圈光暈時用 |
-| `--size 512` | 輸出邊長(預設 512) |
+| `--key 00ff00` | **背景色**。有指定就用精確計算去背，不是用猜的 |
+| `--core` | 只留中心那一團，外圍分離的光圈整個丟掉 |
+| `--key-tol 60` | 背景色容差（預設 60）。生成器的平塗會有輕微雜訊，所以要留一點 |
+| `--key-soft 55` | 邊緣羽化寬度（預設 55）。太小會鋸齒，太大邊緣會透 |
+| `--size 512` | 輸出邊長（預設 512） |
 
-**最省事的做法:把原圖直接給我,我幫你跑完挑好再放進去。**
+去背完會自動裁掉空白、置中、縮成正方形。
 
----
+**實測結果**（把已知透明度的圖合成到綠底再去背還原）：
 
-## 讓 AI 一開始就不要畫外圈輪廓
-
-上面那圈封閉的霓虹輪廓是 AI 自己加的,不是去背失敗。
-在 prompt 最後加這一句,大多數情況就不會出現:
-
-```
-no outer glow outline, no surrounding aura shape, no enclosing contour,
-no circular badge, no background plate, subject only
-```
-
----
-
-## 如果生出來不理想
-
-常見狀況與加句：
-
-| 問題 | 在 prompt 最後加上 |
+| 項目 | 結果 |
 | --- | --- |
-| 背景不是透明的 | `isolated on pure transparent background, cutout, no backdrop, no scenery` |
-| 有多餘的外框或底板 | `no circular badge, no plate, no background shape, icon only` |
-| 細節太多、縮小看不清 | `minimal detail, bold simple shapes, high contrast, readable at 32 pixels` |
-| 顏色跟系統不搭 | 把 `deep teal and violet` 換成你想要的色，八張要一起換才會整套一致 |
-| 畫出文字或數字 | `absolutely no letters, no numbers, no typography` |
-
-> **Midjourney 使用者**：結尾改加 `--style raw --ar 1:1 --no background, text, frame`。
-> 它不會輸出透明背景，所以請用純白或純洋紅底再去背。
+| 殘留的綠底 | 0.00% |
+| 被誤殺的主體 | 0.00% |
+| 實心區色差 | **0.0**（完全一致） |
+| 白色部分保留率 | **100%**（舊的猜法會把白色當背景誤殺） |
 
 ---
 
-## 果實版本（選配）
+## 出問題的時候
 
-如果你想讓「技能果實」在商店裡長得像果實，而不是直接用技能圖示，
-把上面每一段的主體換成果實造型，其餘不變。範例（猛擊果實）：
+| 問題 | 處理 |
+| --- | --- |
+| 背景不是平塗的綠，有漸層或暗角 | 加 `background must be perfectly flat solid #00FF00 with zero gradient` |
+| 主體邊緣有綠邊 | 工具會自動去溢色。還有的話把 `--key-tol` 調大（80～100） |
+| 邊緣鋸齒 | `--key-soft` 調大（80～120） |
+| 主體被挖掉一塊 | 主體用到綠色了。在 prompt 加 `absolutely no green, no lime, no chartreuse anywhere in the subject` |
+| 又畫出棋盤格 | 加 `never draw a transparency checkerboard, the background is opaque solid green` |
+| 細節太多縮小看不清 | 加 `minimal detail, bold simple shapes, high contrast` |
+| 畫出文字或數字 | 加 `absolutely no letters, no numbers, no typography` |
+
+> **Midjourney**：結尾改加 `--style raw --ar 1:1`，並把背景描述放在最前面。
+> 它對「平塗背景」的服從度較差，必要時多生幾張挑。
+
+---
+
+## 果實造型版本（選配）
+
+想讓「技能果實」在商店裡長得像果實，把主體換成果實造型，背景規格不變。
+範例（猛擊果實）：
 
 ```
 A fantasy game item icon of a glowing crystalline fruit with a faint fist-shaped emblem
-inside its translucent flesh, a single leaf on top, semi-realistic 3D render, deep teal
-and violet aurora color palette, soft neon rim light, thick rounded silhouette, gentle
-inner glow, centered composition with small margin, transparent background, no frame,
-no border, no text, no watermark, no outer glow outline, no surrounding aura shape, no enclosing contour, subject only, clean icon art suitable for small sizes, 1024x1024,
-PNG with alpha channel
+inside its translucent flesh, a single leaf on top. Semi-realistic 3D render, deep
+teal-blue and violet neon palette, soft rim light, thick rounded silhouette, gentle
+inner glow, centered with a small margin. Background: solid flat pure green #00FF00
+chroma key green screen, perfectly uniform, no gradient, no vignette, no shadow or glow
+spilling onto the background, no transparency checkerboard pattern. The subject must
+contain no green or lime colors at all — the leaf should be teal or violet, not green.
+No frame, no border, no text, no watermark, no outer glow outline, no enclosing contour,
+subject only. Clean icon art readable at 32 pixels. 1024x1024.
 ```
 
 其餘七顆把 `fist-shaped emblem` 換成：
 `shield-shaped emblem`（護盾）、`spiral emblem`（靜心）、`open hand emblem`（巧手）、
 `book emblem`（專注）、`net emblem`（保險）、`ribbon emblem`（送分）、
 `price tag emblem`（議價）。
+
+> 果實版的葉子要特別叮嚀「不要綠色」——
+> 葉子預設就是綠的，那會和背景同色被挖掉。
