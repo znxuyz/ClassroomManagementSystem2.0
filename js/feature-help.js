@@ -482,7 +482,12 @@ function renderHelpFull(which, rules) {
   const live = groups.filter(g => g.secs.length > 0);
   if (live.length === 0) return '';
 
+  /* 外面包一層:寬螢幕時把分類變成左側欄、內容填滿右邊。
+     原本分類是橫的一排在上面,內容限寬 900px 靠左 ——
+     在 1920 的螢幕上右半邊整片空白,看起來像壞掉。
+     側欄式還有一個好處:切換分類不必再捲回最上面。 */
   return `
+    <div class="help-layout">
     <nav class="help-nav" role="tablist">
       ${live.map((g, i) => `
         <button class="help-nav-btn ${i === 0 ? 'active' : ''}"
@@ -491,10 +496,13 @@ function renderHelpFull(which, rules) {
           <span class="help-nav-icon">${g.icon}</span>${escapeHtml(g.name)}
         </button>`).join('')}
     </nav>
-    ${live.map((g, i) => `
-      <div class="help-group ${i === 0 ? 'active' : ''}" data-help-group="${g.key}">
-        ${renderHelpSections(g.secs)}
-      </div>`).join('')}`;
+    <div class="help-panels">
+      ${live.map((g, i) => `
+        <div class="help-group ${i === 0 ? 'active' : ''}" data-help-group="${g.key}">
+          ${renderHelpSections(g.secs)}
+        </div>`).join('')}
+    </div>
+    </div>`;
 }
 
 /* 切換分類。直接改 class 而不是重繪整個畫面 ——

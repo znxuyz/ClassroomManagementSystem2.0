@@ -5,9 +5,9 @@
 ============================================ */
 
 .help-wrap {
-  /* 內容寬度以「好讀」為準,不追求滿版 ——
-     一行太長眼睛會跳行。兩端共用同一個值。 */
-  max-width: 900px;
+  /* 不限寬:寬螢幕時分類會變成左側欄、內容填滿右邊,
+     行長由 .help-group 的格狀排版控制(見檔案最下方)。 */
+  max-width: none;
 }
 
 .help-note {
@@ -252,4 +252,52 @@
 @media (max-width: 480px) {
   .help-nav { gap: 6px; }
   .help-nav-btn { font-size: 12.5px; padding: 0 11px; }
+}
+
+/* ============================================
+   寬螢幕:分類移到左側欄
+   ────────────────────────────────────────────
+   原本分類是橫的一排在上面、內容限寬 900px —— 在 1920 的螢幕上
+   右半邊整片空白,看起來像壞掉而不是刻意留白。
+
+   改成左側欄之後:整個寬度都用得上、每一段的行長仍然舒服,
+   而且分類一直在畫面上,切換不必捲回最上面。
+   視窗變窄會自動退回「橫的一排在上面」,手機照舊好用。
+============================================ */
+@media (min-width: 1100px) {
+  .help-layout {
+    display: grid;
+    grid-template-columns: 190px minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+  }
+
+  .help-nav {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    margin-bottom: 0;
+    padding: 0 18px 0 0;
+    border-bottom: none;
+    border-right: 1px solid var(--paper-shadow);
+    /* 捲動時分類跟著,隨時可以換一類看 */
+    position: sticky;
+    top: 20px;
+  }
+
+  .help-nav-btn {
+    justify-content: flex-start;
+    border-radius: var(--control-r);
+  }
+}
+
+/* 螢幕夠寬時,一類裡的多個段落並排 ——
+   每段仍然完整(不像 CSS columns 會把一段切成兩半) */
+@media (min-width: 1560px) {
+  .help-group.active {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    align-items: start;
+  }
 }
