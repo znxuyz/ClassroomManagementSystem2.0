@@ -129,7 +129,10 @@ const PET_SKILLS = [
   }
 ];
 
-/* 圖示檔放在 assets/skill/{img}.png。
+/* 圖示檔放在 assets/skill/{img}.webp。
+   用 WebP 是因為這些圖有大面積的柔和漸層,PNG 存起來每張 300K 起跳,
+   換成 WebP 只要 20K 左右(整組 2.7M → 167K),44px 下看不出差別。
+   原始的 1024px 綠幕檔留在 assets/skill/raw/,之後要重調參數還有得用。
    外框一律由 CSS 畫,不靠圖片自己帶 —— AI 每張畫出來的底板都不一樣,
    交給程式才會八張完全一致,也才能隨主題與尺寸變化。
    圖檔還沒放進去時自動退回 emoji,所以不會開天窗。 */
@@ -161,7 +164,7 @@ function skillIconHtml(skill, size) {
     return `<span class="skill-ico is-emoji" style="--ico:${px}px">${skill.icon}</span>`;
   }
   return `<span class="skill-ico" style="--ico:${px}px"><img
-    src="${SKILL_ICON_DIR}${skill.img}.png" alt="${escapeHtml(skill.name)}"
+    src="${SKILL_ICON_DIR}${skill.img}.webp" alt="${escapeHtml(skill.name)}"
     onerror="SkillEngine.iconFailed('${skill.id}', this)" /></span>`;
 }
 

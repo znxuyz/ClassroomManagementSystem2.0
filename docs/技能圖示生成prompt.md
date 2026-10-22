@@ -21,7 +21,7 @@
 3. 全部丟進一個資料夾，執行：
 
 ```bash
-python3 tools/clean-icon.py 你的資料夾/ -o assets/skill/ --key 00ff00 --core
+python3 tools/clean-icon.py 你的資料夾/ -o assets/skill/raw/ --key 00ff00 --key-tol 80 --core
 ```
 
 4. 推上 GitHub（或把原圖丟給我，我跑完再放進去）
@@ -191,10 +191,10 @@ only. Clean icon art readable at 32 pixels. 1024x1024.
 
 ```bash
 # 整個資料夾,綠幕去背 + 只留中心那一團
-python3 tools/clean-icon.py 下載資料夾/ -o assets/skill/ --key 00ff00 --core
+python3 tools/clean-icon.py 下載資料夾/ -o assets/skill/raw/ --key 00ff00 --key-tol 80 --core
 
 # 單張
-python3 tools/clean-icon.py power.png -o assets/skill/power.png --key 00ff00 --core
+python3 tools/clean-icon.py power.png -o assets/skill/raw/power.png --key 00ff00 --key-tol 80 --core
 ```
 
 常用參數：
@@ -217,6 +217,33 @@ python3 tools/clean-icon.py power.png -o assets/skill/power.png --key 00ff00 --c
 | 被誤殺的主體 | 0.00% |
 | 實心區色差 | **0.0**（完全一致） |
 | 白色部分保留率 | **100%**（舊的猜法會把白色當背景誤殺） |
+
+---
+
+## 檔案格式
+
+系統實際讀的是 `assets/skill/{檔名}.webp`(256px)。
+
+為什麼不是 PNG:這些圖有大面積的柔和漸層,PNG 存起來每張 300K 起跳,
+八張就 2.7MB —— 學生用手機載會很慢,而它們最大只顯示 56px。
+換成 WebP 每張約 20K,**整組 2.7MB → 167K(小 94%)**,44px 下看不出差別。
+
+原始的 1024px 綠幕檔留在 `assets/skill/raw/`,之後要重調參數還有得用。
+
+轉檔(去背完之後):
+
+```bash
+python3 - <<'EOF'
+import os
+from PIL import Image
+for n in sorted(os.listdir('assets/skill/raw')):
+    if not n.endswith('.png'): continue
+    im = Image.open('assets/skill/raw/'+n).convert('RGBA').resize((256,256), Image.LANCZOS)
+    im.save('assets/skill/'+n[:-4]+'.webp', 'WEBP', quality=92, method=6)
+EOF
+```
+
+> 萬一有瀏覽器不支援 WebP,系統會自動退回 emoji,不會開天窗。
 
 ---
 

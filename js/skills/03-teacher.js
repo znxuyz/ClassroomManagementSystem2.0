@@ -150,7 +150,11 @@ function listSkillFruits() {
 
 function renderSkillBoard() {
   const box = document.getElementById('skillBoard');
-  if (!box || !box.offsetParent) return;
+  if (!box) return;
+  /* 這裡刻意不檢查「畫面是不是看得見」。
+     renderAll() 通常在別的分頁時執行,如果因為隱藏就跳過,
+     之後切到設定頁也不會重畫 —— 面板就永遠是空的(踩過)。
+     這個函式只在 renderAll() 呼叫,不是每秒跑,所以直接畫沒有成本。 */
   box.innerHTML = skillBoardHtml();
 }
 
