@@ -245,6 +245,7 @@ Object.assign(StudentApp, {
     this.tSwapping = false;
     this.tSwapsLeft--;
     this.tQuestion = q;
+    this.shuffleOptions(q);
     this.tPickedAnswer = null;
 
     // 新題目重新計時,換到的題目才有完整的作答時間
@@ -353,6 +354,7 @@ Object.assign(StudentApp, {
     if (this.tSwapsLeft === undefined) this.tSwapsLeft = 3;
     this.tTargetHex = hexKey;
     this.tQuestion = q;
+    this.shuffleOptions(q);
     this.tPickedAnswer = null;
     this.tResult = null;
     const limit = this.answerSeconds();
@@ -572,8 +574,26 @@ Object.assign(StudentApp, {
     this.render();
   },
 
+  /* ---------- 選項順序隨機 ----------
+     題庫有 529 題、抽題也確認過是均勻隨機的,學生卻還是能「記住題目
+     快速答題」—— 因為他們記的不是題目,是**位置**。選項順序固定的話,
+     看過一次就記得「選 B」,而且這種資訊一句話就能傳給同學,
+     題庫再大也擋不住。
+
+     所以每次點開題目都把選項重新排過。送出時送的仍然是**原本的索引**,
+     所以安全規則那邊完全不用改,正確答案也一樣沒有離開伺服器。 */
+  shuffleOptions(q) {
+    // 只排有內容的選項(題目可能只有三個選項)
+    const idx = q.options.map((o, i) => (o ? i : -1)).filter(i => i >= 0);
+    for (let i = idx.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [idx[i], idx[j]] = [idx[j], idx[i]];
+    }
+    this.tOptionOrder = idx;
+  },
+
   pickWarAnswer(i) {
-    this.tPickedAnswer = i;
+    this.tPickedAnswer = i;      // i 是原本的索引,不是畫面上的位置
     this.render();
   },
 
@@ -619,12 +639,13 @@ Object.assign(StudentApp, {
         <div class="war-q-text noselect" oncopy="return false" oncontextmenu="return false"
              >${escapeHtml(q.text)}</div>
 
-        ${q.options.map((opt, i) => opt ? `
-          <label class="student-option noselect ${this.tPickedAnswer === i ? 'picked' : ''}"
+        ${(this.tOptionOrder || q.options.map((o, i) => i))
+            .map((orig, pos) => q.options[orig] ? `
+          <label class="student-option noselect ${this.tPickedAnswer === orig ? 'picked' : ''}"
                  oncopy="return false" oncontextmenu="return false"
-                 onclick="StudentApp.pickWarAnswer(${i})">
-            <span class="student-option-letter">${'ABCD'[i]}</span>
-            <span>${escapeHtml(opt)}</span>
+                 onclick="StudentApp.pickWarAnswer(${orig})">
+            <span class="student-option-letter">${'ABCD'[pos]}</span>
+            <span>${escapeHtml(q.options[orig])}</span>
           </label>` : '').join('')}
 
         <button class="btn btn-primary btn-block btn-large" style="margin-top:14px;"

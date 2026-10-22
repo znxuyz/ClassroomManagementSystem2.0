@@ -24,6 +24,7 @@ function renderAll() {
   renderProjector();
   renderRulesEditor();
   renderSkillBoard();
+  renderWeeklyPanel();
   renderOverview();
   renderSettings();
   updateTimerDisplay();

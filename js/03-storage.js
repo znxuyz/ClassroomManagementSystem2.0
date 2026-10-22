@@ -73,7 +73,7 @@ const KNOWN_BLOB_KEYS = [
   'schema', 'className', 'teacherName', 'students', 'rules', 'attendance',
   'seatingLayouts', 'groupSets', 'currentGroups', 'contactBook', 'homework',
   'classTasks', 'shopHistory', 'shopItems', 'territoryQuestions', 'quizzes',
-  'skills', 'skillConsumed'
+  'skills', 'skillConsumed', 'territoryWeekly'
 ];
 
 function serializeState() {
@@ -104,7 +104,8 @@ function serializeState() {
     territoryQuestions: state.territoryQuestions,
     quizzes: state.quizzes,
     skills: state.skills,         // 守護獸技能設定(開關、幾週刷新、起算時間)
-    skillConsumed: state.skillConsumed    // 已經結算吃掉的技能使用,避免重複套用
+    skillConsumed: state.skillConsumed,   // 已經結算吃掉的技能使用,避免重複套用
+    territoryWeekly: state.territoryWeekly  // 蜂巢戰紀每週結算:開關、分數、已結算到第幾週
   };
 }
 

@@ -120,6 +120,11 @@ function helpRuleSections(rules) {
         '<strong>別組的地</strong>:打下去會進入<strong>交戰</strong>,在設定的秒數內分數最高、' +
           '且達到門檻的那一組才拿走。這段時間是留給對方反擊的。',
         '<strong>同一題答對一次就夠了</strong>,答對過的題目不會再出現(再答也不會再得分)。',
+        weeklyOnForHelp()
+          ? '<strong>每週一會依佔領的格數發獎</strong>:' + weeklyPrizeTextForHelp() +
+            '。獎勵發給那一組的每一個人,會變成你的積分與守護獸經驗。' +
+            '格數一樣多就同名次(都拿一樣的分)。'
+          : '',
         '<strong>答錯可以再試這一題</strong>,但會先輪完其他沒做過的題目。' +
           '有倒扣的話,錯一次就扣一次 —— 用猜的划不來。',
         coolN > 0 && coolSec > 0
@@ -234,6 +239,8 @@ const HELP = {
           '<strong>🛡️ 護盾</strong> — 答錯之後在提示框裡按,擋掉那一次的倒扣。<br>' +
           '<strong>🌀 靜心</strong> — 被罰等待時按,立刻就能再出手。<br>' +
           '<strong>✋ 巧手</strong> — 攻打時按,這一次可以多換幾題。',
+        '每個選項的<strong>順序每次都不一樣</strong> —— 所以「那題選 B」這種話沒有用,' +
+          '要真的看懂題目才答得對。',
         '找不到自己的領地?按右上角的<strong>「⌖ 回到我的領地」</strong>。地圖可以用 ＋ － 縮放,按「整張」看全貌。',
         '灰色斜線是還沒開放的區域,★ 是各組基地(不能被攻佔)。'
       ]
@@ -319,6 +326,13 @@ const HELP = {
         '授權表(誰這週幾次、多強)是你的電腦算好寫上去的,所以<strong>每週一換季之後' +
           '要開一下系統</strong>,學生的次數才會刷新。正常上課日一定會開,實務上不是問題;' +
           '學生說「技能用不了」時,先想到這件事。',
+        '<strong>每週結算獎勵</strong>(在戰況地圖頁下方開啟):每週一依佔領格數發獎,' +
+          '預設第一名 +5、第二名 +3、第三名 +1,發給那一組的每一位成員。' +
+          '<strong>同分同名次</strong>(兩組並列第一就都拿第一名的分,然後跳過第二名)。' +
+          '一週只結算一次,重新整理或換裝置都不會重複發;' +
+          '<strong>週一開一下系統就會補發上週的</strong>,不必剛好在午夜掛著。',
+        '<strong>選項順序每次隨機</strong>:題庫再大也擋不住「那題選 B」口耳相傳,' +
+          '因為學生記的是位置不是內容。打亂之後,知道答案的人也要重新看過選項。',
         '<strong>連錯冷卻</strong>(預設連錯 3 題 → 冷卻 60 秒):專治亂猜。答對一次就歸零,' +
           '換題不算答錯,所以正常作答的學生碰不到。這條由安全規則強制 —— ' +
           '每筆作答紀錄都接在前一筆後面(編號連號、不准修改),學生重新整理或換裝置都躲不掉。' +
@@ -373,6 +387,17 @@ const HELP = {
 
 /* 規則在前、操作在後:學生最想知道的是「怎麼拿分」 */
 /* 技能有沒有開。說明要跟著實際設定走,不然會教到不存在的功能。 */
+/* 每週結算有沒有開、發幾分。說明要跟著實際設定走。 */
+function weeklyOnForHelp() {
+  if (typeof TerritoryWeekly === 'undefined') return false;
+  return !!TerritoryWeekly.cfg().enabled;
+}
+
+function weeklyPrizeTextForHelp() {
+  const p = TerritoryWeekly.cfg().prizes;
+  return `第一名 +${p[0]}、第二名 +${p[1]}、第三名 +${p[2]} 分`;
+}
+
 function skillsOnForHelp() {
   if (typeof SkillEngine === 'undefined') return false;
   // 學生端讀 StudentApp.classSkills,老師端讀 state.skills

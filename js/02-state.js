@@ -51,5 +51,7 @@ let state = {
   // 守護獸技能:{ enabled, weeks, startAt }。預設關閉,老師自己決定何時開
   skills: { ...SKILL_DEFAULTS },
   // 已經在結算時吃掉的技能使用 { useId: 時間 },避免同一筆被套用兩次
-  skillConsumed: {}
+  skillConsumed: {},
+  // 蜂巢戰紀每週結算 { enabled, prizes, lastWeek, log }
+  territoryWeekly: { ...TERRITORY_WEEKLY_DEFAULTS }
 };

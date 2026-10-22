@@ -88,6 +88,7 @@ const Session = {
     if (typeof PurchaseWatch !== 'undefined') PurchaseWatch.stop();
     if (typeof TerritoryGame !== 'undefined') TerritoryGame.stop();
     if (typeof SkillAdmin !== 'undefined') SkillAdmin.stop();
+    if (typeof TerritoryWeekly !== 'undefined') TerritoryWeekly.stop();
     if (StudentApp.unsubPurchases) StudentApp.unsubPurchases();
     if (StudentApp.unsub) StudentApp.unsub();
     if (StudentApp.unsubTQuestions) StudentApp.unsubTQuestions();
@@ -116,7 +117,8 @@ const Session = {
       territoryQuestions: [],
       quizzes: [],
       skills: { ...SKILL_DEFAULTS },
-      skillConsumed: {}
+      skillConsumed: {},
+      territoryWeekly: { ...TERRITORY_WEEKLY_DEFAULTS }
     };
     const { id } = await Cloud.createClass(
       state.user.uid, className, teacherName, blank
@@ -150,6 +152,7 @@ const Session = {
     PurchaseWatch.start();
     TerritoryGame.start();
     SkillAdmin.start();
+    TerritoryWeekly.start();
     // 到了統一結算時間的測驗,老師一開系統就算完,不必先切到測驗分頁
     QuizWatch.startDueTimer();
 
@@ -183,6 +186,7 @@ const Session = {
       PurchaseWatch.stop();
       TerritoryGame.stop();
       SkillAdmin.stop();
+      TerritoryWeekly.stop();
 
       await this.openClass(classId);
       await SwitchHUD.finish(state.className);
@@ -286,6 +290,7 @@ function applyBlobToState(blob) {
   state.quizzes       = blob.quizzes || [];
   state.skills        = SkillEngine.cfg(blob.skills);
   state.skillConsumed = blob.skillConsumed || {};
+  state.territoryWeekly = blob.territoryWeekly || { ...TERRITORY_WEEKLY_DEFAULTS };
   state.selectedStudentId = null;
   state.students.forEach(migrateStudent);
 

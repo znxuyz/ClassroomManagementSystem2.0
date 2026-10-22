@@ -39,3 +39,12 @@ const DEFAULT_RULES = [
   { name: '生活常規良好', points: 1 },
   { name: '違反班規', points: -2 }
 ];
+
+/* 蜂巢戰紀每週結算的預設值。
+   放在這裡而不是 territory/07-weekly.js —— 因為 02-state.js 在「載入時」
+   就要用它當預設值,而那個檔案載入得比 territory 早很多。
+   (同樣的坑踩過一次:常數定義在後面的檔案,開啟就 ReferenceError。) */
+const TERRITORY_WEEKLY_DEFAULTS = {
+  enabled: false,        // 預設關閉,由老師決定什麼時候開始
+  prizes: [5, 3, 1]      // 第一、二、三名
+};
