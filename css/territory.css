@@ -556,10 +556,9 @@
   margin-bottom: 12px;
   padding: 14px 18px;
   border: 1px solid rgba(194, 91, 78, 0.45);
-  border-radius: var(--radius);
-  background: linear-gradient(135deg,
-              rgba(194, 91, 78, 0.18), rgba(194, 91, 78, 0.06));
-  color: var(--text);
+  border-radius: var(--control-r);
+  background: rgba(194, 91, 78, 0.10);
+  color: var(--ink);
   font-size: 13px;
   line-height: 1.7;
 }
