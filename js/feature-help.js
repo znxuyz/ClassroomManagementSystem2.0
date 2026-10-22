@@ -525,9 +525,13 @@ function renderHelpView() {
   const active = document.querySelector('#helpView .sub-tab.active');
   const which = active ? active.dataset.subtab : 'helpTeacher';
   const el = document.getElementById(which === 'helpStudent' ? 'helpStudentBody' : 'helpTeacherBody');
-  if (!el || el.dataset.done) return;
-  el.innerHTML = which === 'helpStudent'
-    ? renderHelpFull('student', state.rules)
-    : renderHelpSections(HELP.teacher) + renderHelpSections(helpRuleSections(state.rules));
-  el.dataset.done = '1';
+  if (!el) return;
+
+  /* 教師端原本走的是舊路徑(直接攤出所有段落),所以沒有分類那一排。
+     兩端都改走 renderHelpFull,分類、順序、技能表才會一致。
+
+     也拿掉了原本的 dataset.done 快取:說明的內容會跟著實際設定變
+     (技能開了沒、倒扣幾分、每週獎勵發多少),畫一次就不再更新的話
+     老師改了設定卻看到舊的說明。重畫一次很便宜,不值得為它冒這個險。 */
+  el.innerHTML = renderHelpFull(which === 'helpStudent' ? 'student' : 'teacher', state.rules);
 }

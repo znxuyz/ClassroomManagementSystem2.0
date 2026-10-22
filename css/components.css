@@ -315,15 +315,16 @@ textarea.custom-points-input {
 /* ============================================
    子分頁(課堂工具 / 班級管理 共用)
 ============================================ */
+/* 每個頁面原本自己那排子分頁,現在由上方導覽的第二排取代。
+
+   刻意「隱藏」而不是從 HTML 刪掉:switchSubTab() 與 renderActiveView()
+   都靠 .sub-tab.active 判斷現在停在哪一個子分頁,刪掉要改十幾個
+   render 函式。留著只是不顯示,風險小得多。
+
+   (這條原本寫在 base.css,但 components.css 載入得比較晚,
+    同樣權重後面贏 —— 結果兩排選單同時出現。所以放在這裡。) */
 .sub-tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 24px;
-  padding: 4px;
-  background: var(--paper-warm);
-  border-radius: 8px;
-  width: fit-content;
-  box-shadow: var(--shadow-sm);
+  display: none;
 }
 
 .sub-tab {

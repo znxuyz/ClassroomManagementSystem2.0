@@ -194,7 +194,10 @@ body {
 .app-main {
   min-height: calc(100vh - 64px);
   padding: 32px;
-  max-width: 1400px;
+  /* 放寬:教室的筆電與單槍通常是 1366~1920,原本 1400 在大螢幕上
+     兩側會空掉一截。1760 在 1920 上大約佔 92%,又不會寬到讓
+     文字一行拉太長。 */
+  max-width: 1760px;
   margin: 0 auto;
 }
 
@@ -501,9 +504,3 @@ select.setup-input {
   .nav-subtabs { padding: 8px 12px; gap: 5px; }
   .nav-sub { font-size: 12px; padding: 0 11px; min-height: 30px; }
 }
-
-/* 原本每個頁面自己那排子分頁,現在由上方第二排取代。
-   刻意保留在 DOM 裡而不是刪掉 —— switchSubTab() 與 renderActiveView()
-   都靠 .sub-tab.active 判斷現在停在哪一個子分頁。
-   刪掉要改十幾個 render 函式,留著只是不顯示,風險小得多。 */
-.sub-tabs { display: none; }
