@@ -309,3 +309,15 @@
 .hw-mini-btn.active.sub-yes { background: var(--healthy); color: var(--paper); border-color: var(--healthy); }
 .hw-mini-btn.active.sub-late { background: var(--mild); color: var(--paper); border-color: var(--mild); }
 .hw-mini-btn.active.sub-no { background: var(--sick); color: var(--paper); border-color: var(--sick); }
+
+/* 窄螢幕:新增作業那一排的格子會被壓到比內容還窄,
+   輸入框撐出去(實測溢出 14px)。改成兩欄並讓輸入框能縮。 */
+@media (max-width: 760px) {
+  .hw-create-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hw-create-form > * { min-width: 0; }
+
+  .hw-create-form > button { grid-column: 1 / -1; }
+}

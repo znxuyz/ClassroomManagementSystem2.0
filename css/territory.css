@@ -578,3 +578,18 @@
   0%, 100% { opacity: 1; transform: scale(1); }
   50%      { opacity: .55; transform: scale(.9); }
 }
+
+/* 窄螢幕:題庫的表單那幾排原本是不換行的 flex,
+   按鈕被擠出畫面(實測溢出 38px)。 */
+@media (max-width: 760px) {
+  .tq-form-row {
+    flex-wrap: wrap;
+  }
+
+  .tq-form-row > input,
+  .tq-form-row > select,
+  .tq-form-row > textarea {
+    min-width: 0;
+    flex: 1 1 140px;
+  }
+}

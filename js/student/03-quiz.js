@@ -37,6 +37,41 @@ Object.assign(StudentApp, {
     this.render();
   },
 
+  /* ---------- 選項順序隨機 ----------
+     和蜂巢戰紀同一個理由:選項順序固定的話,學生記「那題選 B」就好,
+     而且一句話就能傳給同學。題目再多也擋不住,因為記的是位置不是內容。
+
+     但這裡不能像蜂巢戰紀那樣「每次點開都重排」——
+     測驗是一邊看一邊作答的,每次重繪都換順序,學生選到一半會錯亂。
+     所以用「學號 + 測驗 + 題號」當種子算出固定的順序:
+       · 同一個學生、同一題,重新整理也是同一個順序
+       · 不同學生拿到的順序不一樣
+       · 不必存任何東西,算出來的
+     送出的仍然是原本的索引,所以批改完全不受影響。 */
+  optionOrder(quizId, q) {
+    if (!q.options || q.type !== 'choice') return null;
+    const key = `${quizId}::${q.id}`;
+    if (!this.qOrder) this.qOrder = {};
+    if (this.qOrder[key]) return this.qOrder[key];
+
+    // 字串雜湊 → 種子。帶上學號,所以每個學生的順序都不一樣
+    const seedStr = `${this.classInfo.studentId}::${key}`;
+    let h = 2166136261;
+    for (let i = 0; i < seedStr.length; i++) {
+      h ^= seedStr.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    const rnd = seededRandom(h);
+
+    const idx = q.options.map((o, i) => (o ? i : -1)).filter(i => i >= 0);
+    for (let i = idx.length - 1; i > 0; i--) {
+      const j = Math.floor(rnd() * (i + 1));
+      [idx[i], idx[j]] = [idx[j], idx[i]];
+    }
+    this.qOrder[key] = idx;
+    return idx;
+  },
+
   setAnswer(qId, value) {
     this.draftAnswers[qId] = value;
   },
@@ -126,12 +161,13 @@ Object.assign(StudentApp, {
 
     let options = '';
     if (q.type === 'choice') {
-      options = q.options.map((opt, oi) => opt ? `
+      // 顯示順序打亂,但送出的仍是原本的索引
+      options = this.optionOrder(quiz.id, q).map((oi, pos) => `
         <div class="student-option ${picked === oi ? 'picked' : ''}"
              onclick="StudentApp.pickQAnswer(${oi})">
-          <span class="student-option-letter">${'ABCD'[oi]}</span>
-          <span>${escapeHtml(opt)}</span>
-        </div>` : '').join('');
+          <span class="student-option-letter">${'ABCD'[pos]}</span>
+          <span>${escapeHtml(q.options[oi])}</span>
+        </div>`).join('');
     } else if (q.type === 'truefalse') {
       options = `
         <div class="student-option ${picked === true ? 'picked' : ''}"
@@ -182,12 +218,12 @@ Object.assign(StudentApp, {
           <span class="student-question-num">${i + 1}</span>${escapeHtml(q.text)}
         </div>
 
-        ${q.type === 'choice' ? q.options.map((opt, oi) => `
+        ${q.type === 'choice' ? this.optionOrder(quiz.id, q).map((oi, pos) => `
           <label class="student-option">
             <input type="radio" name="sq_${q.id}" value="${oi}"
                    onchange="StudentApp.setAnswer('${q.id}', ${oi})" />
-            <span class="student-option-letter">${'ABCD'[oi]}</span>
-            <span>${escapeHtml(opt)}</span>
+            <span class="student-option-letter">${'ABCD'[pos]}</span>
+            <span>${escapeHtml(q.options[oi])}</span>
           </label>`).join('') : ''}
 
         ${q.type === 'truefalse' ? `

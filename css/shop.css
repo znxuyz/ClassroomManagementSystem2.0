@@ -543,3 +543,26 @@
   color: var(--ink-muted);
   margin-top: 2px;
 }
+
+/* 窄螢幕:新增任務那一排同上 */
+@media (max-width: 760px) {
+  .task-create-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .task-create-form > * { min-width: 0; }
+
+  .task-create-form > button { grid-column: 1 / -1; }
+}
+
+/* 獎品卡片的名稱輸入框:flex:1 不足以讓 <input> 縮小 ——
+   flex 項目的 min-width 預設是 auto,而 input 有「大約 20 個字元」的
+   內在寬度,所以卡片再窄它也不縮,直接撐破卡片。
+
+   技能果實上架之後才暴露出來(名稱比較長),而且是所有寬度都破,
+   不只手機 —— 1440 寬時溢出 134px。 */
+.shop-item-head > *,
+.shop-item-card input,
+.shop-item-card textarea {
+  min-width: 0;
+}

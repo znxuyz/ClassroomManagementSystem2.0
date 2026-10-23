@@ -433,3 +433,7 @@ textarea.custom-points-input {
 }
 
 .toast-action:hover { background: rgba(255, 255, 255, 0.15); }
+
+/* 積分規則那幾排:1fr 的格子一樣會被 input 的內在寬度撐開
+   (grid 項目的 min-width 預設也是 auto)。360px 寬時溢出 32px。 */
+.rule-editor-row > * { min-width: 0; }
