@@ -49,9 +49,15 @@ process.on('exit', stop);
 
 /* 等它起來。180 秒是為了 CI —— 第一次跑要先下載模擬器的 JAR。
    本機第二次之後大約 15 秒就好了。 */
+/* 模擬器自己死掉的話就不要再等 —— 原本會傻等滿 180 秒,
+   一個三秒就能看出來的錯誤(例如 java 版本太舊)要三分鐘才回報。 */
+let died = false;
+emu.on('exit', () => { died = true; });
+
 let up = false;
 for (let i = 0; i < 180; i++) {
   await new Promise(r => setTimeout(r, 1000));
+  if (died) break;
   try { const r = await fetch(HOST + '/'); if (r.status === 200) { up = true; break; } } catch { }
 }
 if (!up) {
