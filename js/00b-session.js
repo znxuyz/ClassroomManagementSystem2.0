@@ -114,7 +114,7 @@ const Session = {
       classTasks: [],
       shopHistory: [],
       shopItems: [],
-      territoryQuestions: [],
+      tqRev: 0,
       quizzes: [],
       skills: { ...SKILL_DEFAULTS },
       skillConsumed: {},
@@ -146,6 +146,10 @@ const Session = {
     state.className = doc.className || state.className;
     state.teacherName = doc.teacherName || state.teacherName;
     updateSyncStatus('saved');
+
+    /* 題庫不在主文件裡,要另外讀(8 筆)。開局會檢查題庫空不空,
+       所以一定要等它載完才接上監聽。 */
+    await QuestionBank.load(classId, doc.blob || {});
 
     await SwitchHUD.step('attach');
     watchCurrentClass();
@@ -218,12 +222,22 @@ function watchCurrentClass() {
     if (_cloudSavePending) return;
 
     const keepSelection = state.selectedStudentId;
+    const revBefore = state.tqRev || 0;
     applyBlobToState(doc.blob || {});
     state.selectedStudentId = keepSelection;
     state.className = doc.className || state.className;
 
     renderAll();
     updateSyncStatus('saved');
+
+    /* 題庫不在主文件裡,所以別台改了題目這裡不會自動收到。
+       主文件裡留了一個計數器 tqRev,改題時 +1 —— 看到它變了才去
+       重讀分片。題庫幾乎不變,所以這 8 筆讀取平常不會發生。 */
+    if ((state.tqRev || 0) !== revBefore) {
+      QuestionBank.load(state.classId, doc.blob || {})
+        .then(n => { console.info(`[題庫] 別台改了題庫,已重新載入 ${n} 題`); renderAll(); })
+        .catch(e => console.warn('[題庫] 重新載入失敗:', e.message));
+    }
   });
 }
 
@@ -252,6 +266,10 @@ function resetPerClassUiState() {
   state.pendingPetSpecies = null;
   state.currentAttendanceDate = null;
   state.currentContactDate = null;
+  /* 題庫已經不在主文件裡了(見 js/03c-question-bank.js),所以換班時
+     不會被新班級的 blob 蓋掉 —— 要在這裡清掉,否則會看到上一班的題目。
+     清完由 openClass() 的 QuestionBank.load() 指派。 */
+  state.territoryQuestions = [];
 }
 
 /* ============================================
@@ -286,7 +304,15 @@ function applyBlobToState(blob) {
   state.classTasks    = blob.classTasks || [];
   state.shopHistory   = blob.shopHistory || [];
   state.shopItems     = blob.shopItems || [];
-  state.territoryQuestions = blob.territoryQuestions || [];
+  /* 題庫搬到 classes/{id}/tqbank 了(見 js/03c-question-bank.js)。
+     這裡只在「blob 真的帶著這個欄位」時才套用 ——
+       · 舊班級、以及還原回來的舊備份:帶著,當成搬移的來源
+       · 現在的 blob:沒有這個欄位。這時候絕對不能設成 []
+         —— applyBlobToState() 每次雲端推送都會跑,設空的話
+         老師改題改到一半,題庫會憑空消失。
+     正常開班時由 openClass() 的 QuestionBank.load() 指派。 */
+  if ('territoryQuestions' in blob) state.territoryQuestions = blob.territoryQuestions || [];
+  state.tqRev         = blob.tqRev || 0;
   state.quizzes       = blob.quizzes || [];
   state.skills        = SkillEngine.cfg(blob.skills);
   state.skillConsumed = blob.skillConsumed || {};

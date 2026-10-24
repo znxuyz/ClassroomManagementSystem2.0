@@ -245,6 +245,12 @@ async function restoreBackup(backupId) {
       className: blob.className, teacherName: blob.teacherName
     });
     applyBlobToState(blob);
+    /* 舊備份裡的主文件還帶著題庫,還原之後要把它寫回分片 ——
+       不然還原完題庫還是雲端那一份(新的),和還原的其他資料對不起來。
+       整批取代,所以八片全部重寫。 */
+    if ('territoryQuestions' in blob) {
+      await publishTerritoryQuestions(true);
+    }
     await Cloud.syncRosterIndex(state.classId, state.className, state.students)
       .catch(e => console.warn('[備份] 名冊索引同步失敗:', e.message));
 

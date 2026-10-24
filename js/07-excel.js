@@ -432,7 +432,7 @@ function importTerritoryQuestionsFromExcel() {
 
     save();
     renderTerritoryQuestions();
-    publishTerritoryQuestions();
+    publishTerritoryQuestions(true);   // 整批取代,八片全部重寫
     toast(`✦ 已匯入 ${imported.length} 題`);
 
     if (result.warnings.length) {

@@ -40,9 +40,24 @@ function deleteTerritoryQuestion(id) {
   publishTerritoryQuestions();
 }
 
-async function publishTerritoryQuestions() {
+/* 題庫有三份:
+     · classes/{id}/tqbank/s0..s7   老師的本體,含答案,分片(改一題只動一片)
+     · territory/questions          給學生看的,不含答案
+     · territory/answers            給安全規則核對的答案表
+   三份都要更新,但只有第一份是「資料」—— 後兩份是從它衍生出來的,
+   所以順序是:先存本體,再發布。本體存失敗就不發布,免得學生看到的
+   題目和老師手上的對不起來。
+
+   all = true 代表整批取代(匯入、還原備份),八片全部重寫。 */
+async function publishTerritoryQuestions(all) {
   if (!isCloudMode()) return;
   try {
+    const changed = await QuestionBank.persist(state.classId, all);
+    if (changed > 0) {
+      // 讓別台知道題庫動了(它們只看得到主文件)
+      state.tqRev = QuestionBank.rev();
+      save();
+    }
     await Cloud.publishTerritoryQuestions(state.classId, state.territoryQuestions);
   } catch (e) {
     console.error('[蜂巢戰紀] 題庫發布失敗:', e);

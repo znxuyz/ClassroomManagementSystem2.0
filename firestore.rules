@@ -302,6 +302,17 @@ service cloud.firestore {
         allow delete: if isClassTeacher();
       }
 
+      /* 蜂巢題庫的本體,分片存放(s0..s7)。
+         **這裡含正確答案**,所以學生連讀都不行 —— 讀得到就等於拿到答案卡。
+         學生讀的是 territory/questions(不含答案)那一份。 */
+      match /tqbank/{shardId} {
+        function isClassTeacher() {
+          return signedIn()
+            && get(/databases/$(database)/documents/classes/$(classId)).data.teacherUid == request.auth.uid;
+        }
+        allow read, write: if isClassTeacher();
+      }
+
       /* 舊學期的封存(點名、測驗結果)。只有導師碰得到。 */
       match /archives/{label} {
         function isClassTeacher() {

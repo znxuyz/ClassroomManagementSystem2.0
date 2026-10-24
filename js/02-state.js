@@ -46,6 +46,8 @@ let state = {
   shopItems: [],            // [{ id, name, icon, price, stock, description, active }]
   // 蜂巢戰紀題庫(含正確答案,只留在老師端)
   territoryQuestions: [], // [{ id, text, options, answer, difficulty }]
+                          // 不存在主文件裡,開班時從 tqbank 分片讀進來
+  tqRev: 0,               // 題庫版本。別台看到它變了才去重讀分片
   // 作業測驗題庫
   quizzes: [],              // [{ id, title, questions, status, dueDate, pointsPerQuestion }]
   // 守護獸技能:{ enabled, weeks, startAt }。預設關閉,老師自己決定何時開

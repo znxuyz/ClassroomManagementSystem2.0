@@ -73,8 +73,11 @@ const KNOWN_BLOB_KEYS = [
   'schema', 'className', 'teacherName', 'students', 'rules', 'attendance',
   'seatingLayouts', 'groupSets', 'currentGroups', 'contactBook', 'homework',
   'classTasks', 'shopHistory', 'shopItems', 'territoryQuestions', 'quizzes',
-  'skills', 'skillConsumed', 'territoryWeekly'
+  'skills', 'skillConsumed', 'territoryWeekly', 'tqRev'
 ];
+/* territoryQuestions 還留在上面那張清單裡,但 serializeState() 已經不輸出它
+   —— 留著是為了讓舊欄位被「認得」而不被 _carryOver 原封不動帶回去,
+   這樣下一次存檔就會把主文件裡那 77 KB 清掉。 */
 
 function serializeState() {
   return {
@@ -101,7 +104,11 @@ function serializeState() {
     classTasks: state.classTasks,
     shopHistory: state.shopHistory,
     shopItems: state.shopItems,
-    territoryQuestions: state.territoryQuestions,
+    /* territoryQuestions 不在這裡了 —— 它搬到 classes/{id}/tqbank。
+       原因:主文件是整份覆蓋寫上去的,老師每按一次加分就會把整個
+       題庫(529 題 ≈ 77 KB)重新上傳一次,而題庫幾乎不會變。
+       詳見 js/03c-question-bank.js。 */
+    tqRev: state.tqRev || 0,   // 題庫版本,別台看到它變了才去重讀分片
     quizzes: state.quizzes,
     skills: state.skills,         // 守護獸技能設定(開關、幾週刷新、起算時間)
     skillConsumed: state.skillConsumed,   // 已經結算吃掉的技能使用,避免重複套用

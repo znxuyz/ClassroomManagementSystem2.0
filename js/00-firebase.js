@@ -562,6 +562,30 @@ const Cloud = {
     await batch.commit();
   },
 
+  /* ---------- 老師端的題庫本體(含答案),分片存放 ----------
+     學生端不碰這裡 —— 他們讀的是上面那份不含答案的 territory/questions。
+     為什麼要搬出主文件、為什麼依題號雜湊分片,見 js/03c-question-bank.js。 */
+  async loadQuestionBank(classId) {
+    const snap = await this.db.collection('classes').doc(classId)
+      .collection('tqbank').get();
+    const out = [];
+    snap.docs.forEach(d => out.push(...(d.data().questions || [])));
+    return out;
+  },
+
+  /* shards = { s0: [...], s3: [...] } —— 只傳要改的那幾片 */
+  async saveQuestionShards(classId, shards) {
+    const keys = Object.keys(shards);
+    if (keys.length === 0) return 0;
+    const base = this.db.collection('classes').doc(classId).collection('tqbank');
+    const batch = this.db.batch();
+    keys.forEach(k => {
+      batch.set(base.doc(k), { questions: shards[k], at: Date.now() });
+    });
+    await batch.commit();
+    return keys.length;
+  },
+
   watchTerritoryQuestions(classId, cb) {
     return this.db.collection('classes').doc(classId)
       .collection('territory').doc('questions')

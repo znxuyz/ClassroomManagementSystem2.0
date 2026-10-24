@@ -88,6 +88,31 @@ const HistoryArchive = {
     }
   },
 
+  /* ── 讀回來的時候去重 ──
+     分片文件的 id 是 `{學生}_{這片第一筆的時間}_{位移}`。
+     正常情況下不會重複,但有一個例外:
+
+       老師還原了一份舊備份(裡面 history 還是完整的)→ 再封存一次。
+       這時候分片的邊界會位移(例如中間多了幾筆),算出來的 id 就和
+       原本那批不一樣 —— 同一批紀錄於是躺在兩份不同 id 的文件裡,
+       報表會把它算兩次,學生的歷史總分突然變兩倍。
+
+     封存端沒辦法擋(它不知道雲端已經有什麼,要知道就得先全部讀回來,
+     那就白費了省讀取的功夫)。所以改在讀回來的時候去重 —— 便宜、
+     而且不管重複是怎麼來的都擋得住。
+
+     用「時間 + 分數 + 原因」當身分。同一位學生在同一毫秒拿到
+     同樣分數、同樣原因的兩筆,實際上就是同一筆。 */
+  dedupe(entries) {
+    const seen = new Set();
+    return entries.filter(e => {
+      const key = `${e.time || 0}|${e.points}|${e.reason || ''}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  },
+
   /* 讀回某位學生的完整歷程(封存的 + 主文件裡最近的)。
      報表與 AI 分析要用,平常不讀,所以不會增加日常的讀取量。 */
   async full(student) {
@@ -95,7 +120,7 @@ const HistoryArchive = {
     if (!isCloudMode()) return recent;
     try {
       const old = await Cloud.loadStudentHistory(state.classId, student.id);
-      return old.concat(recent);
+      return this.dedupe(old.concat(recent));
     } catch (e) {
       console.warn('[歷程] 讀取封存失敗,只用主文件裡的:', e.code || e.message);
       return recent;
@@ -110,7 +135,7 @@ const HistoryArchive = {
     try {
       const old = await Cloud.loadAllHistory(state.classId);
       Object.keys(old).forEach(sid => {
-        out[sid] = (old[sid] || []).concat(out[sid] || []);
+        out[sid] = this.dedupe((old[sid] || []).concat(out[sid] || []));
       });
     } catch (e) {
       console.warn('[歷程] 讀取整班封存失敗:', e.code || e.message);
@@ -212,7 +237,8 @@ function renderDataUsage() {
       一個班級的資料存在雲端的<strong>一份文件</strong>裡,上限是 1024 KB ——
       超過之後<strong>整份寫入會被拒絕</strong>,也就是按加分會存不進去。<br>
       加分紀錄會自動搬到另一個地方(主文件只留最近 ${HistoryArchive.KEEP} 筆/人),
-      所以平常不用管它。${waiting > 0
+      蜂巢題庫也存在別處,所以它們都不佔這裡的額度 —— 平常不用管。
+      ${waiting > 0
         ? `目前有 <strong>${waiting}</strong> 筆等著搬,下次存檔時會處理。` : ''}
     </div>
 
