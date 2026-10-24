@@ -49,6 +49,13 @@ jobs:
       # 不是發布之後。
       #
       # 這一套會自己開關模擬器,需要 java —— GitHub 的 runner 本來就有。
+      #
+      # JAR 先單獨抓下來。不先抓的話,第一次會在「等模擬器起來」那段
+      # 偷偷下載 60 MB,然後因為等太久而失敗 —— 失敗訊息會指向模擬器,
+      # 看起來像規則有問題,其實只是在下載。
+      - name: 先抓模擬器(避免第一次下載拖太久)
+        run: firebase setup:emulators:firestore
+
       - name: 測試安全規則
         run: node tests/09-rules.mjs
 

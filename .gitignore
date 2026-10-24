@@ -1,0 +1,5 @@
+# Firestore 模擬器跑測試時留下的
+firestore-emulator.log
+firestore-debug.log
+firebase-debug.log
+ui-debug.log

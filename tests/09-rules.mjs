@@ -13,8 +13,8 @@
    會自己開關模擬器。沒有 firebase CLI 或 java 就整套跳過(回傳 0),
    不會把其他測試擋下來。
 ============================================ */
-import { spawn } from 'node:child_process';
-import { execSync } from 'node:child_process';
+import { spawn, execSync } from 'node:child_process';
+import { openSync, readFileSync, unlinkSync } from 'node:fs';
 import { report } from './lib.mjs';
 
 const have = cmd => { try { execSync('command -v ' + cmd, { stdio: 'ignore' }); return true; }
@@ -31,9 +31,14 @@ const HOST = 'http://127.0.0.1:8411';
 const PROJ = 'demo-rules-test';
 const BASE = `${HOST}/v1/projects/${PROJ}/databases/(default)/documents`;
 
+/* 模擬器的輸出留一份 —— 起不來的時候那是唯一看得出原因的東西。
+   (第一次跑會先下載 Firestore 模擬器的 JAR,大約 60 MB,
+    在 CI 上可能要一兩分鐘。) */
+const LOG = DIR + 'firestore-emulator.log';
+const logFd = openSync(LOG, 'w');
 const emu = spawn('firebase',
   ['emulators:start', '--only', 'firestore', '--project', PROJ],
-  { cwd: DIR, stdio: 'ignore', detached: true });
+  { cwd: DIR, stdio: ['ignore', logFd, logFd], detached: true });
 /* detached:true 才有自己的行程群組 —— 模擬器底下還有一個 java 行程,
    只殺 node 那一層的話 java 會留著佔住 port,下一次就起不來。 */
 const stop = () => {
@@ -42,18 +47,21 @@ const stop = () => {
 };
 process.on('exit', stop);
 
-// 等它起來(最多 60 秒)
+/* 等它起來。180 秒是為了 CI —— 第一次跑要先下載模擬器的 JAR。
+   本機第二次之後大約 15 秒就好了。 */
 let up = false;
-for (let i = 0; i < 60; i++) {
+for (let i = 0; i < 180; i++) {
   await new Promise(r => setTimeout(r, 1000));
   try { const r = await fetch(HOST + '/'); if (r.status === 200) { up = true; break; } } catch { }
 }
 if (!up) {
-  console.log('\n── 安全規則 ──\n  ✗ 模擬器起不來(在專案根目錄跑 ' +
-    'firebase emulators:start --only firestore --project demo-rules-test 看錯誤訊息)');
+  console.log('\n── 安全規則 ──\n  ✗ 模擬器起不來。它的輸出:\n');
+  try { console.log(readFileSync(LOG, 'utf8').split('\n').slice(-30).join('\n')); }
+  catch { console.log('  (連 log 都沒有)'); }
   stop();
   process.exit(1);
 }
+const cleanLog = () => { try { unlinkSync(LOG); } catch { } };
 
 /* 模擬器接受「未簽章」的 JWT 當成已登入的使用者,
    Bearer owner 則會完全繞過規則 —— 種資料用它。 */
@@ -183,4 +191,5 @@ s = await req('GET', '/classes/C1/archives/2026-04-01', 'kid0');
 ok('學生碰不到舊學期封存', s === DENY, 'HTTP ' + s);
 
 stop();
+cleanLog();
 process.exit(report('安全規則(真的規則引擎)', lines, []) ? 0 : 1);
