@@ -43,6 +43,7 @@ npm i -g playwright && npx playwright install chromium
 | `04-archive-backup.mjs` | 歷程封存**絕對不可以掉資料**(先寫成功才從主文件刪);備份要是完整的 |
 | `05-report.mjs` | 每月積分的加總等於原始紀錄;逐筆明細預設收起 |
 | `06-help.mjs` | 說明的每一段都有分類、每個分類點了都有內容 |
+| `08-roster-status.mjs` | 各班名冊的狀態是**真的去查雲端**(不是看這個分頁寫過沒),以及一鍵補建不必一個班一個班開 |
 | `07-recovery.mjs` | 離線的變更救得回來,而且**不自動覆蓋** —— 老師可能在另一台裝置上 |
 
 ## 加一套新的

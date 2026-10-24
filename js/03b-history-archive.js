@@ -246,10 +246,10 @@ function renderDataUsage() {
       <strong>學生資料隱私</strong>:學生端讀的是另外一份「公開名冊」,
       只有姓名、累積經驗與守護獸。加分明細(含扣分原因)、測驗成績、
       可用積分與 Google 帳號各自存在只有本人看得到的地方,
-      同學之間互相看不到。<br>
-      這個班的名冊:${typeof Roster !== 'undefined' && Roster._lastRoster
-        ? '<strong>已建立</strong>(開班時自動更新)'
-        : '<strong>尚未建立</strong> —— 離開再開一次這個班就會建立'}
+      同學之間互相看不到。
+    </div>
+    <div id="rosterStatus" class="roster-status">
+      <span class="roster-checking">檢查各班名冊中…</span>
     </div>
 
     <div class="usage-parts">
@@ -266,6 +266,104 @@ function renderDataUsage() {
               onclick="archiveOldTerm()">封存舊資料…</button>
     </div>
     <div id="archiveResult"></div>`;
+
+  renderRosterStatus();
+}
+
+/* ============================================
+   各班名冊的狀態
+   ────────────────────────────────────────────
+   公開名冊存在雲端,不是存在這個分頁裡 —— 所以要真的去查,
+   不能只看「這個分頁有沒有寫過」(換台電腦、換個分頁就會誤報沒建立)。
+
+   五個班一次全部列出來,而且可以不開班就直接補建 ——
+   要老師一個班一個班開過去,是我在出作業給他。
+============================================ */
+async function renderRosterStatus() {
+  const box = document.getElementById('rosterStatus');
+  if (!box) return;
+  if (!isCloudMode()) { box.innerHTML = ''; return; }
+
+  const classes = state.myClasses || [];
+  if (classes.length === 0) { box.innerHTML = ''; return; }
+
+  let rows;
+  try {
+    rows = await Promise.all(classes.map(async c => {
+      const r = await Cloud.loadPublicRoster(c.id).catch(() => null);
+      return {
+        id: c.id,
+        name: c.className || '(未命名)',
+        ok: !!(r && r.students),
+        n: r && r.students ? r.students.length : 0,
+        at: r && r.at ? r.at : 0
+      };
+    }));
+  } catch (e) {
+    box.innerHTML = `<span class="roster-checking">名冊狀態查不到:${escapeHtml(e.message)}</span>`;
+    return;
+  }
+
+  const missing = rows.filter(r => !r.ok);
+
+  box.innerHTML = `
+    <div class="roster-title">各班名冊 ${missing.length === 0
+      ? '<span class="roster-ok-tag">全部完成</span>'
+      : `<span class="roster-miss-tag">還有 ${missing.length} 班沒建立</span>`}</div>
+    <div class="roster-list">
+      ${rows.map(r => `
+        <div class="roster-row">
+          <span class="roster-mark ${r.ok ? 'is-ok' : 'is-miss'}">${r.ok ? '✓' : '—'}</span>
+          <span class="roster-name">${escapeHtml(r.name)}</span>
+          <span class="roster-meta">${r.ok
+            ? `${r.n} 位 · ${new Date(r.at).toLocaleDateString('zh-TW')} 更新`
+            : '尚未建立'}</span>
+        </div>`).join('')}
+    </div>
+    ${missing.length > 0 ? `
+      <button class="btn btn-accent btn-small" style="margin-top:10px;"
+              onclick="buildAllRosters()">幫這 ${missing.length} 個班建立名冊</button>`
+      : '<div class="roster-note">名冊會在每次存檔時自動更新,平常不用管。</div>'}`;
+}
+
+/* 不必一個班一個班開 —— 直接讀每個班的主文件,蓋出名冊寫回去。 */
+async function buildAllRosters() {
+  const box = document.getElementById('rosterStatus');
+  const classes = state.myClasses || [];
+  if (classes.length === 0) return;
+
+  box.innerHTML = '<span class="roster-checking">建立中…</span>';
+  let done = 0;
+  const failed = [];
+
+  for (const c of classes) {
+    try {
+      const existing = await Cloud.loadPublicRoster(c.id).catch(() => null);
+      if (existing && existing.students) continue;      // 已經有了就跳過
+
+      /* 現在開著的那個班直接用 state —— 它可能有還沒存上去的變更,
+         讀回來的主文件會是舊的。 */
+      if (c.id === state.classId) {
+        Roster.reset();
+        await Roster.flush(true);
+      } else {
+        const doc = await Cloud.loadClass(c.id);
+        if (!doc) { failed.push(c.className + '(讀不到)'); continue; }
+        await Roster.flushFor(c.id, doc.blob || {});
+      }
+      done++;
+    } catch (e) {
+      console.error('[名冊] 建立失敗', c.className, e);
+      failed.push(`${c.className}(${e.code || e.message})`);
+    }
+  }
+
+  await renderRosterStatus();
+  if (failed.length > 0) {
+    toast(`${done} 個班建好了,但這幾個失敗:${failed.join('、')}`, 8000);
+  } else {
+    toast(`✦ ${done} 個班的名冊都建好了`);
+  }
 }
 
 /* ============================================

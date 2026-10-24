@@ -60,7 +60,25 @@ const Roster = {
     };
   },
 
-  build() {
+  /* 從一份 blob 蓋出公開名冊。
+     預設用目前開著的班(state),但也接受別的班的 blob ——
+     這樣才能不開班就幫所有班級補建名冊(見 buildAllRosters)。
+
+     blob 裡的 groupSets/currentGroups 已經是存檔格式(encodeGroups 過的),
+     而 state 裡的是解碼後的,所以兩邊要分開處理。 */
+  build(blob) {
+    if (blob) {
+      return {
+        className: blob.className || '',
+        students: (blob.students || []).map(s => this.publicEntry(s)),
+        rules: blob.rules || [],
+        shopItems: blob.shopItems || [],
+        skills: blob.skills || null,
+        currentGroups: blob.currentGroups || [],
+        groupSets: blob.groupSets || [],
+        at: Date.now()
+      };
+    }
     return {
       className: state.className,
       students: (state.students || []).map(s => this.publicEntry(s)),
@@ -73,6 +91,17 @@ const Roster = {
       })),
       at: Date.now()
     };
+  },
+
+  /* 幫「不是現在開著的那個班」建名冊。
+     老師不必一個一個班開過去 —— 直接讀那個班的主文件,蓋出名冊寫回去。
+     回傳寫了幾份個人資料。 */
+  async flushFor(classId, blob) {
+    await Cloud.savePublicRoster(classId, this.build(blob));
+    const docs = {};
+    (blob.students || []).forEach(s => { docs[s.id] = this.privateEntry(s); });
+    await Cloud.saveStudentPrivate(classId, docs);
+    return Object.keys(docs).length;
   },
 
   /* 老師端每次存檔後跟著寫。回傳 { roster, mine } 各寫了幾份。
