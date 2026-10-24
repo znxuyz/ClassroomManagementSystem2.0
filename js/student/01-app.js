@@ -55,7 +55,10 @@ const StudentApp = {
     document.getElementById('studentView').innerHTML =
       '<div class="student-loading">載入中…</div>';
 
-    await this.refresh();
+    /* 載不到班級資料就停在這裡 —— 再去接那些監聽沒有意義,
+       而且它們一回來就會把「請老師開一下系統」那句話蓋掉。 */
+    if (await this.refresh() === false) return;
+
     this.watch();
     this.watchPurchases();
     this.watchTerritory();
@@ -214,10 +217,24 @@ const StudentApp = {
         });
       this.applyClassData(roster);
     } else {
-      const doc = await Cloud.loadClass(classId);
+      /* 退路:讀主文件。
+         這條路以後會被安全規則關掉(主文件含有不該給學生看的欄位),
+         到時候「名冊不存在」+「主文件讀不到」就是同一個原因:
+         老師還沒用新版開過這個班。那句話要說得讓學生看得懂,
+         不要丟一個「找不到班級資料」讓他以為自己走錯班。 */
+      let doc = null;
+      try {
+        doc = await Cloud.loadClass(classId);
+      } catch (e) {
+        console.warn('[學生端] 主文件也讀不到:', e.code || e.message);
+      }
       if (!doc) {
-        toast('找不到班級資料');
-        return;
+        document.getElementById('studentView').innerHTML = `
+          <div class="student-loading">
+            這個班級還沒準備好 ——<br>
+            請老師開一下系統(開班時會自動完成),再重新整理這個頁面。
+          </div>`;
+        return false;
       }
       this.myPrivate = null;
       this.applyClassData(doc.blob || {});

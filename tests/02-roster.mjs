@@ -98,6 +98,19 @@ const lines = await page.evaluate(async () => {
   t.ok('那種情況明細是空的,不是當掉', (StudentApp.student.history || []).length === 0);
   db.fail.loadMyPrivate = false;
 
+  // ── 名冊和主文件都讀不到時(第二步收緊權限後漏掉的班)── 
+  db.roster = null;
+  db.fail.loadClass = true;
+  Cloud.loadClass = async () => { throw Object.assign(new Error('denied'), { code: 'permission-denied' }); };
+  await StudentApp.enter({ classId: 'C1', className: '測試班', studentId: 's0', name: '學生0' });
+  const txt = document.getElementById('studentView').textContent;
+  t.ok('兩邊都讀不到時給看得懂的訊息,不是「找不到班級資料」',
+    txt.includes('請老師開一下系統') && !txt.includes('找不到班級資料'),
+    txt.trim().slice(0, 30));
+  Cloud.loadClass = async () => ({ blob: db.blob });
+  db.fail.loadClass = false;
+  db.roster = keep;
+
   // ── 換班 ──
   Roster.reset();
   t.ok('換班時基準清掉了',
