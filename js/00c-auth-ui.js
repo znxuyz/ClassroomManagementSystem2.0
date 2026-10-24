@@ -181,10 +181,13 @@ async function enterStudentView(classInfo) {
     await StudentApp.enter(classInfo);
   } catch (e) {
     console.error(e);
-    // 原文是英文的 Missing or insufficient permissions,學生看不懂也幫不上忙
+    /* 原文是英文的 Missing or insufficient permissions,學生看不懂也幫不上忙。
+       而且權限不足最常見的原因不是「規則沒發布」,是**這個分頁還是舊的**
+       —— 資料搬了位置(學生改讀公開名冊),舊版的程式還在讀已經不給讀的
+       那一份。那種情況重新整理就好,不必麻煩老師。 */
     toast(e.code === 'permission-denied'
-      ? '載入失敗:權限不足,請老師到 Firebase 重新發布安全性規則'
-      : '載入失敗:' + e.message);
+      ? '載入失敗:請先重新整理這個頁面(Ctrl+F5)。還是不行的話再告訴老師。'
+      : '載入失敗:' + e.message, 8000);
   }
 }
 
