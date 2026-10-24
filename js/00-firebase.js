@@ -599,6 +599,83 @@ const Cloud = {
     return attemptId;
   },
 
+  /* ---------- 加分歷程的封存 ----------
+     每個學生的加分紀錄原本全部塞在班級那一份文件裡,而 Firestore
+     單一文件上限是 1 MiB。實測 28 人、每天加分 3 次的話,
+     **165 個上課日就會超過上限**,之後整份寫入會被拒絕 ——
+     也就是老師按加分會存不進去。
+
+     所以主文件只留最近幾筆(畫面上本來就只顯示「最近的」),
+     其餘搬到這個子集合。一份文件裝一批,不是一筆一份 ——
+     幾千筆各自一份文件的話,讀取量和費用都划不來。
+
+     順序很重要:先寫封存、成功了才從主文件刪掉。
+     反過來做的話,封存失敗就等於資料被吃掉。 */
+
+  async archiveHistory(classId, chunks) {
+    if (!chunks.length) return 0;
+    const base = this.db.collection('classes').doc(classId).collection('history');
+    // 批次上限 500,一次最多寫 400 份保留餘裕
+    for (let i = 0; i < chunks.length; i += 400) {
+      const batch = this.db.batch();
+      chunks.slice(i, i + 400).forEach(c => {
+        batch.set(base.doc(c.id), {
+          studentId: c.studentId,
+          entries: c.entries,
+          from: c.entries[0] ? c.entries[0].time : 0,
+          to: c.entries[c.entries.length - 1] ? c.entries[c.entries.length - 1].time : 0,
+          at: Date.now()
+        });
+      });
+      await batch.commit();
+    }
+    return chunks.length;
+  },
+
+  /* 某位學生的完整封存紀錄。學期成長報表要用時才讀,平常不花這個讀取。 */
+  async loadStudentHistory(classId, studentId) {
+    const snap = await this.db.collection('classes').doc(classId)
+      .collection('history').where('studentId', '==', studentId).get();
+    const out = [];
+    snap.docs.forEach(d => out.push(...(d.data().entries || [])));
+    out.sort((a, b) => (a.time || 0) - (b.time || 0));
+    return out;
+  },
+
+  /* 全班的封存紀錄(匯出整班報表時用),回傳 { studentId: [紀錄...] } */
+  async loadAllHistory(classId) {
+    const snap = await this.db.collection('classes').doc(classId)
+      .collection('history').get();
+    const out = {};
+    snap.docs.forEach(d => {
+      const v = d.data();
+      (out[v.studentId] = out[v.studentId] || []).push(...(v.entries || []));
+    });
+    Object.values(out).forEach(a => a.sort((x, y) => (x.time || 0) - (y.time || 0)));
+    return out;
+  },
+
+  /* 這個班已經封存了幾筆、佔多少空間(設定頁顯示用) */
+  async historyStats(classId) {
+    const snap = await this.db.collection('classes').doc(classId)
+      .collection('history').get();
+    let entries = 0;
+    snap.docs.forEach(d => { entries += (d.data().entries || []).length; });
+    return { docs: snap.size, entries };
+  },
+
+  /* 封存區:舊學期的點名與測驗結果。只有老師讀得到、寫得了。 */
+  async saveArchive(classId, label, payload) {
+    await this.db.collection('classes').doc(classId)
+      .collection('archives').doc(label).set(payload);
+  },
+
+  async listArchives(classId) {
+    const snap = await this.db.collection('classes').doc(classId)
+      .collection('archives').get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+
   /* ---------- 守護獸技能 ----------
      授權表(誰這一季各技能幾次)由老師端算好寫一份,安全規則照它驗。
      使用紀錄的文件 id 含「第幾次」,id 唯一 + 不准修改 = 用不超過上限。 */

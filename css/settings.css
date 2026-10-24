@@ -136,3 +136,70 @@
 }
 
 .backup-meta { color: var(--ink-muted); margin-right: auto; }
+
+/* ============================================
+   資料用量
+   ────────────────────────────────────────────
+   一個班級的資料存在雲端的「一份」文件裡,上限 1 MiB,
+   超過之後整份寫入會被拒絕 —— 所以要看得到還剩多少,
+   而不是等到存檔失敗才發現。
+============================================ */
+.usage-bar-wrap {
+  height: 10px;
+  background: var(--paper-shadow);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.usage-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--healthy);
+  transition: width .4s var(--ease-out), background .3s;
+}
+
+.usage-bar.is-warn   { background: var(--mild); }
+.usage-bar.is-urgent { background: var(--sick); }
+
+.usage-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.usage-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+}
+
+.usage-tag.is-warn   { background: rgba(217, 164, 65, 0.18); color: var(--mild); }
+.usage-tag.is-urgent { background: rgba(194, 91, 78, 0.18); color: var(--sick); }
+
+.usage-parts {
+  margin-top: 12px;
+  border: 1px solid var(--paper-shadow);
+  border-radius: var(--control-r);
+  overflow: hidden;
+}
+
+.usage-part {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 12px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--paper-shadow);
+}
+
+.usage-part:last-child { border-bottom: none; }
+
+.usage-part-kb {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}

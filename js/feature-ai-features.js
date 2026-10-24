@@ -85,6 +85,8 @@ function renderAiCommentContext() {
   
   // 統計近 14 天積分
   const cutoff = Date.now() - 14 * 24 * 60 * 60 * 1000;
+  // 14 天通常落在主文件保留的範圍內;真的不夠時這裡會少算,
+  // 但評語是參考用的,不值得為它每次都多讀一次封存。
   const recent = (s.history || []).filter(h => h.time >= cutoff);
   const recentPts = recent.reduce((sum, h) => sum + h.points, 0);
   const recentReasons = {};
@@ -121,6 +123,8 @@ async function runAiComment() {
   const stage = s.pet ? PetEngine.getStage(s.totalPoints) : 0;
   const species = s.pet ? PET_SPECIES.find(p => p.id === s.pet) : null;
   const cutoff = Date.now() - 14 * 24 * 60 * 60 * 1000;
+  // 14 天通常落在主文件保留的範圍內;真的不夠時這裡會少算,
+  // 但評語是參考用的,不值得為它每次都多讀一次封存。
   const recent = (s.history || []).filter(h => h.time >= cutoff);
   const recentPts = recent.reduce((sum, h) => sum + h.points, 0);
   
@@ -274,8 +278,11 @@ async function runAiAnalyze() {
     cutoff = Date.now() - parseInt(range) * 24 * 60 * 60 * 1000;
   }
   
-  // 蒐集資料
-  const history = (s.history || []).filter(h => h.time >= cutoff).sort((a,b) => a.time - b.time);
+  /* 主文件只留最近幾筆(見 03b-history-archive.js),所以這裡要把封存的
+     那段讀回來 —— 否則選「最近 30 天」卻只拿得到最近十幾天的資料,
+     AI 會依據不完整的資料下結論,那比沒有分析更糟。 */
+  const allHistory = await HistoryArchive.full(s);
+  const history = allHistory.filter(h => h.time >= cutoff).sort((a,b) => a.time - b.time);
   const dailyPoints = {};
   history.forEach(h => {
     const day = new Date(h.time).toISOString().slice(0, 10);

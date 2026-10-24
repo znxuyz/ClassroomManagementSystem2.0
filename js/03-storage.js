@@ -239,7 +239,14 @@ async function flushCloudSave(isRetry) {
   if (!isCloudMode() || !_cloudSavePending) return;
   if (state._blobNewer) { _cloudSavePending = false; return; }
   const classId = state.classId;
+
+  /* 寫上去之前先把超量的加分紀錄搬到子集合。
+     不搬的話,一個學年之內整份文件就會超過 1 MiB,之後完全存不進去。
+     封存是「先寫成功才刪」,失敗就什麼都不動,所以這一步不會掉資料。 */
+  await HistoryArchive.flush();
+
   const data = serializeState();
+  BlobSize.check(data);        // 快滿了先提醒,不擋存檔
   try {
     await Cloud.saveClassBlob(classId, data, {
       className: state.className,

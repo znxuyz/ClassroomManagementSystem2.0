@@ -285,6 +285,32 @@ service cloud.firestore {
 
          這裡不需要防「少寫」:想躲倒扣的人本來就不會寫,重播有期限兜底。
          要防的是「亂寫」—— 所以限定只能回報自己的嘗試,一筆只能寫一次。 */
+      /* 加分歷程的封存。
+         班級那一份文件有 1 MiB 上限,整個學年的加分紀錄塞不下,
+         所以超量的部分搬到這裡(見 js/03b-history-archive.js)。
+
+         學生讀得到自己的(他們的「最近積分紀錄」會往回翻),
+         但誰都不能改 —— 歷程是紀錄,改得了就沒有意義了。
+         只有導師能寫,因為封存是老師端在做的。 */
+      match /history/{docId} {
+        function isClassTeacher() {
+          return signedIn()
+            && get(/databases/$(database)/documents/classes/$(classId)).data.teacherUid == request.auth.uid;
+        }
+        allow read: if signedIn();
+        allow create, update: if isClassTeacher();
+        allow delete: if isClassTeacher();
+      }
+
+      /* 舊學期的封存(點名、測驗結果)。只有導師碰得到。 */
+      match /archives/{label} {
+        function isClassTeacher() {
+          return signedIn()
+            && get(/databases/$(database)/documents/classes/$(classId)).data.teacherUid == request.auth.uid;
+        }
+        allow read, write: if isClassTeacher();
+      }
+
       /* ---------- 守護獸技能 ----------
          授權表:老師端算好「每個學生這一季各技能幾次」寫一份。
          學生只能讀 —— 能改的話技能次數就等於無限。 */

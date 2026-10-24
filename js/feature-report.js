@@ -29,14 +29,19 @@ function renderReportStudentList() {
   document.getElementById('reportContainer').innerHTML = '';
 }
 
-function showStudentReport(studentId) {
+async function showStudentReport(studentId) {
   const container = document.getElementById('reportContainer');
   const student = getStudent(studentId);
   if (!student) return;
-  
-  const report = buildStudentReport(student);
-  container.innerHTML = report;
+
+  container.innerHTML = '<div class="empty-state">讀取完整歷程中…</div>';
   container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  /* 主文件只留最近幾筆(見 03b-history-archive.js),所以報表要自己把
+     封存的那段讀回來 —— 否則「積分來源分類」與「最近 8 週」會少算。
+     只有打開某一位學生的報表時才讀,所以不影響日常的讀取量。 */
+  const full = await HistoryArchive.full(student);
+  container.innerHTML = buildStudentReport({ ...student, history: full });
 }
 
 function buildStudentReport(s) {
@@ -220,7 +225,13 @@ function printStudentReport() {
   window.print();
 }
 
-function downloadClassReport() {
+async function downloadClassReport() {
+  toast('讀取完整歷程中…');
+  // 主文件只留最近幾筆,整班報表要把封存的那段也併回來
+  const archived = await HistoryArchive.fullAll();
+  const studentsForReport = state.students.map(s =>
+    ({ ...s, history: archived[s.id] || s.history || [] }));
+
   // 開新視窗匯出全班報表
   const win = window.open('', '_blank');
   let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
@@ -252,7 +263,7 @@ function downloadClassReport() {
       <tbody>
   `;
   
-  state.students.forEach(s => {
+  studentsForReport.forEach(s => {
     const stage = s.pet ? PetEngine.getStage(s.totalPoints) : 0;
     const species = s.pet ? PET_SPECIES.find(p => p.id === s.pet) : null;
     let pres = 0, lat = 0, tot = 0;
