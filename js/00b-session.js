@@ -165,7 +165,9 @@ const Session = {
     renderActiveView();      // 換班後,目前停留的那一頁也要換成新班級的內容
 
     // 每天第一次開這個班時留一份快照(不擋畫面)
-    Cloud.saveDailyBackup(classId, doc.blob || {})
+    /* 用 serializeStateForBackup() 而不是 doc.blob —— 內容一樣,
+       但多了題庫。「還原到某一天」要把題庫也還原回去才對得起這個名字。 */
+    Cloud.saveDailyBackup(classId, serializeStateForBackup())
       .then(made => { if (made) Cloud.pruneBackups(classId).catch(() => {}); })
       .catch(e => console.warn('[備份] 每日快照失敗:', e.message));
 

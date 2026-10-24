@@ -239,7 +239,7 @@ async function restoreBackup(backupId) {
     const d = new Date();
     const p2 = n => String(n).padStart(2, '0');
     const stamp = `還原前-${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}`;
-    await Cloud.saveBackup(state.classId, stamp, serializeState()).catch(() => {});
+    await Cloud.saveBackup(state.classId, stamp, serializeStateForBackup()).catch(() => {});
 
     await Cloud.saveClassBlob(state.classId, blob, {
       className: blob.className, teacherName: blob.teacherName
@@ -264,13 +264,36 @@ async function restoreBackup(backupId) {
 }
 
 /* 下載一份完整備份。老師手上有一份檔案,比什麼機制都可靠。 */
-function exportClassBackup() {
+/* 下載一份「這個檔案就能還原」的備份。
+   所以要把兩樣平常不在主文件裡的東西補回來:
+
+   · **題庫**(搬到 tqbank 了)—— 那是老師花最多時間累積的東西
+   · **已封存的加分歷程**(搬到 history 子集合了)—— 主文件只留最近 50 筆/人,
+     少了它,下載的備份就只剩最後兩三週的紀錄
+
+   這兩樣在雲端都另有存放,所以只有「下載到自己電腦」這一份需要補 ——
+   萬一整個雲端專案出事,手上那個檔案要是完整的才有意義。
+   都是老師按一下才跑,不影響日常的讀取量。 */
+async function exportClassBackup() {
+  toast('整理備份中…');
+  const blob0 = serializeStateForBackup();
+
+  // 把封存的歷程併回每位學生身上(讀取失敗就退回只有最近那幾筆)
+  try {
+    const full = await HistoryArchive.fullAll();
+    blob0.students = (blob0.students || []).map(s =>
+      ({ ...s, history: full[s.id] || s.history || [] }));
+  } catch (e) {
+    console.warn('[備份] 讀取封存歷程失敗,備份只含主文件裡的最近紀錄:', e.message);
+  }
+
   const data = {
     匯出時間: new Date().toISOString(),
     班級: state.className,
     老師: state.teacherName,
-    說明: '這是班級資料的完整備份。學生的交卷與蜂巢戰紀紀錄存在雲端的子集合,不在這個檔案裡。',
-    blob: serializeState()
+    說明: '這是班級資料的完整備份,含蜂巢題庫與完整的加分歷程(包括已封存的部分)。' +
+          '學生的交卷與蜂巢戰紀逐筆紀錄存在雲端的子集合,不在這個檔案裡。',
+    blob: blob0
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
