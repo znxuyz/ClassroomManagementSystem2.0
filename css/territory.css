@@ -2,18 +2,95 @@
    領地佔領戰
 ============================================ */
 
+/* ============================================
+   開局設定
+   ────────────────────────────────────────────
+   原本是 11 個輸入框和裸標籤擠成一排,句子會被換行切斷 ——
+   「連錯」留在上一行尾,「3 題,冷卻 60 秒」跑到下一行,
+   根本看不出哪個數字配哪個設定。
+
+   改成三組(地圖 / 時間 / 難度與懲罰),每一欄自己帶標題與單位,
+   所以怎麼換行都不會把一句話切成兩半。
+============================================ */
 .tg-setup {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px 20px;
+  align-items: start;
   background: var(--paper);
   border: 1px solid var(--paper-shadow);
-  border-radius: 3px;
-  padding: 14px 16px;
+  border-radius: 6px;
+  padding: 16px 18px;
   margin-bottom: 16px;
   font-size: 13px;
   color: var(--ink-soft);
+}
+
+.tg-group-title {
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--forest-deep);
+  padding-bottom: 6px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--paper-shadow);
+}
+
+.tg-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 標題在左、輸入在右,一欄一件事 */
+.tg-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tg-field-name {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+}
+
+.tg-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* 單位跟著輸入框走,不會自己換行到下一列去 */
+.tg-unit {
+  font-size: 11px;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.tg-field .rule-editor-input {
+  width: 74px;
+  flex-shrink: 0;
+}
+
+.tg-field select.rule-editor-input {
+  width: auto;
+  max-width: 150px;
+}
+
+/* 開局那顆鈕自己佔一格,不要被塞在設定中間 */
+.tg-actions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+
+@media (max-width: 560px) {
+  .tg-setup {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tg-field .rule-editor-input { width: 66px; }
 }
 
 .territory-status {

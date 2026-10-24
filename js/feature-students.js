@@ -39,8 +39,7 @@ function renderStudentList() {
           <div class="student-name">${seatLabel}${student.name}</div>
           <div class="student-meta">
             <span class="student-points">${student.currentPoints} 分</span>
-            <span>·</span>
-            <span>${student.pet ? STAGE_NAMES[stage] : '未選寵物'}</span>
+            ${student.pet ? '' : '<span class="student-nopet">未選守護獸</span>'}
           </div>
         </div>
       </li>

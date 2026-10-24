@@ -363,13 +363,8 @@ select.setup-input {
    響應式設計
 ============================================ */
 @media (max-width: 980px) {
-  .dashboard {
-    grid-template-columns: 1fr;
-  }
-  .student-sidebar {
-    position: static;
-    max-height: 400px;
-  }
+  /* (.dashboard 與 .student-sidebar 的設定移除了 ——
+     學生加分已經改成方格版面,見 css/dashboard.css) */
   .app-header {
     flex-wrap: wrap;
     gap: 10px;
@@ -595,4 +590,73 @@ select.setup-input {
 /* 說明頁在寬螢幕是直的,高亮的圓角跟著按鈕變方一點 */
 @media (min-width: 1100px) {
   .help-nav .nav-ind { border-radius: var(--control-r); }
+}
+
+/* ============================================
+   手機:把上方的框架壓薄
+   ────────────────────────────────────────────
+   原本在 390px 的手機上,上面固定佔掉約 230px —— 844px 螢幕的 27%,
+   而且是常駐的(兩排導覽是 sticky 的)。拆開來是四件東西各佔一行:
+   標誌、第一排導覽、班級名稱、第二排導覽(還換行成兩行)。
+
+   改成三行:
+     標誌 + 班級名稱(同一行,標誌縮小、副標拿掉)
+     第一排導覽(橫向滑動)
+     第二排導覽(橫向滑動,不再換行)
+
+   兩排導覽原本就會橫向捲動,但看不出來 —— 右邊只是硬生生被切掉。
+   加上邊緣淡出,至少讓人知道「右邊還有」。
+============================================ */
+@media (max-width: 760px) {
+  .app-header {
+    padding: 8px 14px;
+    row-gap: 8px;
+    column-gap: 10px;
+  }
+
+  /* DOM 順序是 標誌 → 導覽 → 班級,但手機上要 標誌 → 班級 → 導覽。
+     用 order 調,不動 HTML —— 桌機版那一套完全不受影響。 */
+  .brand { order: 1; }
+  .class-badge { order: 2; margin-left: auto; }
+  .nav-tabs {
+    order: 3;
+    flex: 0 0 100%;
+    margin: 0;
+    justify-content: flex-start;
+  }
+
+  .brand-tagline { display: none; }
+
+  .brand-mark {
+    font-size: 17px;
+  }
+
+  .brand-mark::before {
+    font-size: 14px;
+    margin-right: 5px;
+  }
+
+  /* 第二排不要換行 —— 換成第二行之後整個畫面又矮了 40px。
+     項目多的分類(班級管理有 7 個)改成橫向滑。 */
+  .nav-subtabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .nav-subtabs::-webkit-scrollbar { display: none; }
+
+  .nav-subtabs > button {
+    flex-shrink: 0;
+  }
+
+  /* 邊緣淡出:看得出來右邊還有東西。
+     遮罩是相對容器的,所以捲到底時右邊自然就不淡了。 */
+  .nav-tabs,
+  .nav-subtabs {
+    -webkit-mask-image: linear-gradient(to right,
+      transparent 0, #000 10px, #000 calc(100% - 22px), transparent 100%);
+    mask-image: linear-gradient(to right,
+      transparent 0, #000 10px, #000 calc(100% - 22px), transparent 100%);
+  }
 }

@@ -18,9 +18,27 @@ function getStudent(id) {
   return state.students.find(s => s.id === id);
 }
 
+/* 收起加分面板(手機上它是蓋在畫面下方的浮層,一定要有辦法關掉) */
+function clearStudentSelection() {
+  state.selectedStudentId = null;
+  BatchAward.picked.clear();
+  renderStudentList();
+  renderSelectedStudent();
+}
+
 function renderSelectedStudent() {
   const display = document.getElementById('selectedStudentDisplay');
   const panel = document.getElementById('quickAssignPanel');
+
+  /* 有沒有選到人,版面差很多:手機上沒選人時那塊浮層不該佔住畫面。
+     用 class 控制,CSS 才能依寬度決定要用浮層還是接在下面。 */
+  const layout = document.getElementById('dashboardLayout');
+  if (layout) {
+    const on = BatchAward.active
+      ? BatchAward.picked.size > 0
+      : !!state.selectedStudentId;
+    layout.classList.toggle('has-selection', on);
+  }
 
   // 批次模式:上面換成「選了誰」,下面的積分規則照舊,只是套用到所有勾選的人
   if (BatchAward.active) {
@@ -33,7 +51,7 @@ function renderSelectedStudent() {
     display.innerHTML = `
       <div class="empty-state" style="color: var(--moss);">
         <div class="empty-state-icon">❋</div>
-        <div>從左側選擇一位學生開始</div>
+        <div>點一位學生開始加分</div>
       </div>
     `;
     panel.style.display = 'none';

@@ -9,28 +9,28 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700;900&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 
 <!-- 樣式表 -->
-<link rel="stylesheet" href="css/base.css?v=20261025b">
-<link rel="stylesheet" href="css/components.css?v=20261025b">
-<link rel="stylesheet" href="css/dashboard.css?v=20261025b">
-<link rel="stylesheet" href="css/tools.css?v=20261025b">
-<link rel="stylesheet" href="css/management.css?v=20261025b">
-<link rel="stylesheet" href="css/contact.css?v=20261025b">
-<link rel="stylesheet" href="css/shop.css?v=20261025b">
-<link rel="stylesheet" href="css/ai.css?v=20261025b">
-<link rel="stylesheet" href="css/report.css?v=20261025b">
-<link rel="stylesheet" href="css/projector.css?v=20261025b">
-<link rel="stylesheet" href="css/settings.css?v=20261025b">
-<link rel="stylesheet" href="css/auth.css?v=20261025b">
-<link rel="stylesheet" href="css/quiz.css?v=20261025b">
-<link rel="stylesheet" href="css/student.css?v=20261025b">
-<link rel="stylesheet" href="css/pet-picker.css?v=20261025b">
-<link rel="stylesheet" href="css/leaderboard.css?v=20261025b">
-<link rel="stylesheet" href="css/territory.css?v=20261025b">
-<link rel="stylesheet" href="css/help.css?v=20261025b">
-<link rel="stylesheet" href="css/skills.css?v=20261025b">
-<link rel="stylesheet" href="css/hud.css?v=20261025b">
+<link rel="stylesheet" href="css/base.css?v=20261025d">
+<link rel="stylesheet" href="css/components.css?v=20261025d">
+<link rel="stylesheet" href="css/dashboard.css?v=20261025d">
+<link rel="stylesheet" href="css/tools.css?v=20261025d">
+<link rel="stylesheet" href="css/management.css?v=20261025d">
+<link rel="stylesheet" href="css/contact.css?v=20261025d">
+<link rel="stylesheet" href="css/shop.css?v=20261025d">
+<link rel="stylesheet" href="css/ai.css?v=20261025d">
+<link rel="stylesheet" href="css/report.css?v=20261025d">
+<link rel="stylesheet" href="css/projector.css?v=20261025d">
+<link rel="stylesheet" href="css/settings.css?v=20261025d">
+<link rel="stylesheet" href="css/auth.css?v=20261025d">
+<link rel="stylesheet" href="css/quiz.css?v=20261025d">
+<link rel="stylesheet" href="css/student.css?v=20261025d">
+<link rel="stylesheet" href="css/pet-picker.css?v=20261025d">
+<link rel="stylesheet" href="css/leaderboard.css?v=20261025d">
+<link rel="stylesheet" href="css/territory.css?v=20261025d">
+<link rel="stylesheet" href="css/help.css?v=20261025d">
+<link rel="stylesheet" href="css/skills.css?v=20261025d">
+<link rel="stylesheet" href="css/hud.css?v=20261025d">
 <!-- 主題:掛在 <html data-theme> 上,一定要放最後才蓋得過前面的規則 -->
-<link rel="stylesheet" href="css/theme-aurora.css?v=20261025b">
+<link rel="stylesheet" href="css/theme-aurora.css?v=20261025d">
 <script>
   // 在 CSS 之後、畫面之前就決定主題,避免載入瞬間閃一下舊配色
   document.documentElement.dataset.theme =
@@ -132,9 +132,12 @@
     
     <!-- 老師後台 -->
     <section id="dashboardView" class="view active">
-      <div class="dashboard">
-        <!-- 左側學生列表 -->
-        <aside class="student-sidebar">
+      <!-- 學生排成方格鋪滿整個寬度,加分面板在下面(手機上是底部浮層)。
+           原本是「左邊 320px 窄欄 + 右邊一大片空白板子」——
+           28 個學生要捲 2600px 才看得完,而右邊 1000px 在你還沒點人之前
+           什麼都沒有。這是全系統用最多次的一頁,不該是這樣。 -->
+      <div class="dashboard" id="dashboardLayout">
+        <section class="student-board">
           <div class="sidebar-header">
             <div class="sidebar-title">本班學生</div>
             <div class="sidebar-count" id="sidebarCount">0 位</div>
@@ -143,18 +146,20 @@
                     title="一次勾選多位學生或整組加分">批次加分</button>
           </div>
           <ul class="student-list" id="studentList"></ul>
-        </aside>
-        
-        <!-- 右側操作面板 -->
+        </section>
+
+        <!-- 加分面板 -->
         <div class="action-panel">
+          <button class="action-panel-close" onclick="clearStudentSelection()"
+                  aria-label="收起">✕</button>
           <!-- 選中學生的展示 -->
           <div id="selectedStudentDisplay" class="selected-student-card">
             <div class="empty-state" style="color: var(--moss);">
               <div class="empty-state-icon">❋</div>
-              <div>從左側選擇一位學生開始</div>
+              <div>點一位學生開始加分</div>
             </div>
           </div>
-          
+
           <!-- 快速發分 -->
           <div class="panel-card" id="quickAssignPanel" style="display:none;">
             <div class="panel-title">發放積分</div>
@@ -469,49 +474,124 @@
 
       <!-- 戰況地圖 -->
       <div id="tgBoardSubView" class="sub-view active">
+        <!-- 開局設定。原本是 11 個輸入框和裸標籤擠成一排,句子會被換行
+             切斷(「連錯」在上一行尾、「3 題,冷卻 60 秒」跑到下一行),
+             根本讀不出哪個數字配哪個設定。
+             改成三組,每一欄自己帶標題與單位。id 與事件完全沒動。 -->
         <div class="tg-setup">
-          <label>地圖形狀</label>
-          <select id="tgShape" class="rule-editor-input" style="max-width:170px;"
-                  onchange="describeShape()"></select>
-          <label>規模</label>
-          <select id="tgSize" class="rule-editor-input" style="max-width:170px;"
-                  onchange="describeShape()"></select>
-          <label>佔領門檻</label>
-          <input type="number" id="tgThreshold" class="rule-editor-input" value="5" min="1" max="30" style="width:70px;" title="拿下一格至少要累積幾分" />
-          <label>爭奪時間</label>
-          <input type="number" id="tgBattle" class="rule-editor-input" value="90" min="15" max="600" style="width:80px;" title="一塊地被攻擊後,多久內比分數" />
-          <label>秒</label>
-          <label style="margin-left:8px;">每題限時</label>
-          <input type="number" id="tgAnswerSeconds" class="rule-editor-input" value="0" min="0" max="300"
-                 style="width:80px;" title="點開題目起算,超過就不接受答案。0 = 不限時" />
-          <label>秒(0=不限)</label>
-          <label style="margin-left:8px;">答錯倒扣</label>
-          <input type="number" id="tgWrongPenalty" class="rule-editor-input" value="0" min="0" max="5"
-                 style="width:70px;" title="答錯要扣幾佔領分,0 = 不扣" />
-          <label>分,最多扣到</label>
-          <input type="number" id="tgPenaltyFloor" class="rule-editor-input" value="6" min="0" max="30"
-                 style="width:70px;" title="一組在同一格最多被扣到負幾分,0 = 不設下限" />
-          <label>分(0=無下限)</label>
-          <label style="margin-left:8px;">連錯</label>
-          <input type="number" id="tgCooldownWrong" class="rule-editor-input" value="3" min="0" max="10"
-                 style="width:70px;" title="連續答錯幾題就要冷卻,0 = 不冷卻" />
-          <label>題,冷卻</label>
-          <input type="number" id="tgCooldownSeconds" class="rule-editor-input" value="60" min="0" max="600"
-                 style="width:70px;" title="冷卻幾秒才能再點開題目" />
-          <label>秒</label>
-          <label style="margin-left:8px;">可換題</label>
-          <input type="number" id="tgMaxSwaps" class="rule-editor-input" value="3" min="0" max="5"
-                 style="width:70px;" title="每次攻擊最多換幾次題目,換到的難度降一階。0 = 不能換" />
-          <label>次</label>
-          <label style="margin-left:8px;">地圖開放</label>
-          <select id="tgStageMode" class="rule-editor-input" style="max-width:130px;" onchange="toggleStageSeconds()">
-            <option value="auto">自動倒數</option>
-            <option value="manual">老師手動</option>
-          </select>
-          <input type="number" id="tgStageSeconds" class="rule-editor-input" value="300" min="30" max="3600" style="width:80px;" title="每隔多久往中心多開一圈" />
-          <label id="tgStageUnit">秒往外一圈</label>
-          <div style="flex:1"></div>
-          <button class="btn btn-accent" onclick="startTerritoryGame()">開始新的一局</button>
+          <div class="tg-group">
+            <div class="tg-group-title">地圖</div>
+            <div class="tg-fields">
+              <label class="tg-field">
+                <span class="tg-field-name">形狀</span>
+                <select id="tgShape" class="rule-editor-input" onchange="describeShape()"></select>
+              </label>
+              <label class="tg-field">
+                <span class="tg-field-name">規模</span>
+                <select id="tgSize" class="rule-editor-input" onchange="describeShape()"></select>
+              </label>
+              <label class="tg-field">
+                <span class="tg-field-name">開放方式</span>
+                <select id="tgStageMode" class="rule-editor-input" onchange="toggleStageSeconds()">
+                  <option value="auto">自動倒數</option>
+                  <option value="manual">老師手動</option>
+                </select>
+              </label>
+              <label class="tg-field">
+                <span class="tg-field-name">往外開一圈</span>
+                <span class="tg-input-row">
+                  <input type="number" id="tgStageSeconds" class="rule-editor-input"
+                         value="300" min="30" max="3600"
+                         title="每隔多久往中心多開一圈" />
+                  <span class="tg-unit" id="tgStageUnit">秒</span>
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div class="tg-group">
+            <div class="tg-group-title">時間</div>
+            <div class="tg-fields">
+              <label class="tg-field">
+                <span class="tg-field-name">爭奪時間</span>
+                <span class="tg-input-row">
+                  <input type="number" id="tgBattle" class="rule-editor-input"
+                         value="90" min="15" max="600"
+                         title="一塊地被攻擊後,多久內比分數" />
+                  <span class="tg-unit">秒</span>
+                </span>
+              </label>
+              <label class="tg-field">
+                <span class="tg-field-name">每題限時</span>
+                <span class="tg-input-row">
+                  <input type="number" id="tgAnswerSeconds" class="rule-editor-input"
+                         value="0" min="0" max="300"
+                         title="點開題目起算,超過就不接受答案。0 = 不限時" />
+                  <span class="tg-unit">秒 · 0 不限</span>
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div class="tg-group">
+            <div class="tg-group-title">難度與懲罰</div>
+            <div class="tg-fields">
+              <label class="tg-field">
+                <span class="tg-field-name">佔領門檻</span>
+                <span class="tg-input-row">
+                  <input type="number" id="tgThreshold" class="rule-editor-input"
+                         value="5" min="1" max="30" title="拿下一格至少要累積幾分" />
+                  <span class="tg-unit">分</span>
+                </span>
+              </label>
+              <label class="tg-field">
+                <span class="tg-field-name">答錯倒扣</span>
+                <span class="tg-input-row">
+                  <input type="number" id="tgWrongPenalty" class="rule-editor-input"
+                         value="0" min="0" max="5" title="答錯要扣幾佔領分,0 = 不扣" />
+                  <span class="tg-unit">分 · 0 不扣</span>
+                </span>
+              </label>
+              <label class="tg-field">
+                <span class="tg-field-name">最多扣到</span>
+                <span class="tg-input-row">
+                  <input type="number" id="tgPenaltyFloor" class="rule-editor-input"
+                         value="6" min="0" max="30"
+                         title="一組在同一格最多被扣到負幾分,0 = 不設下限" />
+                  <span class="tg-unit">分 · 0 無下限</span>
+                </span>
+              </label>
+              <label class="tg-field">
+                <span class="tg-field-name">連錯幾題冷卻</span>
+                <span class="tg-input-row">
+                  <input type="number" id="tgCooldownWrong" class="rule-editor-input"
+                         value="3" min="0" max="10" title="連續答錯幾題就要冷卻,0 = 不冷卻" />
+                  <span class="tg-unit">題 · 0 不冷卻</span>
+                </span>
+              </label>
+              <label class="tg-field">
+                <span class="tg-field-name">冷卻多久</span>
+                <span class="tg-input-row">
+                  <input type="number" id="tgCooldownSeconds" class="rule-editor-input"
+                         value="60" min="0" max="600" title="冷卻幾秒才能再點開題目" />
+                  <span class="tg-unit">秒</span>
+                </span>
+              </label>
+              <label class="tg-field">
+                <span class="tg-field-name">可換題</span>
+                <span class="tg-input-row">
+                  <input type="number" id="tgMaxSwaps" class="rule-editor-input"
+                         value="3" min="0" max="5"
+                         title="每次攻擊最多換幾次題目,換到的難度降一階。0 = 不能換" />
+                  <span class="tg-unit">次 · 0 不能換</span>
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div class="tg-actions">
+            <button class="btn btn-accent" onclick="startTerritoryGame()">開始新的一局</button>
+          </div>
         </div>
 
         <div id="tgShapeDesc" class="tg-shape-desc"></div>
@@ -1095,61 +1175,61 @@
 
 
 <!-- 應用程式邏輯(載入順序很重要) -->
-<script src="js/00-firebase.js?v=20261025b"></script>
-<script src="js/00b-session.js?v=20261025b"></script>
-<script src="js/00c-auth-ui.js?v=20261025b"></script>
-<script src="js/00d-switch-hud.js?v=20261025b"></script>
-<script src="js/01-constants.js?v=20261025b"></script>
-<script src="js/skills/01-defs.js?v=20261025b"></script>
-<script src="js/02-state.js?v=20261025b"></script>
-<script src="js/03-storage.js?v=20261025b"></script>
-<script src="js/03b-history-archive.js?v=20261025b"></script>
-<script src="js/03c-question-bank.js?v=20261025b"></script>
-<script src="js/03d-roster.js?v=20261025b"></script>
-<script src="js/04-utils.js?v=20261025b"></script>
-<script src="js/05-pet-engine.js?v=20261025b"></script>
-<script src="js/06-ai.js?v=20261025b"></script>
-<script src="js/06b-ai-hud.js?v=20261025b"></script>
-<script src="js/07-excel.js?v=20261025b"></script>
-<script src="js/10-nav.js?v=20261025b"></script>
-<script src="js/10b-nav-groups.js?v=20261025b"></script>
-<script src="js/feature-setup.js?v=20261025b"></script>
-<script src="js/feature-students.js?v=20261025b"></script>
-<script src="js/feature-dashboard.js?v=20261025b"></script>
-<script src="js/feature-batch-award.js?v=20261025b"></script>
-<script src="js/feature-attendance.js?v=20261025b"></script>
-<script src="js/feature-picker.js?v=20261025b"></script>
-<script src="js/feature-timer.js?v=20261025b"></script>
-<script src="js/feature-seating.js?v=20261025b"></script>
-<script src="js/feature-grouping.js?v=20261025b"></script>
-<script src="js/feature-quiz.js?v=20261025b"></script>
-<script src="js/territory/01-hex.js?v=20261025b"></script>
-<script src="js/territory/02-shapes.js?v=20261025b"></script>
-<script src="js/territory/03-engine.js?v=20261025b"></script>
-<script src="js/territory/04-map-view.js?v=20261025b"></script>
-<script src="js/territory/05-game.js?v=20261025b"></script>
-<script src="js/territory/06-teacher.js?v=20261025b"></script>
-<script src="js/territory/07-weekly.js?v=20261025b"></script>
-<script src="js/feature-leaderboard.js?v=20261025b"></script>
-<script src="js/student/01-app.js?v=20261025b"></script>
-<script src="js/student/02-tabs.js?v=20261025b"></script>
-<script src="js/skills/02-student.js?v=20261025b"></script>
-<script src="js/student/03-quiz.js?v=20261025b"></script>
-<script src="js/student/04-war.js?v=20261025b"></script>
-<script src="js/student/05-result.js?v=20261025b"></script>
-<script src="js/skills/03-teacher.js?v=20261025b"></script>
-<script src="js/feature-contact-book.js?v=20261025b"></script>
-<script src="js/feature-homework.js?v=20261025b"></script>
-<script src="js/feature-shop.js?v=20261025b"></script>
-<script src="js/feature-class-tasks.js?v=20261025b"></script>
-<script src="js/feature-ai-features.js?v=20261025b"></script>
-<script src="js/feature-projector.js?v=20261025b"></script>
-<script src="js/feature-overview.js?v=20261025b"></script>
-<script src="js/feature-report.js?v=20261025b"></script>
-<script src="js/feature-rules.js?v=20261025b"></script>
-<script src="js/feature-help.js?v=20261025b"></script>
-<script src="js/feature-settings.js?v=20261025b"></script>
-<script src="js/99-app.js?v=20261025b"></script>
+<script src="js/00-firebase.js?v=20261025d"></script>
+<script src="js/00b-session.js?v=20261025d"></script>
+<script src="js/00c-auth-ui.js?v=20261025d"></script>
+<script src="js/00d-switch-hud.js?v=20261025d"></script>
+<script src="js/01-constants.js?v=20261025d"></script>
+<script src="js/skills/01-defs.js?v=20261025d"></script>
+<script src="js/02-state.js?v=20261025d"></script>
+<script src="js/03-storage.js?v=20261025d"></script>
+<script src="js/03b-history-archive.js?v=20261025d"></script>
+<script src="js/03c-question-bank.js?v=20261025d"></script>
+<script src="js/03d-roster.js?v=20261025d"></script>
+<script src="js/04-utils.js?v=20261025d"></script>
+<script src="js/05-pet-engine.js?v=20261025d"></script>
+<script src="js/06-ai.js?v=20261025d"></script>
+<script src="js/06b-ai-hud.js?v=20261025d"></script>
+<script src="js/07-excel.js?v=20261025d"></script>
+<script src="js/10-nav.js?v=20261025d"></script>
+<script src="js/10b-nav-groups.js?v=20261025d"></script>
+<script src="js/feature-setup.js?v=20261025d"></script>
+<script src="js/feature-students.js?v=20261025d"></script>
+<script src="js/feature-dashboard.js?v=20261025d"></script>
+<script src="js/feature-batch-award.js?v=20261025d"></script>
+<script src="js/feature-attendance.js?v=20261025d"></script>
+<script src="js/feature-picker.js?v=20261025d"></script>
+<script src="js/feature-timer.js?v=20261025d"></script>
+<script src="js/feature-seating.js?v=20261025d"></script>
+<script src="js/feature-grouping.js?v=20261025d"></script>
+<script src="js/feature-quiz.js?v=20261025d"></script>
+<script src="js/territory/01-hex.js?v=20261025d"></script>
+<script src="js/territory/02-shapes.js?v=20261025d"></script>
+<script src="js/territory/03-engine.js?v=20261025d"></script>
+<script src="js/territory/04-map-view.js?v=20261025d"></script>
+<script src="js/territory/05-game.js?v=20261025d"></script>
+<script src="js/territory/06-teacher.js?v=20261025d"></script>
+<script src="js/territory/07-weekly.js?v=20261025d"></script>
+<script src="js/feature-leaderboard.js?v=20261025d"></script>
+<script src="js/student/01-app.js?v=20261025d"></script>
+<script src="js/student/02-tabs.js?v=20261025d"></script>
+<script src="js/skills/02-student.js?v=20261025d"></script>
+<script src="js/student/03-quiz.js?v=20261025d"></script>
+<script src="js/student/04-war.js?v=20261025d"></script>
+<script src="js/student/05-result.js?v=20261025d"></script>
+<script src="js/skills/03-teacher.js?v=20261025d"></script>
+<script src="js/feature-contact-book.js?v=20261025d"></script>
+<script src="js/feature-homework.js?v=20261025d"></script>
+<script src="js/feature-shop.js?v=20261025d"></script>
+<script src="js/feature-class-tasks.js?v=20261025d"></script>
+<script src="js/feature-ai-features.js?v=20261025d"></script>
+<script src="js/feature-projector.js?v=20261025d"></script>
+<script src="js/feature-overview.js?v=20261025d"></script>
+<script src="js/feature-report.js?v=20261025d"></script>
+<script src="js/feature-rules.js?v=20261025d"></script>
+<script src="js/feature-help.js?v=20261025d"></script>
+<script src="js/feature-settings.js?v=20261025d"></script>
+<script src="js/99-app.js?v=20261025d"></script>
 
 </body>
 </html>

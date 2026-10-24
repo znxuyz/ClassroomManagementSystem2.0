@@ -1,23 +1,10 @@
 /* ============================================
    老師後台:佈局
 ============================================ */
-.dashboard {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 24px;
-  align-items: start;
-}
+/* .dashboard 的版面設定在檔案後面的「學生加分 — 方格版面」 */
 
-.student-sidebar {
-  background: var(--paper-warm);
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: var(--shadow-sm);
-  max-height: calc(100vh - 180px);
-  overflow-y: auto;
-  position: sticky;
-  top: 100px;
-}
+/* (原本的 .student-sidebar 側欄在版面改成方格之後就不存在了,
+   取代它的是檔案後面的 .student-board) */
 
 .sidebar-header {
   display: flex;
@@ -559,15 +546,235 @@
    教師端主要在筆電上用,但臨時用手機點名、加分是會發生的,
    所以至少不要破版。
 ============================================ */
-@media (max-width: 900px) {
-  .dashboard {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 16px;
+/* (原本這裡有 .dashboard 的單欄設定與 .student-sidebar 的限高,
+   版面改成方格之後那兩個都不存在了,見檔案後面的「學生加分 — 方格版面」) */
+
+/* ============================================
+   學生加分 — 方格版面
+   ────────────────────────────────────────────
+   原本是「左邊 320px 的窄欄 + 右邊一大片操作面板」。問題:
+
+   · 28 個學生排成一直欄 = 2600px 高,要加分給座號 15 以後的人就得捲動
+   · 右邊那 1000px 在你還沒點人之前完全是空的
+   · 手機上一次只看得到 3.5 個學生,而且下半頁還寫著「從左側選擇」,
+     手機根本沒有左側
+
+   這是全系統用最多次的一頁,所以改成:
+   學生方格鋪滿整個寬度(電腦一眼看完 28 個不用捲),
+   加分面板在下面;手機上面板改成蓋在畫面底部的浮層 ——
+   這樣點完一個學生不必捲回去找下一個。
+============================================ */
+.dashboard {
+  display: block;
+}
+
+.student-board {
+  background: var(--paper-warm);
+  border-radius: 8px;
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* 方格。auto-fill + minmax 讓欄數自己跟著寬度跑,
+   不必為每一種螢幕寬度各寫一組斷點。
+
+   padding: 0 不是裝飾 —— <ul> 的瀏覽器預設左內距是 40px,
+   不歸零的話方格的可用寬度就少 40px,手機上剛好少掉一整欄
+   (330 → 290,兩欄變一欄)。原本的直式清單也一直被這 40px 縮排著。 */
+.student-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+}
+
+/* 一列一位,比原本矮一截 —— 28 位才塞得進一個畫面 */
+.student-item {
+  padding: 7px 10px;
+  gap: 10px;
+}
+
+.student-avatar {
+  width: 38px;
+  height: 38px;
+  font-size: 19px;
+}
+
+.student-item .student-name {
+  font-size: 13px;
+}
+
+.student-meta {
+  gap: 6px;
+}
+
+/* 原本每一列都跟著寫一次「守護神獸」,28 次,而且灰到看不清楚 ——
+   階段本來就用頭像外圈的顏色表示了,文字是純粹的雜訊。
+   但「還沒選守護獸」要留著:那是老師真的需要看到的。 */
+.student-nopet {
+  color: var(--sunset);
+  font-weight: 600;
+}
+
+/* ---------- 加分面板 ---------- */
+.action-panel {
+  margin-top: 18px;
+  position: relative;
+}
+
+/* 沒選人的時候只留一條細提示,不要一大塊空白板子。
+   那塊卡片平常是深綠漸層(選到人之後顯示守護獸用的),
+   空的時候整片深色很突兀,所以這時候退成一行淡淡的字。 */
+.dashboard:not(.has-selection) .selected-student-card {
+  background: none;
+  color: var(--ink-muted);
+  padding: 0;
+}
+
+.dashboard:not(.has-selection) .selected-student-card::before {
+  display: none;
+}
+
+.dashboard:not(.has-selection) .selected-student-card .empty-state {
+  padding: 14px 0 2px;
+  color: var(--ink-muted) !important;
+}
+
+.dashboard:not(.has-selection) .selected-student-card .empty-state-icon {
+  font-size: 18px;
+  margin-bottom: 2px;
+  opacity: 0.5;
+}
+
+/* 關閉鈕只在手機的浮層模式用得到 */
+.action-panel-close {
+  display: none;
+}
+
+/* ---------- 手機 ---------- */
+@media (max-width: 760px) {
+  .student-list {
+    grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
   }
 
-  /* 名單在手機上不要佔掉整個畫面,限高之後自己捲 */
-  .student-sidebar {
-    max-height: 46vh;
+  .student-board {
+    padding: 14px;
+  }
+
+  /* 選到人之後,面板蓋在畫面底部 ——
+     接在方格下面的話,手機上它會在一兩千像素之外。 */
+  .dashboard.has-selection .action-panel {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+    margin: 0;
+    max-height: 74vh;
     overflow-y: auto;
+    background: var(--paper);
+    border-top: 1px solid var(--paper-shadow);
+    border-radius: 14px 14px 0 0;
+    box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.18);
+    padding: 14px 14px calc(14px + env(safe-area-inset-bottom));
+    animation: sheet-up 0.22s var(--ease-out);
+  }
+
+  @keyframes sheet-up {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+
+  .dashboard.has-selection .action-panel-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 50%;
+    background: var(--paper-warm);
+    color: var(--ink-soft);
+    font-size: 15px;
+    cursor: pointer;
+    z-index: 1;
+  }
+
+  /* 浮層擋住最底下那幾位學生,所以墊高一點讓他們捲得到 */
+  .dashboard.has-selection .student-board {
+    margin-bottom: 46vh;
+  }
+
+  /* 浮層裡的那張卡要壓扁 —— 原本是給電腦整片空間設計的
+     (120px 的守護獸圓圈 + 26px 的名字 + 三欄數字),
+     整個搬到手機上會把加分按鈕全部擠到畫面外。
+     手機上這裡要回答的只有「我現在在加分給誰」。 */
+  .dashboard.has-selection .selected-student-card {
+    padding: 14px 16px;
+  }
+
+  /* 浮層是 flex 欄,裡面的卡片預設會被壓縮到比內容還矮 ——
+     而那張卡是 overflow: hidden,所以積分與階段就這樣被切掉了。
+     浮層自己會捲,所以裡面的東西一律不要縮。 */
+  .dashboard.has-selection .action-panel > * {
+    flex-shrink: 0;
+  }
+
+  /* 進度條在「正在加分」的當下是雜訊,佔的高度又不小 */
+  .dashboard.has-selection .progress-bar,
+  .dashboard.has-selection .progress-text {
+    display: none;
+  }
+
+  .dashboard.has-selection .selected-display {
+    gap: 14px;
+  }
+
+  .dashboard.has-selection .selected-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .dashboard.has-selection .selected-pet-large {
+    width: 52px;
+    height: 52px;
+    font-size: 28px;
+  }
+
+  .dashboard.has-selection .selected-name {
+    font-size: 18px;
+  }
+
+  .dashboard.has-selection .selected-species,
+  .dashboard.has-selection .selected-next {
+    display: none;
+  }
+
+  .dashboard.has-selection .selected-stats {
+    gap: 14px;
+    margin-bottom: 0;
+  }
+
+  /* 積分按鈕排兩欄,一頁看得到的選項才夠多 */
+  .rule-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .rule-card {
+    padding: 10px 12px;
+  }
+
+  .rule-card-name { font-size: 13px; margin-bottom: 2px; }
+  .rule-card-points { font-size: 18px; }
+
+  /* 沒選人時那塊空提示在手機上完全沒必要 */
+  .dashboard:not(.has-selection) .action-panel {
+    display: none;
   }
 }
