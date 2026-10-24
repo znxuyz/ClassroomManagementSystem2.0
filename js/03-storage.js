@@ -282,6 +282,11 @@ async function flushCloudSave(isRetry) {
     });
     _cloudSavePending = false;
     updateSyncStatus('saved');
+
+    /* 主文件寫成功之後,才把衍生出來的公開名冊與個人資料跟著更新。
+       名冊是衍生資料,寫失敗只是學生晚一點看到(而且會退回讀主文件);
+       主文件才是本體,所以順序不能反。不等它完成,免得卡住存檔的回饋。 */
+    Roster.flush().catch(e => console.warn('[名冊] 更新失敗:', e.message));
   } catch (e) {
     console.error('[Cloud] 儲存失敗:', e.code || '', e.message, e);
     updateSyncStatus('error');

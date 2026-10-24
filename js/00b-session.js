@@ -151,6 +151,14 @@ const Session = {
        所以一定要等它載完才接上監聽。 */
     await QuestionBank.load(classId, doc.blob || {});
 
+    /* 開班就先把公開名冊與個人私有資料寫上去(全部重寫一次)。
+       學生端讀的是這兩份,老師開過班它們才會存在 —— 所以不能等到
+       第一次加分才寫,否則剛開學還沒加分前學生什麼都看不到。 */
+    Roster.reset();
+    Roster.flush(true)
+      .then(r => console.info(`[名冊] 已更新:公開名冊 ${r.roster} 份、個人資料 ${r.mine} 份`))
+      .catch(e => console.warn('[名冊] 開班時更新失敗:', e.message));
+
     await SwitchHUD.step('attach');
     watchCurrentClass();
     PurchaseWatch.start();

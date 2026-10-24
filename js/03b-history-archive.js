@@ -242,6 +242,16 @@ function renderDataUsage() {
         ? `目前有 <strong>${waiting}</strong> 筆等著搬,下次存檔時會處理。` : ''}
     </div>
 
+    <div class="quiz-mode-hint">
+      <strong>學生資料隱私</strong>:學生端讀的是另外一份「公開名冊」,
+      只有姓名、累積經驗與守護獸。加分明細(含扣分原因)、測驗成績、
+      可用積分與 Google 帳號各自存在只有本人看得到的地方,
+      同學之間互相看不到。<br>
+      這個班的名冊:${typeof Roster !== 'undefined' && Roster._lastRoster
+        ? '<strong>已建立</strong>(開班時自動更新)'
+        : '<strong>尚未建立</strong> —— 離開再開一次這個班就會建立'}
+    </div>
+
     <div class="usage-parts">
       ${parts.map(p => `
         <div class="usage-part">

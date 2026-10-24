@@ -18,7 +18,10 @@ const StudentApp = {
   draftNickname: '',
   tab: 'pet',             // pet | rank | quiz
   rankTab: 'individual',  // individual | group
-  allStudents: [],        // 全班資料,排行榜用
+  allStudents: [],        // 全班的公開資料(姓名、累積經驗、守護獸),排行榜用
+  rosterEntry: null,      // 公開名冊裡自己那一筆
+  myPrivate: null,        // 只有自己看得到的那一份(明細、可用積分、測驗成績、背包)
+  useRoster: false,       // 讀的是公開名冊,還是退回讀主文件
   groups: [],             // 目前使用的分組(id 陣列的陣列)
   groupsName: null,       // 分組名稱,老師存過才有
   shopItems: [],          // 老師上架的獎品
@@ -34,6 +37,10 @@ const StudentApp = {
     this.activeQuiz = null;
     this.myPurchases = [];
     this.lastScore = undefined;
+    // 換班時這幾個一定要清掉,否則會把上一班的自己混進來
+    this.rosterEntry = null;
+    this.myPrivate = null;
+    this.useRoster = false;
     this._warTabShown = false;
     this._warSig = null;
     this._warHistoryLoaded = false;
@@ -69,7 +76,11 @@ const StudentApp = {
   /* 找出「我」是名單上的哪一位。
      老師重新整理名單時學生的 id 會換掉,登入索引卻還指著舊的 id ——
      那時只用 id 找會找不到人,畫面一片空白。改成找不到就用信箱再找一次,
-     找到了就把 classInfo 的 id 補正,後續的作答、兌換才會寫到對的人身上。 */
+     找到了就把 classInfo 的 id 補正,後續的作答、兌換才會寫到對的人身上。
+
+     公開名冊裡**刻意沒有信箱**(不然全班的 Google 帳號互相看得到),
+     所以用名冊讀資料時這裡的信箱比對會落空 —— 由 ensureMyId() 另外
+     向名冊索引(以自己的信箱為鍵、只有自己讀得到)問出自己的學號。 */
   findMe(list) {
     const byId = list.find(s => s.id === this.classInfo.studentId);
     if (byId) return byId;
@@ -84,18 +95,72 @@ const StudentApp = {
     return null;
   },
 
+  /* 名單上沒有我的學號時,向名冊索引問一次正確的。 */
+  async ensureMyId(list) {
+    if ((list || []).some(s => s.id === this.classInfo.studentId)) return;
+    const sid = await Cloud.myStudentId(this.classInfo.classId).catch(() => null);
+    if (sid && list.some(s => s.id === sid)) {
+      console.warn('[學生端] 登入索引的學號已失效,已用名冊索引補正');
+      this.classInfo.studentId = sid;
+    }
+  },
+
+  /* ============================================
+     套用班級的公開資料
+     ────────────────────────────────────────────
+     來源有兩種,欄位名稱刻意一致,所以這裡不必分辨是哪一種:
+       · classes/{id}/public/roster  —— 現在的來源,只含該公開的部分
+       · 主文件 blob                 —— 老師還沒開過這個班時的退路
+
+     為什麼要分開:主文件裡有全班的加分明細(含扣分原因)、測驗成績、
+     可用積分與 Google 帳號。安全規則擋不了個別欄位,學生打開開發者
+     工具就全部看得到 —— 積分互相看得到是刻意的,那些不是。
+  ============================================ */
+  applyClassData(src) {
+    this.allStudents = src.students || [];
+    this.rosterEntry = this.findMe(this.allStudents);
+    if (src.rules) this.classRules = src.rules;
+    this.shopItems = src.shopItems || [];
+    this.classSkills = src.skills || null;
+    this.readGroups(src);
+    this.mergeMe();
+  },
+
+  /* this.student = 公開那筆 + 自己的私有那筆。
+
+     順序是「私有先、公開後」,所以同時存在的欄位(姓名、累積經驗)
+     以公開名冊為準 —— 私有那一份可能因為寫入失敗而落後一步,
+     不能讓它把剛更新的分數蓋回舊的。
+
+     私有那份讀不到時就只有公開的:畫面會少掉積分明細與測驗成績,
+     但守護獸、排行榜、兌換都還在 —— 比整頁空白好。
+     退回讀主文件時 rosterEntry 本來就是完整的那一筆,所以也對。 */
+  mergeMe() {
+    if (!this.rosterEntry) { this.student = null; return; }
+    this.student = { ...(this.myPrivate || {}), ...this.rosterEntry };
+  },
+
+  /* 自己那份私有資料(加分明細、可用積分、測驗成績、背包)。 */
+  async refreshMine() {
+    if (!this.useRoster || !this.classInfo.studentId) return;
+    try {
+      const p = await Cloud.loadMyPrivate(this.classInfo.classId, this.classInfo.studentId);
+      if (!p) return;
+      this.myPrivate = p;
+      this.mergeMe();
+      if (!this.activeQuiz) this.render();
+    } catch (e) {
+      console.warn('[學生端] 讀取自己的明細失敗:', e.code || e.message);
+    }
+  },
+
   /* 老師一發分、一結算成績,學生畫面就跟著動。
      排行榜是即時的,搶答結果馬上看得到名次變化。 */
   watch() {
     if (this.unsub) this.unsub();
-    this.unsub = Cloud.watchClass(this.classInfo.classId, doc => {
-      const blob = doc.blob || {};
-      this.allStudents = blob.students || [];
-      this.student = this.findMe(this.allStudents);
 
-      this.shopItems = blob.shopItems || [];
-      this.classSkills = blob.skills || null;
-      this.readGroups(blob);
+    const onData = src => {
+      this.applyClassData(src);
 
       // 正在作答時不要重繪,會把已經選好的答案清掉
       if (this.activeQuiz) return;
@@ -105,28 +170,58 @@ const StudentApp = {
       this.lastScore = now;
 
       this.render();
+
+      if (before !== undefined && now !== before) {
+        /* 自己的分數動了,私有那一份(明細、可用積分)也跟著變,補讀一次。
+           **只有被加分的那一位會多讀**,不是全班 —— 名冊推送給全班,
+           但這一行只有分數真的變了的人會跑到。 */
+        this.refreshMine();
+      }
       if (before !== undefined && now > before) {
         toast(`✦ 獲得 ${now - before} 分!`);
       }
-    });
+    };
+
+    if (this.useRoster) {
+      this.unsub = Cloud.watchPublicRoster(this.classInfo.classId,
+        src => { if (src) onData(src); });
+    } else {
+      this.unsub = Cloud.watchClass(this.classInfo.classId, doc => onData(doc.blob || {}));
+    }
   },
 
   async refresh() {
     const { classId } = this.classInfo;   // studentId 由 findMe() 決定(可能需要用信箱補正)
 
-    const doc = await Cloud.loadClass(classId);
-    if (!doc) {
-      toast('找不到班級資料');
-      return;
+    /* 先試公開名冊。老師開過這個班就有 ——
+       沒有的話(剛上線還沒開過)退回讀主文件,功能完全一樣,
+       只是那一份含有不該給學生看的欄位。
+       五個班都開過一次之後,主文件的讀取權限就會收成只有導師。 */
+    let roster = null;
+    try {
+      roster = await Cloud.loadPublicRoster(classId);
+    } catch (e) {
+      console.warn('[學生端] 讀取公開名冊失敗,改讀主文件:', e.code || e.message);
     }
-    const blob = doc.blob || {};
-    this.allStudents = blob.students || [];
-    this.student = this.findMe(this.allStudents);
-    this.classRules = blob.rules || [];
-    this.shopItems = blob.shopItems || [];
-    this.classSkills = blob.skills || null;
+    this.useRoster = !!(roster && roster.students);
 
-    this.readGroups(blob);
+    if (this.useRoster) {
+      await this.ensureMyId(roster.students);
+      this.myPrivate = await Cloud.loadMyPrivate(classId, this.classInfo.studentId)
+        .catch(e => {
+          console.warn('[學生端] 讀取自己的明細失敗:', e.code || e.message);
+          return null;
+        });
+      this.applyClassData(roster);
+    } else {
+      const doc = await Cloud.loadClass(classId);
+      if (!doc) {
+        toast('找不到班級資料');
+        return;
+      }
+      this.myPrivate = null;
+      this.applyClassData(doc.blob || {});
+    }
 
     /* 以下都是「有最好,沒有也還能用」的東西。
        之前任何一個被安全規則擋下來,整個登入就失敗,學生只看到一句

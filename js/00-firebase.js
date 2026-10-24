@@ -562,6 +562,71 @@ const Cloud = {
     await batch.commit();
   },
 
+  /* ============================================
+     公開名冊與個人私有資料
+     ────────────────────────────────────────────
+     學生原本直接讀整份班級文件,也就是說同班同學的**扣分原因**
+     (「未帶課本」「與同學爭執」)、每一科的測驗分數、Google 帳號信箱,
+     打開開發者工具就全部看得到。積分互相看得到是刻意的(排行榜、投影),
+     但那些不是。
+
+     Firestore 的安全規則是「整份文件」的粒度,擋不了個別欄位,
+     所以要分成兩份:
+       · public/roster  —— 別人該看得到的:姓名、累積經驗、守護獸
+       · mine/{學號}    —— 只有本人(和導師)看得到的:加分明細、測驗成績、
+                            可用積分、背包
+  ============================================ */
+  async savePublicRoster(classId, roster) {
+    await this.db.collection('classes').doc(classId)
+      .collection('public').doc('roster').set(roster);
+  },
+
+  watchPublicRoster(classId, cb, onErr) {
+    return this.db.collection('classes').doc(classId)
+      .collection('public').doc('roster')
+      .onSnapshot(snap => cb(snap.exists ? snap.data() : null),
+        err => {
+          console.warn('[名冊] 監聽中斷:', err.message);
+          if (onErr) onErr(err);
+        });
+  },
+
+  async loadPublicRoster(classId) {
+    const snap = await this.db.collection('classes').doc(classId)
+      .collection('public').doc('roster').get();
+    return snap.exists ? snap.data() : null;
+  },
+
+  /* docs = { 學號: {...} }。只傳內容真的變了的那幾位。
+     批次上限 500,一個班不可能有那麼多人,所以一次寫完。 */
+  async saveStudentPrivate(classId, docs) {
+    const ids = Object.keys(docs);
+    if (ids.length === 0) return 0;
+    const base = this.db.collection('classes').doc(classId).collection('mine');
+    const batch = this.db.batch();
+    ids.forEach(id => batch.set(base.doc(id), docs[id]));
+    await batch.commit();
+    return ids.length;
+  },
+
+  async loadMyPrivate(classId, studentId) {
+    const snap = await this.db.collection('classes').doc(classId)
+      .collection('mine').doc(studentId).get();
+    return snap.exists ? snap.data() : null;
+  },
+
+  /* 名冊索引是以「自己的信箱」為鍵、而且只有自己讀得到,
+     所以學生可以用它查出自己的學號 —— 不必為了找自己而讀全班的信箱。 */
+  async myStudentId(classId) {
+    const mail = (this.auth.currentUser && this.auth.currentUser.email || '')
+      .trim().toLowerCase();
+    if (!mail) return null;
+    const snap = await this.db.collection('rosterIndex').doc(mail).get();
+    if (!snap.exists) return null;
+    const entry = (snap.data().classes || {})[classId];
+    return entry ? entry.studentId : null;
+  },
+
   /* ---------- 老師端的題庫本體(含答案),分片存放 ----------
      學生端不碰這裡 —— 他們讀的是上面那份不含答案的 territory/questions。
      為什麼要搬出主文件、為什麼依題號雜湊分片,見 js/03c-question-bank.js。 */

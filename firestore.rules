@@ -302,6 +302,45 @@ service cloud.firestore {
         allow delete: if isClassTeacher();
       }
 
+      /* ---------- 公開名冊 ----------
+         學生端讀的就是這一份:姓名、累積經驗、守護獸,僅此而已。
+         積分互相看得到是刻意的(排行榜、投影模式本來就全班一起看)。
+
+         主文件原本是學生的資料來源,但它還有全班的加分明細(含扣分原因)、
+         測驗成績、可用積分與 Google 帳號 —— 安全規則是整份文件的粒度,
+         擋不了個別欄位,所以只能把該公開的另外寫一份。 */
+      match /public/{docId} {
+        function isClassTeacher() {
+          return signedIn()
+            && get(/databases/$(database)/documents/classes/$(classId)).data.teacherUid == request.auth.uid;
+        }
+        allow read: if signedIn();
+        allow write: if isClassTeacher();
+      }
+
+      /* ---------- 個人私有資料 ----------
+         加分明細(含扣分原因)、測驗成績、可用積分、背包。
+         **只有本人與導師**讀得到,同學之間互相看不到。
+
+         「這個學號是不是我」用名冊索引判斷(以 Google 帳號 email 為鍵),
+         那份索引只有老師寫得了,所以學生改前端也冒用不了同學的身分。
+         和技能額度用的是同一套判斷。 */
+      match /mine/{studentId} {
+        function isClassTeacher() {
+          return signedIn()
+            && get(/databases/$(database)/documents/classes/$(classId)).data.teacherUid == request.auth.uid;
+        }
+        function myStudentId() {
+          return get(/databases/$(database)/documents/rosterIndex/$(request.auth.token.email.lower()))
+                   .data.classes[classId].studentId;
+        }
+        allow read: if isClassTeacher()
+                    || (signedIn()
+                        && request.auth.token.email != null
+                        && myStudentId() == studentId);
+        allow write: if isClassTeacher();
+      }
+
       /* 蜂巢題庫的本體,分片存放(s0..s7)。
          **這裡含正確答案**,所以學生連讀都不行 —— 讀得到就等於拿到答案卡。
          學生讀的是 territory/questions(不含答案)那一份。 */
