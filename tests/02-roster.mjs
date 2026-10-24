@@ -111,6 +111,16 @@ const lines = await page.evaluate(async () => {
   db.fail.loadClass = false;
   db.roster = keep;
 
+  // ── 學生登入時不可以再去讀班級主文件(現在規則只有導師讀得到)──
+  let classReads = 0;
+  Cloud.loadClass = async () => { classReads++; return { blob: db.blob }; };
+  const idxDoc = { classes: { C1: { classId: 'C1', className: '測試班', studentId: 's0', name: '學生0' } } };
+  Cloud.db = { collection: () => ({ doc: () => ({ get: async () => ({ exists: true, data: () => idxDoc }) }) }) };
+  Cloud.emailKey = m => m.toLowerCase();
+  const found = await Cloud.findMyClasses('kid0@school.edu.tw');
+  t.ok('findMyClasses 查得到班級', found.length === 1 && found[0].classId === 'C1');
+  t.ok('findMyClasses 不會去讀班級主文件', classReads === 0, classReads + ' 次');
+
   // ── 換班 ──
   Roster.reset();
   t.ok('換班時基準清掉了',

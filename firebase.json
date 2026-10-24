@@ -1,5 +1,12 @@
 {
   "firestore": {
     "rules": "firestore.rules"
+  },
+
+  "//": "模擬器設定給 tests/09-rules.mjs 用。刻意和上面共用同一個 rules 路徑 —— 測的就是真的要發布的那一份,不會各走各的。",
+  "emulators": {
+    "firestore": { "port": 8411 },
+    "ui": { "enabled": false },
+    "singleProjectMode": true
   }
 }

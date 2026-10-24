@@ -289,30 +289,21 @@ const Cloud = {
     const snap = await this.db.collection('rosterIndex').doc(key).get();
     if (!snap.exists) return [];
 
-    const entries = Object.values(snap.data().classes || {});
-    const alive = [];
-    const dead = [];
+    /* 這裡原本會逐個去讀班級文件,確認那個班還在不在,順手把失效的索引刪掉。
+       兩個理由拿掉了:
 
-    await Promise.all(entries.map(async entry => {
-      try {
-        const cls = await this.db.collection('classes').doc(entry.classId).get();
-        if (cls.exists) alive.push(entry);
-        else dead.push(entry.classId);
-      } catch (e) {
-        // 讀不到就當作還在,避免暫時性錯誤讓學生進不去
-        alive.push(entry);
-      }
-    }));
+       · 主文件已經收成「只有導師讀得到」(它含有不該給學生看的欄位),
+         所以學生在這裡一定讀不到 —— 原本的程式會因此把每個班都當成
+         「讀不到就當作還在」,那個檢查等於永遠不會生效,只是白花讀取。
 
-    if (dead.length > 0) {
-      const del = firebase.firestore.FieldValue.delete();
-      const patch = {};
-      dead.forEach(id => { patch[`classes.${id}`] = del; });
-      this.db.collection('rosterIndex').doc(key).update(patch)
-        .catch(e => console.warn('[Cloud] 清理失效索引失敗:', e.message));
-    }
+       · 班級被刪除時 deleteClass() 本來就會清掉名冊索引,那裡的資訊是
+         確定的。這裡的檢查只是備援,而備援在證據不確定的時候刪東西
+         是最糟的組合 —— 誤刪的話學生會無聲失去一個真實班級的存取權,
+         比留下一筆失效索引糟得多。
 
-    return alive;
+       萬一真的留下失效索引,學生進去會看到「這個班級還沒準備好,
+       請老師開一下系統」(見 js/student/01-app.js),看得懂也問得出來。 */
+    return Object.values(snap.data().classes || {});
   },
 
   /* ---------- 測驗 ----------

@@ -1,8 +1,11 @@
 # 自動發布 Firestore 安全性規則
 # ──────────────────────────────────────────────
 # firestore.rules 一推上 main 就自動發布,不必再記得去後台貼一次。
-# 規則有語法錯誤或權限不足時,這個流程會失敗並寄信通知 —— 失敗就是
-# 「沒有發布」,線上跑的還是舊的那一份,不會把壞規則推上去。
+# 發布之前會先用 Firestore 模擬器把規則跑一遍(tests/09-rules.mjs):
+# 學生、老師、外人三種身分真的去讀寫,確認該擋的擋得住、該讓的讓得過。
+# 規則有語法錯誤、權限不足、或沒通過那一套測試時,這個流程會失敗並寄信
+# 通知 —— 失敗就是「沒有發布」,線上跑的還是舊的那一份,
+# 不會把壞規則推上去。
 #
 # 需要先設定一次:見 docs/自動發布規則.md
 
@@ -15,6 +18,8 @@ on:
       - 'firestore.rules'
       - 'firebase.json'
       - '.firebaserc'
+      - 'tests/09-rules.mjs'
+      - 'tests/lib.mjs'
       - '.github/workflows/deploy-rules.yml'
   workflow_dispatch:        # 也可以在 Actions 頁面手動按一次
 
@@ -35,6 +40,17 @@ jobs:
 
       - name: 安裝 firebase-tools
         run: npm install -g firebase-tools@15
+
+      # 發布之前先用模擬器把規則跑一遍。
+      #
+      # 規則寫錯不會報錯 —— 它只會安靜地放行,或安靜地擋掉,
+      # 兩種都要到上課現場才會發現(一邊是學生看得到全班的扣分原因,
+      # 一邊是老師或全班整個進不去)。所以這一關要擋在發布之前,
+      # 不是發布之後。
+      #
+      # 這一套會自己開關模擬器,需要 java —— GitHub 的 runner 本來就有。
+      - name: 測試安全規則
+        run: node tests/09-rules.mjs
 
       # firebase deploy 發布前會先問 Google「Firestore API 開了沒」,
       # 那一步要 serviceusage 權限,跟「改規則」本身無關。

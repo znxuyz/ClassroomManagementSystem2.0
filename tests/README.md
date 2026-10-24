@@ -11,6 +11,13 @@ bash tests/run.sh 02       # 只跑 02 那一套
 npm i -g playwright && npx playwright install chromium
 ```
 
+`09-rules.mjs` 另外需要 firebase CLI 與 java(它會自己開關 Firestore 模擬器)。
+沒有的話那一套會整套跳過,不會擋住其他測試:
+
+```bash
+npm i -g firebase-tools
+```
+
 ## 為什麼是這種寫法
 
 這個專案沒有打包步驟 —— `index.html` 直接用 `<script>` 載入所有檔案,
@@ -43,6 +50,7 @@ npm i -g playwright && npx playwright install chromium
 | `04-archive-backup.mjs` | 歷程封存**絕對不可以掉資料**(先寫成功才從主文件刪);備份要是完整的 |
 | `05-report.mjs` | 每月積分的加總等於原始紀錄;逐筆明細預設收起 |
 | `06-help.mjs` | 說明的每一段都有分類、每個分類點了都有內容 |
+| `09-rules.mjs` | **安全規則本身** —— 把 `firestore.rules` 丟進 Firestore 模擬器,用學生、老師、外人三種身分真的去讀寫。其他幾套測的是「學生端不會去讀」,這一套測的是「就算他去讀也讀不到」 |
 | `08-roster-status.mjs` | 各班名冊的狀態是**真的去查雲端**(不是看這個分頁寫過沒),以及一鍵補建不必一個班一個班開 |
 | `07-recovery.mjs` | 離線的變更救得回來,而且**不自動覆蓋** —— 老師可能在另一台裝置上 |
 
@@ -71,3 +79,15 @@ process.exit(report('這一套的名字', lines, errors) ? 0 : 1);
 
 `errors` 會蒐集 console 錯誤與未捕捉例外,交給 `report()` 一起判定 ——
 所以測試不必自己檢查「有沒有壞掉」。
+
+## 為什麼規則那一套特別重要
+
+隱私和防作弊最後都靠 `firestore.rules`,而規則**不會因為寫錯就報錯** ——
+它只會安靜地放行,或安靜地擋掉。兩種錯法都要到現場才會發現:
+
+- 放行錯了 → 學生看得到全班的扣分原因,沒有任何跡象
+- 擋掉錯了 → 老師或全班整個進不去,而且通常是上課當下才發現
+
+所以每次改 `firestore.rules`,**跑這一套再推**。它裡面特地有一條
+「導師仍然列得出自己的班級」—— 那條規則寫錯的話,老師會整個登不進去,
+比學生看到扣分原因還嚴重。

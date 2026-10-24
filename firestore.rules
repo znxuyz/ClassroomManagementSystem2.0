@@ -58,10 +58,20 @@ service cloud.firestore {
         return signedIn() && resource.data.teacherUid == request.auth.uid;
       }
 
-      // 學生要讀班級文件才能看到自己的守護獸與積分。
-      // 這代表同班同學的積分彼此看得到 —— 對班級經營來說是刻意的,
-      // 投影模式本來就是全班一起看。若要完全隱私,需改為每位學生獨立文件。
-      allow read: if signedIn();
+      /* 主文件只有導師讀得到。
+
+         它含有全班的加分明細(含扣分原因)、測驗成績、可用積分與
+         Google 帳號 —— 安全規則是整份文件的粒度,擋不了個別欄位,
+         所以學生不能讀這一份。他們讀的是:
+           · public/roster   姓名、累積經驗、守護獸(全班可讀)
+           · mine/{學號}      自己的明細與可用積分(只有本人與導師)
+
+         積分互相看得到仍然是刻意的 —— 排行榜與投影模式本來就全班一起看。
+         不該外流的是「為什麼被扣分」那一類的東西。
+
+         列表查詢(老師的班級清單)用的是 where('teacherUid','==',自己),
+         和這條規則對得起來,所以照樣查得到。 */
+      allow read: if isTeacherOfThisClass();
 
       // 只有導師本人能改班級資料,學生完全寫不進來
       allow update, delete: if isTeacherOfThisClass();
