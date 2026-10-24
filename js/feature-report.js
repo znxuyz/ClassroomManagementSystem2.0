@@ -160,6 +160,8 @@ function buildStudentReport(s) {
         </div>
       ` : ''}
       
+      ${buildHistoryDetail(s)}
+
       <h2>導師評語</h2>
       <div class="report-narrative" id="reportNarrative" contenteditable="true" 
         style="border: 1px dashed #ccc; min-height: 80px;">${buildAutoNarrative(s, stage, attendanceRate, hwRate, topReasons)}</div>
@@ -175,6 +177,107 @@ function buildStudentReport(s) {
       <button class="btn btn-ghost" onclick="document.getElementById('reportContainer').innerHTML=''; renderReportStudentList();">返回列表</button>
     </div>
   `;
+}
+
+/* ============================================
+   逐筆積分明細
+   ────────────────────────────────────────────
+   報表原本只給「最近 8 週」的長條圖和「前 5 名得分項目」。
+   家長在親師座談最常問的卻是具體的那一件事 ——
+   「上個月為什麼扣分?」「這個加分是什麼?」原本答不出來。
+
+   加分紀錄封存之後(見 03b-history-archive.js),showStudentReport()
+   已經會把整學期的歷程讀回來,只是沒拿來用。這裡就用它。
+
+   版面上分兩層:
+   · **每月統計**一直顯示。一個學期大概 5~10 列,印出來只多半頁,
+     而且剛好是家長要的粒度(「九月得 42 分、扣 5 分」)。
+   · **逐筆明細**預設收起來。整學期可能四五百筆,全部攤開是好幾頁,
+     不能每次列印都塞給家長 —— 老師要給的時候自己按開再印。
+============================================ */
+
+function monthlyPoints(history) {
+  const byMonth = {};
+  (history || []).forEach(h => {
+    const d = new Date(h.time || 0);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const m = byMonth[key] || (byMonth[key] = { key, gain: 0, loss: 0, n: 0, rows: [] });
+    if (h.points >= 0) m.gain += h.points; else m.loss += h.points;
+    m.n++;
+    m.rows.push(h);
+  });
+  // 新的月份排前面;每個月裡面也是新的在前面
+  return Object.values(byMonth)
+    .sort((a, b) => (a.key < b.key ? 1 : -1))
+    .map(m => ({ ...m, rows: m.rows.slice().sort((a, b) => (b.time || 0) - (a.time || 0)) }));
+}
+
+function buildHistoryDetail(s) {
+  const months = monthlyPoints(s.history);
+  if (months.length === 0) return '';
+
+  const total = (s.history || []).length;
+  const gain = months.reduce((t, m) => t + m.gain, 0);
+  const loss = months.reduce((t, m) => t + m.loss, 0);
+
+  const monthName = key => {
+    const [y, m] = key.split('-');
+    return `${y} 年 ${parseInt(m)} 月`;
+  };
+
+  return `
+    <h2>每月積分</h2>
+    <div class="report-narrative" style="margin-bottom:8px;">
+      本學期共 ${total} 筆紀錄,累計得分 <strong>+${gain}</strong>、
+      扣分 <strong>${loss}</strong>,淨值 <strong>${gain + loss}</strong>。
+    </div>
+    <table class="report-month-table">
+      <thead><tr><th>月份</th><th>得分</th><th>扣分</th><th>淨值</th><th>筆數</th></tr></thead>
+      <tbody>
+        ${months.map(m => `
+          <tr>
+            <td>${monthName(m.key)}</td>
+            <td class="is-gain">+${m.gain}</td>
+            <td class="is-loss">${m.loss === 0 ? '—' : m.loss}</td>
+            <td><strong>${m.gain + m.loss}</strong></td>
+            <td>${m.n}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+
+    <div class="report-detail-toggle">
+      <button class="btn btn-ghost btn-small" onclick="toggleHistoryDetail()"
+              id="reportDetailBtn">展開逐筆明細(${total} 筆)</button>
+      <span class="report-detail-note">明細展開後才會跟著列印</span>
+    </div>
+
+    <div id="reportHistoryDetail" class="report-detail" hidden>
+      ${months.map(m => `
+        <h3 class="report-detail-month">${monthName(m.key)}</h3>
+        <table class="report-month-table is-detail">
+          <tbody>
+            ${m.rows.map(h => `
+              <tr>
+                <td class="report-detail-date">${new Date(h.time || 0)
+                    .toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })}</td>
+                <td>${escapeHtml(h.reason || '(未註明)')}</td>
+                <td class="${h.points >= 0 ? 'is-gain' : 'is-loss'}">
+                  ${h.points >= 0 ? '+' : ''}${h.points}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`).join('')}
+    </div>`;
+}
+
+function toggleHistoryDetail() {
+  const box = document.getElementById('reportHistoryDetail');
+  const btn = document.getElementById('reportDetailBtn');
+  if (!box || !btn) return;
+  const open = box.hasAttribute('hidden');
+  if (open) box.removeAttribute('hidden'); else box.setAttribute('hidden', '');
+  btn.textContent = open
+    ? '收起逐筆明細'
+    : `展開逐筆明細(${box.querySelectorAll('.is-detail tbody tr').length} 筆)`;
 }
 
 function computeWeeklyPoints(student) {

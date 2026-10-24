@@ -297,3 +297,100 @@
     padding: 20px;
   }
 }
+
+/* ============================================
+   每月積分 / 逐筆明細
+   ────────────────────────────────────────────
+   家長最常問的是具體那一件事,所以報表要給得出月份與逐筆。
+   明細預設收起來(整學期可能四五百筆),按開才會跟著列印。
+============================================ */
+.report-month-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.report-month-table th,
+.report-month-table td {
+  border-bottom: 1px solid var(--paper-shadow);
+  padding: 7px 10px;
+  text-align: left;
+}
+
+.report-month-table th {
+  background: var(--paper-warm);
+  color: var(--forest-deep);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.report-month-table td.is-gain { color: var(--forest); font-weight: 600; }
+.report-month-table td.is-loss { color: var(--sunset); font-weight: 600; }
+
+/* 明細只有三欄,日期與分數都靠窄,原因吃掉剩下的寬度 */
+.report-month-table.is-detail td:first-child,
+.report-month-table.is-detail td:last-child { width: 1%; white-space: nowrap; }
+.report-month-table.is-detail td { padding: 5px 10px; }
+.report-detail-date { color: var(--ink-muted); }
+
+.report-detail-month {
+  margin: 18px 0 2px;
+  font-size: 14px;
+  color: var(--forest-deep);
+}
+
+.report-detail-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.report-detail-note {
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+/* 列印時那顆按鈕沒有意義 */
+@media print {
+  .report-detail-toggle { display: none; }
+}
+
+/* ============================================
+   手機
+   ────────────────────────────────────────────
+   報表原本只為了 A4 設計(左右各 60px 留白、守護獸橫排在名字旁邊),
+   在手機上 358px 的寬度被留白吃掉 120px,剩下 238px 放不下
+   24px 的名字和兩欄統計 —— 整份報告會被推出畫面外。
+
+   點開某位學生的報告才看得到,所以之前的版面檢查沒抓到:
+   檢查只走到學生清單那一層。
+============================================ */
+@media (max-width: 640px) {
+  .report-page { padding: 24px 16px; }
+  .report-page h1 { font-size: 20px; }
+
+  /* 守護獸改成疊在名字上面,橫排放不下 */
+  .report-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px;
+  }
+
+  /* flex/grid 子項的 min-width 預設是 auto(= 不准縮到比內容小),
+     不寫這一行的話上面那個 column 也救不了裡面的統計格 */
+  .report-hero-info { min-width: 0; width: 100%; }
+  .report-hero-info .name { font-size: 20px; }
+
+  /* 四格統計在 326px 裡擠成兩欄會換行得很醜,改成一欄 */
+  .report-stats { grid-template-columns: 1fr; }
+
+  /* 左右兩欄的「主要得分項目 / 出席與作業」也要疊起來 */
+  .report-breakdown { grid-template-columns: 1fr; }
+
+  .report-month-table th,
+  .report-month-table td { padding: 6px; font-size: 12px; }
+}
