@@ -38,6 +38,42 @@ const Storage = {
 
   clear(classId) {
     localStorage.removeItem(this.cacheKey(classId));
+    localStorage.removeItem(this.metaKey(classId));
+  },
+
+  /* ── 本機快取有沒有「還沒上傳的變更」 ──
+     本機快取每次 save() 都立刻寫,雲端那邊是延遲 800 毫秒才送。
+     所以「老師在走廊斷網、加了十個人的分、然後關掉分頁」的時候,
+     那十筆只在這台裝置的 localStorage 裡 —— 而原本沒有任何地方會去讀它,
+     下次開班直接拿雲端那份舊的覆蓋上去,那十筆就這樣消失了。
+
+     這個旗標就是為了認出那種情況:排進雲端待寫時設上,寫成功才清掉。
+     開班時看到它還在,就表示上一次沒寫完(見 offerLocalRecovery)。 */
+  metaKey(classId) {
+    return this.cacheKey(classId) + ':meta';
+  },
+
+  markDirty(classId) {
+    try {
+      localStorage.setItem(this.metaKey(classId),
+        JSON.stringify({ dirty: true, at: Date.now() }));
+    } catch (e) { /* 配額滿了也不該讓加分失敗 */ }
+  },
+
+  markSynced(classId) {
+    try {
+      localStorage.setItem(this.metaKey(classId),
+        JSON.stringify({ dirty: false, at: Date.now() }));
+    } catch (e) { /* 同上 */ }
+  },
+
+  meta(classId) {
+    try {
+      const raw = localStorage.getItem(this.metaKey(classId));
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
   }
 };
 
@@ -257,11 +293,39 @@ function save() {
   }
 
   _cloudSavePending = true;
+  Storage.markDirty(state.classId);   // 寫成功才會清掉
   updateSyncStatus('saving');
 
   clearTimeout(_cloudSaveTimer);
   _cloudSaveTimer = setTimeout(flushCloudSave, 800);
 }
+
+/* ============================================
+   別讓「還沒送出的那 800 毫秒」掉資料
+   ────────────────────────────────────────────
+   存檔是延遲 800 毫秒才送出的(把連續的操作合成一次寫入)。
+   老師按完最後一個加分就立刻關分頁、切到別的 App、或鎖螢幕的時候,
+   那一次寫入就永遠不會發生。
+
+   所以畫面一離開就立刻送出。visibilitychange 比 beforeunload 可靠 ——
+   手機瀏覽器關分頁時常常不跑 beforeunload,但一定會先變成 hidden。
+   beforeunload 仍然留著當第二道:真的還沒送完就提醒一句再走。
+============================================ */
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && _cloudSavePending) {
+    clearTimeout(_cloudSaveTimer);
+    flushCloudSave();
+  }
+});
+
+window.addEventListener('beforeunload', e => {
+  if (!_cloudSavePending) return;
+  clearTimeout(_cloudSaveTimer);
+  flushCloudSave();
+  // 瀏覽器只會顯示它自己的制式訊息,內容不能自訂
+  e.preventDefault();
+  e.returnValue = '';
+});
 
 async function flushCloudSave(isRetry) {
   if (!isCloudMode() || !_cloudSavePending) return;
@@ -281,6 +345,7 @@ async function flushCloudSave(isRetry) {
       teacherName: state.teacherName
     });
     _cloudSavePending = false;
+    Storage.markSynced(classId);     // 雲端和本機一致了
     updateSyncStatus('saved');
 
     /* 主文件寫成功之後,才把衍生出來的公開名冊與個人資料跟著更新。
@@ -318,10 +383,98 @@ async function flushCloudSave(isRetry) {
   }
 }
 
-/* 關閉分頁前把還沒送出的寫入補送 */
-window.addEventListener('beforeunload', () => {
-  if (_cloudSavePending) flushCloudSave();
-});
+/* ============================================
+   開班時把「上次沒送出去的變更」救回來
+   ────────────────────────────────────────────
+   本機快取每次 save() 都立刻寫,雲端是延遲 800 毫秒;而且網路斷掉時
+   雲端那次寫入會失敗。兩種情況都會留下「本機比雲端新」的狀態。
+
+   原本沒有任何地方會去讀本機那一份 —— 下次開班直接拿雲端的覆蓋上去,
+   離線時加的那幾筆就這樣消失了,而且畫面上看不出來。
+
+   這裡用 Storage 的 dirty 旗標認出那種情況,算出差多少,然後問老師。
+   **不自動套用**:老師也可能在另一台裝置上繼續上課,那台才是對的。
+   所以兩邊的時間和差異都攤開來給他決定。
+============================================ */
+
+function compareBlobs(local, cloud) {
+  const byId = b => new Map((b.students || []).map(s => [s.id, s]));
+  const L = byId(local), C = byId(cloud);
+
+  let changed = 0, delta = 0, names = [];
+  L.forEach((s, id) => {
+    const c = C.get(id);
+    const lp = s.totalPoints || 0;
+    const cp = c ? (c.totalPoints || 0) : 0;
+    if (!c || lp !== cp) {
+      changed++;
+      delta += lp - cp;
+      if (names.length < 5) names.push(s.name);
+    }
+  });
+
+  // 積分之外的東西也可能改了(點名、聯絡簿、作業…)
+  const KEYS = ['attendance', 'contactBook', 'homework', 'classTasks',
+                'shopHistory', 'shopItems', 'rules', 'quizzes', 'seatingLayouts'];
+  const LABEL = {
+    attendance: '點名紀錄', contactBook: '聯絡簿', homework: '作業',
+    classTasks: '班級任務', shopHistory: '兌換紀錄', shopItems: '獎品',
+    rules: '積分規則', quizzes: '測驗', seatingLayouts: '座位表'
+  };
+  const others = KEYS
+    .filter(k => JSON.stringify(local[k]) !== JSON.stringify(cloud[k]))
+    .map(k => LABEL[k]);
+
+  return { changed, delta, names, others, any: changed > 0 || others.length > 0 };
+}
+
+function offerLocalRecovery(classId, cloudBlob) {
+  const meta = Storage.meta(classId);
+  if (!meta || !meta.dirty) return false;
+
+  const local = Storage.load(classId);
+  if (!local) { Storage.markSynced(classId); return false; }
+
+  const d = compareBlobs(local, cloudBlob);
+  if (!d.any) {
+    // 旗標沒清掉但內容其實一樣(例如寫成功後剛好關掉分頁),清掉就好
+    Storage.markSynced(classId);
+    return false;
+  }
+
+  const when = new Date(meta.at).toLocaleString('zh-TW');
+  const lines = [
+    '這台裝置上有一批變更沒有成功上傳到雲端。',
+    '(可能是當時網路斷了,或是存檔還沒送出就關掉分頁)',
+    '',
+    `本機最後一次變更:${when}`,
+    ''
+  ];
+  if (d.changed > 0) {
+    lines.push(`· ${d.changed} 位學生的積分不一樣` +
+      (d.delta !== 0 ? `,本機合計多 ${d.delta > 0 ? '+' : ''}${d.delta} 分` : '') +
+      `(${d.names.join('、')}${d.changed > d.names.length ? ' 等' : ''})`);
+  }
+  if (d.others.length > 0) lines.push('· 以下也不一樣:' + d.others.join('、'));
+  lines.push('',
+    '按「確定」= 用這台裝置的版本覆蓋雲端',
+    '按「取消」= 保留雲端的版本,丟掉這台的變更',
+    '',
+    '⚠ 如果你中間用過另一台裝置上課,那一台才是新的 —— 請按取消。');
+
+  if (!confirm(lines.join('\n'))) {
+    Storage.markSynced(classId);     // 老師選擇放棄,不要每次開班都問
+    toast('已保留雲端的版本');
+    return false;
+  }
+
+  applyBlobToState(local);
+  save();                            // 推回雲端(連帶更新公開名冊)
+  renderAll();
+  renderActiveView();
+  toast(`✦ 已套用這台裝置的版本(${d.changed} 位學生的積分)`, 5000);
+  return true;
+}
 
 function isCloudMode() {
   return !!(Cloud.ready && Cloud.uid && state.classId);

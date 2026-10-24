@@ -179,6 +179,10 @@ const Session = {
       .then(made => { if (made) Cloud.pruneBackups(classId).catch(() => {}); })
       .catch(e => console.warn('[備份] 每日快照失敗:', e.message));
 
+    /* 上一次有變更沒送出去的話(斷網、或存檔還沒送出就關掉分頁),
+       在這裡問老師要用哪一邊 —— 放在畫面畫完之後,他才看得到是哪個班。 */
+    offerLocalRecovery(classId, doc.blob || {});
+
     // 收進學生自己挑好的守護獸。換班時等它跑完再收起提示,
     // 這樣提示消失的瞬間畫面就是最終狀態,不會又跳一下。
     const pending = applyPendingPetChoices();
