@@ -416,43 +416,126 @@
 .war-question {
   background: var(--paper);
   border: 1px solid var(--paper-shadow);
-  border-radius: 4px;
+  border-radius: 12px;
   padding: 18px;
 }
 
+@media (max-width: 760px) {
+  .war-question { padding: 14px; }
+  .war-target-who { font-size: 16px; }
+}
+
+/* ============================================
+   學生的攻擊畫面
+   ────────────────────────────────────────────
+   原本是一張普通的測驗卡:難度標籤、倒數、換題、放棄全部擠在同一排,
+   而「我在攻打誰、打到哪裡了」只是上面一行灰色小字。
+
+   手機上更慘 —— 那一排塞不下,難度標籤被壓成一直排的
+   「普 / 通 / ・ / 答 / 對 / +2」,整個畫面歪掉。
+
+   改成三層:先講攻打誰(含進度條),再講這一題值多少,
+   最後才是那幾顆操作鈕。
+============================================ */
 .war-q-head {
   display: flex;
   align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+/* 這一行不准被壓縮 —— 被壓縮就會一個字一行 */
+.war-q-head > * { flex-shrink: 0; }
+
+.war-q-acts {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+/* ---------- 攻打目標 ---------- */
+.war-target {
+  border: 1.5px solid var(--foe);
+  border-left-width: 5px;
+  border-radius: var(--control-r);
+  background: var(--paper-warm);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+
+.war-target-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.war-target-label {
+  font-size: 11px;
+  letter-spacing: .14em;
+  color: var(--ink-muted);
+}
+
+.war-target-who {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 18px;
+  color: var(--foe);
+}
+
+.war-target-clock {
+  margin-left: auto;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--sunset);
+  white-space: nowrap;
+}
+
+/* 進度條:我方離門檻還有多遠。
+   原本只寫「我方 3 分」,學生得自己換算還差多少 */
+.war-target-bar {
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .1);
+  overflow: hidden;
+  margin: 8px 0 5px;
+}
+
+.war-target-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width .4s var(--ease-out);
+}
+
+.war-target-foot {
+  display: flex;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.war-target-foot strong {
+  font-size: 14px;
+  color: var(--ink);
 }
 
 .war-q-diff {
   color: #fff;
   font-size: 12px;
   padding: 4px 12px;
-  border-radius: 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
-.war-q-target {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 13px;
-  color: var(--ink-soft);
-  background: var(--paper-warm);
-  border-radius: 3px;
-  padding: 8px 12px;
-  margin-bottom: 14px;
-}
+/* (.war-q-target 換成上面的 .war-target 了 —— 那一行灰色小字
+   現在是一整塊「攻打誰 + 進度條」) */
 
-.war-q-progress {
-  font-family: var(--font-display);
-  font-weight: 700;
-  color: var(--sunset);
-}
+/* (.war-q-progress 隨著 .war-q-target 一起退場了) */
 
 .war-q-text {
   font-size: 17px;
@@ -529,7 +612,6 @@
 
 .war-q-timer {
   margin-left: auto;
-  margin-right: 10px;
   padding: 4px 12px;
   border-radius: 999px;
   background: var(--paper-warm);

@@ -608,8 +608,34 @@ Object.assign(StudentApp, {
     const cell = TerritoryGame.map[this.tTargetHex] || {};
     const mine = cell.battle ? (cell.battle.points[String(this.myGroupIdx())] || 0) : 0;
 
+    const mineColor = GROUP_COLORS[this.myGroupIdx() % GROUP_COLORS.length];
+    const foe = (cell.owner === null || cell.owner === undefined) ? null : cell.owner;
+    const foeColor = foe === null ? null : GROUP_COLORS[foe % GROUP_COLORS.length];
+    const need = Math.max(0, (c.threshold || 5) - mine);
+    const pct = Math.min(100, Math.round(mine / (c.threshold || 5) * 100));
+
     return `
       <div class="war-question">
+        <!-- 攻打誰、打到哪裡了。這是整個畫面最該先看到的事 ——
+             原本它是一行灰色小字,被難度標籤和按鈕蓋過去。 -->
+        <div class="war-target" style="--foe:${foeColor || 'var(--moss)'}">
+          <div class="war-target-top">
+            <span class="war-target-label">攻打</span>
+            <span class="war-target-who">
+              ${foe === null ? '空白地塊' : `第 ${foe + 1} 組的地`}
+            </span>
+            ${cell.battle ? `<span class="war-target-clock">剩 ${
+              formatCountdown(cell.battle.endsAt - Date.now())}</span>` : ''}
+          </div>
+          <div class="war-target-bar">
+            <span class="war-target-fill" style="width:${pct}%; background:${mineColor}"></span>
+          </div>
+          <div class="war-target-foot">
+            <span>我方 <strong>${mine}</strong> / ${c.threshold} 分</span>
+            <span>${need > 0 ? `還差 ${need} 分拿下` : '已達門檻!'}</span>
+          </div>
+        </div>
+
         <div class="war-q-head">
           <span class="war-q-diff" style="background:${d.color}">
             ${d.label} · 答對 +${d.points} 佔領分</span>
@@ -617,6 +643,9 @@ Object.assign(StudentApp, {
             ? `<span class="war-q-penalty">答錯 −${c.wrongPenalty}</span>` : ''}
           ${this.tDeadline > 0 ? `<span class="war-q-timer" id="warCountdownBig">${
             Math.max(0, Math.ceil((this.tDeadline - Date.now()) / 1000))} 秒</span>` : ''}
+        </div>
+
+        <div class="war-q-acts">
           ${this.canUse('war_hand') && !this.handUseId ? `
             <button class="btn btn-ghost btn-small"
                     onclick="StudentApp.useHand()"
@@ -626,18 +655,9 @@ Object.assign(StudentApp, {
             <button class="btn btn-ghost btn-small" ${this.tSwapping ? 'disabled' : ''}
                     onclick="StudentApp.swapQuestion()"
                     title="沒學過的單元可以換一題,但難度與分數都會降一階">
-              ${this.tSwapping ? '換題中…' : `換題 (還有 ${this.tSwapsLeft} 次)`}</button>` : ''}
-          <button class="btn btn-ghost btn-small" onclick="StudentApp.cancelWarQuestion()">放棄</button>
-        </div>
-
-        <div class="war-q-target">
-          <span>攻打:${cell.owner === null || cell.owner === undefined
-            ? '空白地塊' : '第 ' + (cell.owner + 1) + ' 組的地'}</span>
-          <span class="war-q-progress">
-            ${cell.battle
-              ? `我方 ${mine} 分 · 剩 ${formatCountdown(cell.battle.endsAt - Date.now())}`
-              : `尚未開戰 · 需 ${c.threshold} 分`}
-          </span>
+              ${this.tSwapping ? '換題中…' : `換題(還有 ${this.tSwapsLeft} 次)`}</button>` : ''}
+          <button class="btn btn-ghost btn-small"
+                  onclick="StudentApp.cancelWarQuestion()">放棄</button>
         </div>
 
         <div class="war-q-text noselect" oncopy="return false" oncontextmenu="return false"

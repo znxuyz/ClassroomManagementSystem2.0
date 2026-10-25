@@ -170,6 +170,57 @@ const lines = await page.evaluate(() => {
     SFX.ctx = keep; SFX._on = null; return ok2;
   })());
 
+  /* ---- 學生的攻擊畫面 ---- */
+  StudentApp.classInfo = { classId: 'C1', className: '測試班', studentId: 's0', name: '學生01' };
+  StudentApp.groups = groups;
+  TerritoryGame.config = config;
+  TerritoryGame.map = map;
+  const freeKey = Object.keys(map).find(k => map[k].owner === null && !map[k].battle);
+  const foeKey = Object.keys(map).find(k => map[k].owner === 2 && !map[k].isBase);
+  map[foeKey].battle = { endsAt: Date.now() + 52000, points: { 0: 3, 2: 1 } };
+  StudentApp.tQuestion = { id: 'q1', text: '題目', options: ['甲', '乙', '丙', '丁'],
+                           difficulty: Object.keys(DIFFICULTY)[1] };
+  StudentApp.tOptionOrder = [0, 1, 2, 3];
+  StudentApp.tDeadline = Date.now() + 38000;
+  StudentApp.tSwapsLeft = 3;
+  StudentApp.tPickedAnswer = null;
+
+  const qbox = document.createElement('div');
+  qbox.style.width = '360px';
+  document.body.appendChild(qbox);
+
+  StudentApp.tTargetHex = freeKey;
+  qbox.innerHTML = StudentApp.renderWarQuestion();
+  t.ok('攻擊畫面先講「攻打誰」', qbox.querySelector('.war-target-who').textContent.includes('空白'));
+  /* 原本難度標籤和倒數、換題、放棄全擠在同一排,手機上塞不下就被壓成
+     一直排的「普 / 通 / ・ / 答 / 對」。要盯的是「那一排不准被壓縮」。 */
+  const diff = qbox.querySelector('.war-q-diff');
+  t.ok('難度標籤不會被壓成一個字一行',
+    diff.getBoundingClientRect().width > 90 && getComputedStyle(diff).whiteSpace === 'nowrap',
+    Math.round(diff.getBoundingClientRect().width) + 'px');
+  t.ok('操作鈕自己一排,不跟標籤擠',
+    qbox.querySelectorAll('.war-q-acts button').length >= 2);
+  t.ok('有進度條告訴學生還差幾分',
+    qbox.querySelector('.war-target-fill') !== null
+    && qbox.querySelector('.war-target-foot').textContent.includes('還差'));
+
+  StudentApp.tTargetHex = foeKey;
+  qbox.innerHTML = StudentApp.renderWarQuestion();
+  t.ok('打別組的地時寫出是哪一組',
+    /第 3 組的地/.test(qbox.querySelector('.war-target-who').textContent));
+  t.ok('而且用那一組的顏色',
+    qbox.querySelector('.war-target').style.getPropertyValue('--foe')
+      === GROUP_COLORS[2 % GROUP_COLORS.length],
+    qbox.querySelector('.war-target').style.getPropertyValue('--foe'));
+  t.ok('開戰中會顯示剩餘時間',
+    qbox.querySelector('.war-target-clock') !== null);
+  t.ok('我方分數算的是自己這一組的',
+    qbox.querySelector('.war-target-foot').textContent.includes('3'));
+
+  qbox.remove();
+  StudentApp.tQuestion = null;
+  StudentApp.classInfo = null;
+
   host.remove();
   return t.out;
 });
