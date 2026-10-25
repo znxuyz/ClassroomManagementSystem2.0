@@ -108,18 +108,93 @@
 
 /* ---------- 守護獸 ---------- */
 
+/* ============================================
+   守護獸卡
+   ────────────────────────────────────────────
+   這是學生打開 App 第一眼看到的東西,也是整個系統的情感核心 ——
+   但原本牠只是一張白卡片中央的一個圖示,四周一片空白,
+   看起來像「一個頭像」,不像「我養的那一隻」。
+
+   加三樣:
+   · 一圈隨階段變色的光環(靈卵→幼獸→成獸→守護神獸)
+   · 卡片上緣一層很淡的同色輝光,像牠待的地方
+   · 守護神獸會緩慢呼吸(prefers-reduced-motion 時停止)
+============================================ */
 .student-pet-card {
+  position: relative;
+  overflow: hidden;
   background: var(--paper);
   border: 1px solid var(--paper-shadow);
-  border-radius: 4px;
+  border-radius: 16px;
   box-shadow: var(--shadow-sm);
-  padding: 28px 20px;
+  padding: 30px 20px 26px;
   text-align: center;
 }
+
+/* 背後那層輝光。用 ::before 才不會多一個空的 div */
+.student-pet-card::before {
+  content: "";
+  position: absolute;
+  top: -42%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--gold) 26%, transparent) 0%,
+    transparent 68%);
+  pointer-events: none;
+}
+
+.student-pet-card > * { position: relative; }
 
 .student-pet-icon {
   font-size: 72px;
   line-height: 1;
+  width: 150px;
+  height: 150px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 0 0 3px var(--paper-shadow), 0 10px 26px rgba(0, 0, 0, .12);
+}
+
+/* 守護獸的圖本身也要跟著放大 —— 原本是 72px 的字級撐著,
+   換成圖片之後要自己給尺寸,不然在 150px 的圈裡會縮成一小點 */
+.student-pet-icon .pet-img {
+  width: 116px;
+  height: 116px;
+  object-fit: contain;
+}
+
+/* 階段:外圈顏色 + 輝光濃度 */
+.student-pet-card.stage-0 .student-pet-icon { box-shadow: 0 0 0 3px var(--paper-shadow); }
+.student-pet-card.stage-1 .student-pet-icon {
+  box-shadow: 0 0 0 3px var(--moss), 0 8px 22px rgba(0, 0, 0, .12);
+}
+.student-pet-card.stage-2 .student-pet-icon {
+  box-shadow: 0 0 0 3px var(--forest-light), 0 8px 26px rgba(0, 0, 0, .14);
+}
+.student-pet-card.stage-3 .student-pet-icon {
+  box-shadow: 0 0 0 4px var(--gold), 0 0 34px color-mix(in srgb, var(--gold) 55%, transparent);
+  animation: pet-breathe 3.6s ease-in-out infinite;
+}
+
+.student-pet-card.stage-0::before { opacity: .35; }
+.student-pet-card.stage-1::before { opacity: .5; }
+.student-pet-card.stage-3::before { opacity: 1; }
+
+@keyframes pet-breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.035); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .student-pet-card.stage-3 .student-pet-icon { animation: none; }
 }
 
 .student-pet-name {

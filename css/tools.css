@@ -281,10 +281,23 @@
   transform: translateY(-1px);
 }
 
+/* 自訂時間那一排。兩格輸入 + 兩個單位字 + 一顆按鈕,
+   手機上(308px 可用)放不下,所以要准它換行,而且欄位要能縮。
+   原本的 flex:0 0 110px 在這裡會撐破版面。 */
 .timer-custom-row {
   display: flex;
   gap: 10px;
-  align-items: center;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.timer-custom-row .field {
+  flex: 1 1 86px;
+  min-width: 0;
+}
+
+.timer-custom-row > span {
+  padding-bottom: 9px;
 }
 
 .timer-fullscreen-btn {

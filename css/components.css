@@ -634,3 +634,15 @@ textarea.custom-points-input {
 
 /* 一排的最後通常是送出鈕 —— 它要和輸入框底部對齊,不是和標籤對齊 */
 .field-row > .btn { flex-shrink: 0; }
+
+/* 積分規則的欄位名那一列。它不是資料列,所以不要邊框與底色 */
+.rule-editor-row.is-head {
+  border: none;
+  background: none;
+  padding-bottom: 0;
+  align-items: end;
+}
+
+.rule-editor-row.is-head .field-label {
+  padding-left: 2px;
+}

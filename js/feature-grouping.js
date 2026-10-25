@@ -9,12 +9,18 @@ function setGroupMode(mode) {
   });
   const param = document.getElementById('groupParam');
   if (!param) return;
+  /* 標籤要跟著模式換 —— 同一個輸入框在兩種模式下是兩件事
+     (「分成 6 組」和「每組 6 人」結果差很多),
+     只靠左邊的切換鈕記住很容易按錯。 */
+  const label = document.getElementById('groupParamLabel');
   if (mode === 'byCount') {
     param.value = 6;
     param.title = '要分成幾組';
+    if (label) label.textContent = '組數';
   } else {
     param.value = 4;
     param.title = '每組要幾人';
+    if (label) label.textContent = '每組人數';
   }
 }
 

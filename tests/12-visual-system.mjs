@@ -40,6 +40,43 @@ const lines = await page.evaluate(async () => {
       naked.map(e => e.id || e.placeholder).join(', ') || `${ctrls.length} 格`);
   });
 
+  /* ---- 1b. 其他頁面的建立列也不准有裸欄位 ----
+     這一項是掃全站的:任何一個使用者要填的欄位,如果既沒有 .field 標籤、
+     旁邊也沒有文字,就是「填到一半不知道這格是什麼」。
+     已知可以接受的例外列在 OK 裡(它們上方有區塊標題)。 */
+  const OK = ['teacherMessageBox', 'classNoteBox', 'settingsStudents',
+              'aiModelSelect', 'pickerMode'];
+  const naked2 = [];
+  NAV_GROUPS.forEach(g => g.items.forEach(it => {
+    navGoItem(g.key, it.view, it.sub || '');
+    const view = document.querySelector('.view.active');
+    if (!view) return;
+    view.querySelectorAll('input, select, textarea').forEach(e => {
+      if (e.type === 'hidden' || e.type === 'checkbox' || e.type === 'radio') return;
+      if (e.offsetParent === null) return;
+      if (e.closest('.field, .quiz-field')) return;
+      if (OK.includes(e.id)) return;
+      const prev = e.previousElementSibling;
+      const hasText = (prev && prev.textContent.trim().length > 0)
+        || (e.closest('label') && e.closest('label').textContent.trim().length > 0)
+        || !!e.closest('.rule-editor-row');   // 重複列靠最上面那一列欄位名
+      if (hasText) return;
+      naked2.push(`${g.name}/${it.name} #${e.id || e.placeholder}`);
+    });
+  }));
+  t.ok('全站沒有「連旁邊都沒有字」的欄位', naked2.length === 0,
+    [...new Set(naked2)].join(' · '));
+
+  /* ---- 1c. 分組的那一格在兩種模式下是兩件事 ---- */
+  navGoItem('class', 'management', 'grouping');
+  setGroupMode('byCount');
+  const l1 = document.getElementById('groupParamLabel').textContent;
+  setGroupMode('bySize');
+  const l2 = document.getElementById('groupParamLabel').textContent;
+  t.ok('分組的欄位標籤會跟著模式換(分成幾組 / 每組幾人)',
+    l1 !== l2 && l1.includes('組數') && l2.includes('人數'), `${l1} → ${l2}`);
+  setGroupMode('byCount');
+
   /* ---- 2. 專案裡只留一套「標籤在上面」 ---- */
   const a = getComputedStyle(document.querySelector('.field-label') || document.body).fontSize;
   navGoItem('challenge', 'quiz', '');
@@ -134,6 +171,33 @@ const lines = await page.evaluate(async () => {
       return cols.length === 3;
     })());
   }
+
+  /* ---- 7. 學生的守護獸卡 ----
+     這是學生打開 App 第一眼看到的東西。原本牠只是白卡片中央的一個圖示,
+     四周一片空白 —— 看起來像「一個頭像」,不像「我養的那一隻」。 */
+  StudentApp.classInfo = { classId: 'C1', className: '測試班', studentId: 's0', name: '學生01' };
+  StudentApp.student = { ...state.students[0], totalPoints: 999, pet: PET_SPECIES[0].id,
+                         petName: '小獸', currentPoints: 50, history: [] };
+  StudentApp.allStudents = [StudentApp.student];
+  StudentApp.classRules = state.rules;
+  StudentApp.classSkills = state.skills;
+  const petBox = document.createElement('div');
+  petBox.style.width = '360px';
+  document.body.appendChild(petBox);
+  petBox.innerHTML = StudentApp.renderPet(StudentApp.student);
+  const card = petBox.querySelector('.student-pet-card');
+  const icon = petBox.querySelector('.student-pet-icon');
+  t.ok('守護獸卡標出階段(外圈顏色靠它)',
+    [...card.classList].some(c => /^stage-\d$/.test(c)), [...card.classList].join(' '));
+  t.ok('守護獸夠大(原本只是一個圖示)',
+    icon.getBoundingClientRect().width >= 120,
+    Math.round(icon.getBoundingClientRect().width) + 'px');
+  t.ok('最高階有金色外圈',
+    getComputedStyle(icon).boxShadow.includes('rgb(200, 164, 77)')
+    || getComputedStyle(icon).boxShadow.includes('183, 139, 42'),
+    getComputedStyle(icon).boxShadow.slice(0, 50));
+  petBox.remove();
+  StudentApp.classInfo = null;
 
   return t.out;
 });

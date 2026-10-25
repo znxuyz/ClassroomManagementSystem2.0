@@ -342,7 +342,7 @@ Object.assign(StudentApp, {
       : 100;
 
     return `
-      <div class="student-pet-card">
+      <div class="student-pet-card stage-${stage}">
         <div class="student-pet-icon">${PetEngine.getIcon(s)}</div>
         <div class="student-pet-name">${escapeHtml(s.petName || (species ? species.name : '守護獸'))}</div>
         <div class="student-pet-stage">${STAGE_NAMES[stage]}</div>

@@ -9,28 +9,28 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700;900&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 
 <!-- 樣式表 -->
-<link rel="stylesheet" href="css/base.css?v=20261025k">
-<link rel="stylesheet" href="css/components.css?v=20261025k">
-<link rel="stylesheet" href="css/dashboard.css?v=20261025k">
-<link rel="stylesheet" href="css/tools.css?v=20261025k">
-<link rel="stylesheet" href="css/management.css?v=20261025k">
-<link rel="stylesheet" href="css/contact.css?v=20261025k">
-<link rel="stylesheet" href="css/shop.css?v=20261025k">
-<link rel="stylesheet" href="css/ai.css?v=20261025k">
-<link rel="stylesheet" href="css/report.css?v=20261025k">
-<link rel="stylesheet" href="css/projector.css?v=20261025k">
-<link rel="stylesheet" href="css/settings.css?v=20261025k">
-<link rel="stylesheet" href="css/auth.css?v=20261025k">
-<link rel="stylesheet" href="css/quiz.css?v=20261025k">
-<link rel="stylesheet" href="css/student.css?v=20261025k">
-<link rel="stylesheet" href="css/pet-picker.css?v=20261025k">
-<link rel="stylesheet" href="css/leaderboard.css?v=20261025k">
-<link rel="stylesheet" href="css/territory.css?v=20261025k">
-<link rel="stylesheet" href="css/help.css?v=20261025k">
-<link rel="stylesheet" href="css/skills.css?v=20261025k">
-<link rel="stylesheet" href="css/hud.css?v=20261025k">
+<link rel="stylesheet" href="css/base.css?v=20261025m">
+<link rel="stylesheet" href="css/components.css?v=20261025m">
+<link rel="stylesheet" href="css/dashboard.css?v=20261025m">
+<link rel="stylesheet" href="css/tools.css?v=20261025m">
+<link rel="stylesheet" href="css/management.css?v=20261025m">
+<link rel="stylesheet" href="css/contact.css?v=20261025m">
+<link rel="stylesheet" href="css/shop.css?v=20261025m">
+<link rel="stylesheet" href="css/ai.css?v=20261025m">
+<link rel="stylesheet" href="css/report.css?v=20261025m">
+<link rel="stylesheet" href="css/projector.css?v=20261025m">
+<link rel="stylesheet" href="css/settings.css?v=20261025m">
+<link rel="stylesheet" href="css/auth.css?v=20261025m">
+<link rel="stylesheet" href="css/quiz.css?v=20261025m">
+<link rel="stylesheet" href="css/student.css?v=20261025m">
+<link rel="stylesheet" href="css/pet-picker.css?v=20261025m">
+<link rel="stylesheet" href="css/leaderboard.css?v=20261025m">
+<link rel="stylesheet" href="css/territory.css?v=20261025m">
+<link rel="stylesheet" href="css/help.css?v=20261025m">
+<link rel="stylesheet" href="css/skills.css?v=20261025m">
+<link rel="stylesheet" href="css/hud.css?v=20261025m">
 <!-- 主題:掛在 <html data-theme> 上,一定要放最後才蓋得過前面的規則 -->
-<link rel="stylesheet" href="css/theme-aurora.css?v=20261025k">
+<link rel="stylesheet" href="css/theme-aurora.css?v=20261025m">
 <script>
   // 在 CSS 之後、畫面之前就決定主題,避免載入瞬間閃一下舊配色
   document.documentElement.dataset.theme =
@@ -206,7 +206,11 @@
           <button class="btn btn-ghost" onclick="bulkAttendance('absent')">全部清空</button>
           <button class="btn btn-accent" onclick="awardAttendancePoints()">為出席者加 1 分</button>
           <div style="flex:1;"></div>
-          <input type="date" id="attendanceDatePicker" class="rule-editor-input" style="max-width:160px;" onchange="changeAttendanceDate()" />
+          <label class="field" style="max-width:160px;">
+            <span class="field-label">點哪一天</span>
+            <input type="date" id="attendanceDatePicker" class="rule-editor-input"
+                   onchange="changeAttendanceDate()" />
+          </label>
         </div>
         
         <div class="attendance-grid" id="attendanceGrid"></div>
@@ -224,8 +228,10 @@
         </div>
         
         <div class="picker-options">
-          <span class="picker-option-label">抽幾位:</span>
-          <input type="number" id="pickerCount" class="seating-size-input" value="1" min="1" max="10" />
+          <label class="field" style="flex:0 0 78px;">
+            <span class="field-label">抽幾位</span>
+            <input type="number" id="pickerCount" class="seating-size-input" value="1" min="1" max="10" />
+          </label>
           
           <span class="picker-option-label" style="margin-left: 16px;">模式:</span>
           <select id="pickerMode" class="rule-editor-input" style="max-width: 200px;">
@@ -283,9 +289,14 @@
           <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--paper-shadow);">
             <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">自訂時間</div>
             <div class="timer-custom-row">
-              <input type="number" id="customMinutes" class="rule-editor-input" placeholder="分鐘" min="0" style="width:120px;" />
-              <span>分</span>
-              <input type="number" id="customSeconds" class="rule-editor-input" placeholder="秒" min="0" max="59" style="width:120px;" />
+              <label class="field">
+                <span class="field-label">分鐘</span>
+                <input type="number" id="customMinutes" class="rule-editor-input" min="0" />
+              </label>
+              <label class="field">
+                <span class="field-label">秒</span>
+                <input type="number" id="customSeconds" class="rule-editor-input" min="0" max="59" />
+              </label>
               <span>秒</span>
               <button class="btn btn-primary btn-small" onclick="setCustomTimer()">設定</button>
             </div>
@@ -320,7 +331,10 @@
           <div style="flex:1;"></div>
           <button class="btn btn-ghost btn-small" onclick="randomFillSeating()">隨機填入</button>
           <button class="btn btn-ghost btn-small" onclick="clearSeating()">清空座位</button>
-          <input type="text" id="layoutName" class="rule-editor-input" placeholder="此座位表的名字" style="max-width: 200px;" />
+          <label class="field" style="max-width:200px;">
+            <span class="field-label">座位表名稱</span>
+            <input type="text" id="layoutName" class="rule-editor-input" placeholder="例:9 月座位" />
+          </label>
           <button class="btn btn-primary btn-small" onclick="saveSeatingLayout()">儲存座位表</button>
         </div>
         
@@ -347,7 +361,10 @@
             <button class="group-mode-btn active" data-mode="byCount" onclick="setGroupMode('byCount')">分成幾組</button>
             <button class="group-mode-btn" data-mode="bySize" onclick="setGroupMode('bySize')">每組幾人</button>
           </div>
-          <input type="number" id="groupParam" class="seating-size-input" value="6" min="1" max="20" />
+          <label class="field" style="flex:0 0 78px;">
+            <span class="field-label" id="groupParamLabel">組數</span>
+            <input type="number" id="groupParam" class="seating-size-input" value="6" min="1" max="20" />
+          </label>
           
           <label style="margin-left: 16px;">演算法</label>
           <select id="groupAlgo" class="rule-editor-input" style="max-width: 200px;">
@@ -362,7 +379,11 @@
         </div>
         
         <div class="group-controls" style="background: var(--paper);">
-          <input type="text" id="groupSetName" class="rule-editor-input" placeholder="本次分組命名(例如:5/14 國語小組)" style="flex:1;" />
+          <label class="field grow">
+            <span class="field-label">分組命名(存起來之後學生看得到小組榜)</span>
+            <input type="text" id="groupSetName" class="rule-editor-input"
+                   placeholder="例:5/14 國語小組" />
+          </label>
           <button class="btn btn-primary btn-small" onclick="saveGroupSet()">儲存目前分組</button>
         </div>
         
@@ -628,12 +649,18 @@
       <div id="tgQuestionsSubView" class="sub-view">
         <div class="tq-form">
           <div class="tq-form-row">
-            <select id="tqDifficulty" class="rule-editor-input" style="max-width:150px;">
-              <option value="easy">簡單 · +1 分</option>
-              <option value="medium" selected>普通 · +2 分</option>
-              <option value="hard">困難 · +3 分</option>
-            </select>
-            <input type="text" id="tqText" class="rule-editor-input" placeholder="題目內容" style="flex:1;" />
+            <label class="field" style="flex:0 0 150px;">
+              <span class="field-label">難度</span>
+              <select id="tqDifficulty" class="rule-editor-input">
+                <option value="easy">簡單 · +1 分</option>
+                <option value="medium" selected>普通 · +2 分</option>
+                <option value="hard">困難 · +3 分</option>
+              </select>
+            </label>
+            <label class="field grow">
+              <span class="field-label">題目<span class="req">*</span></span>
+              <input type="text" id="tqText" class="rule-editor-input" placeholder="輸入題目內容" />
+            </label>
           </div>
           <div class="tq-form-options">
             <label class="tq-opt"><input type="radio" name="tqAnswer" value="0" checked />
@@ -680,7 +707,11 @@
       <div id="diarySubView" class="sub-view active">
         <div class="contact-toolbar">
           <div class="contact-date-display" id="contactDateDisplay">2026 年 5 月 21 日 · 星期四</div>
-          <input type="date" id="contactDatePicker" class="rule-editor-input" style="max-width:160px;" onchange="changeContactDate()" />
+          <label class="field" style="max-width:160px;">
+            <span class="field-label">看哪一天</span>
+            <input type="date" id="contactDatePicker" class="rule-editor-input"
+                   onchange="changeContactDate()" />
+          </label>
           <button class="btn btn-primary btn-small" onclick="generateContactBookDraft()">從今日資料生成草稿</button>
           <button class="btn btn-ghost btn-small" onclick="printContactBook()">列印 / 預覽</button>
         </div>
@@ -716,11 +747,23 @@
       
       <!-- 作業繳交 -->
       <div id="homeworkSubView" class="sub-view">
-        <div class="hw-create-form">
-          <input type="text" id="hwName" class="rule-editor-input" placeholder="作業名稱" />
-          <input type="text" id="hwDesc" class="rule-editor-input" placeholder="作業說明(選填)" />
-          <input type="date" id="hwDueDate" class="rule-editor-input" title="繳交日期" />
-          <input type="number" id="hwPoints" class="rule-editor-input" value="2" min="0" max="20" title="繳交可得分數" placeholder="分數" />
+        <div class="hw-create-form field-row">
+          <label class="field grow">
+            <span class="field-label">作業名稱<span class="req">*</span></span>
+            <input type="text" id="hwName" class="rule-editor-input" placeholder="例:數學習作 p.42" />
+          </label>
+          <label class="field grow">
+            <span class="field-label">說明(選填)</span>
+            <input type="text" id="hwDesc" class="rule-editor-input" placeholder="學生看得到的一句話" />
+          </label>
+          <label class="field mid">
+            <span class="field-label">繳交日期</span>
+            <input type="date" id="hwDueDate" class="rule-editor-input" />
+          </label>
+          <label class="field narrow">
+            <span class="field-label">繳交得分</span>
+            <input type="number" id="hwPoints" class="rule-editor-input" value="2" min="0" max="20" />
+          </label>
           <button class="btn btn-primary btn-small" onclick="createHomework()">＋ 新增作業</button>
         </div>
         
@@ -1164,7 +1207,11 @@
       <div class="panel-card api-key-section" style="margin-top: 16px;">
         <div class="panel-title">AI 助手 · API Key 設定</div>
         <div class="api-key-input-row">
-          <input type="password" id="apiKeyInput" class="setup-input" placeholder="sk-ant-..." autocomplete="off" />
+          <label class="field grow">
+            <span class="field-label">API Key</span>
+            <input type="password" id="apiKeyInput" class="setup-input" placeholder="sk-ant-..."
+                   autocomplete="off" />
+          </label>
           <button class="btn btn-ghost btn-small" onclick="toggleApiKeyVisibility()">顯示</button>
           <button class="btn btn-primary btn-small" onclick="saveApiKey()">儲存</button>
           <button class="btn btn-ghost btn-small" onclick="testApiKey()">測試連線</button>
@@ -1216,62 +1263,62 @@
 
 
 <!-- 應用程式邏輯(載入順序很重要) -->
-<script src="js/00-firebase.js?v=20261025k"></script>
-<script src="js/00b-session.js?v=20261025k"></script>
-<script src="js/00c-auth-ui.js?v=20261025k"></script>
-<script src="js/00d-switch-hud.js?v=20261025k"></script>
-<script src="js/01-constants.js?v=20261025k"></script>
-<script src="js/skills/01-defs.js?v=20261025k"></script>
-<script src="js/02-state.js?v=20261025k"></script>
-<script src="js/03-storage.js?v=20261025k"></script>
-<script src="js/03b-history-archive.js?v=20261025k"></script>
-<script src="js/03c-question-bank.js?v=20261025k"></script>
-<script src="js/03d-roster.js?v=20261025k"></script>
-<script src="js/04-utils.js?v=20261025k"></script>
-<script src="js/05-pet-engine.js?v=20261025k"></script>
-<script src="js/06-ai.js?v=20261025k"></script>
-<script src="js/06b-ai-hud.js?v=20261025k"></script>
-<script src="js/07-excel.js?v=20261025k"></script>
-<script src="js/10-nav.js?v=20261025k"></script>
-<script src="js/10b-nav-groups.js?v=20261025k"></script>
-<script src="js/feature-setup.js?v=20261025k"></script>
-<script src="js/feature-students.js?v=20261025k"></script>
-<script src="js/feature-dashboard.js?v=20261025k"></script>
-<script src="js/feature-batch-award.js?v=20261025k"></script>
-<script src="js/feature-attendance.js?v=20261025k"></script>
-<script src="js/feature-picker.js?v=20261025k"></script>
-<script src="js/feature-timer.js?v=20261025k"></script>
-<script src="js/feature-seating.js?v=20261025k"></script>
-<script src="js/feature-grouping.js?v=20261025k"></script>
-<script src="js/feature-quiz.js?v=20261025k"></script>
-<script src="js/territory/01-hex.js?v=20261025k"></script>
-<script src="js/territory/02-shapes.js?v=20261025k"></script>
-<script src="js/territory/03-engine.js?v=20261025k"></script>
-<script src="js/territory/04-map-view.js?v=20261025k"></script>
-<script src="js/territory/05-game.js?v=20261025k"></script>
-<script src="js/territory/06-teacher.js?v=20261025k"></script>
-<script src="js/territory/07-weekly.js?v=20261025k"></script>
-<script src="js/territory/08-sfx.js?v=20261025k"></script>
-<script src="js/feature-leaderboard.js?v=20261025k"></script>
-<script src="js/student/01-app.js?v=20261025k"></script>
-<script src="js/student/02-tabs.js?v=20261025k"></script>
-<script src="js/skills/02-student.js?v=20261025k"></script>
-<script src="js/student/03-quiz.js?v=20261025k"></script>
-<script src="js/student/04-war.js?v=20261025k"></script>
-<script src="js/student/05-result.js?v=20261025k"></script>
-<script src="js/skills/03-teacher.js?v=20261025k"></script>
-<script src="js/feature-contact-book.js?v=20261025k"></script>
-<script src="js/feature-homework.js?v=20261025k"></script>
-<script src="js/feature-shop.js?v=20261025k"></script>
-<script src="js/feature-class-tasks.js?v=20261025k"></script>
-<script src="js/feature-ai-features.js?v=20261025k"></script>
-<script src="js/feature-projector.js?v=20261025k"></script>
-<script src="js/feature-overview.js?v=20261025k"></script>
-<script src="js/feature-report.js?v=20261025k"></script>
-<script src="js/feature-rules.js?v=20261025k"></script>
-<script src="js/feature-help.js?v=20261025k"></script>
-<script src="js/feature-settings.js?v=20261025k"></script>
-<script src="js/99-app.js?v=20261025k"></script>
+<script src="js/00-firebase.js?v=20261025m"></script>
+<script src="js/00b-session.js?v=20261025m"></script>
+<script src="js/00c-auth-ui.js?v=20261025m"></script>
+<script src="js/00d-switch-hud.js?v=20261025m"></script>
+<script src="js/01-constants.js?v=20261025m"></script>
+<script src="js/skills/01-defs.js?v=20261025m"></script>
+<script src="js/02-state.js?v=20261025m"></script>
+<script src="js/03-storage.js?v=20261025m"></script>
+<script src="js/03b-history-archive.js?v=20261025m"></script>
+<script src="js/03c-question-bank.js?v=20261025m"></script>
+<script src="js/03d-roster.js?v=20261025m"></script>
+<script src="js/04-utils.js?v=20261025m"></script>
+<script src="js/05-pet-engine.js?v=20261025m"></script>
+<script src="js/06-ai.js?v=20261025m"></script>
+<script src="js/06b-ai-hud.js?v=20261025m"></script>
+<script src="js/07-excel.js?v=20261025m"></script>
+<script src="js/10-nav.js?v=20261025m"></script>
+<script src="js/10b-nav-groups.js?v=20261025m"></script>
+<script src="js/feature-setup.js?v=20261025m"></script>
+<script src="js/feature-students.js?v=20261025m"></script>
+<script src="js/feature-dashboard.js?v=20261025m"></script>
+<script src="js/feature-batch-award.js?v=20261025m"></script>
+<script src="js/feature-attendance.js?v=20261025m"></script>
+<script src="js/feature-picker.js?v=20261025m"></script>
+<script src="js/feature-timer.js?v=20261025m"></script>
+<script src="js/feature-seating.js?v=20261025m"></script>
+<script src="js/feature-grouping.js?v=20261025m"></script>
+<script src="js/feature-quiz.js?v=20261025m"></script>
+<script src="js/territory/01-hex.js?v=20261025m"></script>
+<script src="js/territory/02-shapes.js?v=20261025m"></script>
+<script src="js/territory/03-engine.js?v=20261025m"></script>
+<script src="js/territory/04-map-view.js?v=20261025m"></script>
+<script src="js/territory/05-game.js?v=20261025m"></script>
+<script src="js/territory/06-teacher.js?v=20261025m"></script>
+<script src="js/territory/07-weekly.js?v=20261025m"></script>
+<script src="js/territory/08-sfx.js?v=20261025m"></script>
+<script src="js/feature-leaderboard.js?v=20261025m"></script>
+<script src="js/student/01-app.js?v=20261025m"></script>
+<script src="js/student/02-tabs.js?v=20261025m"></script>
+<script src="js/skills/02-student.js?v=20261025m"></script>
+<script src="js/student/03-quiz.js?v=20261025m"></script>
+<script src="js/student/04-war.js?v=20261025m"></script>
+<script src="js/student/05-result.js?v=20261025m"></script>
+<script src="js/skills/03-teacher.js?v=20261025m"></script>
+<script src="js/feature-contact-book.js?v=20261025m"></script>
+<script src="js/feature-homework.js?v=20261025m"></script>
+<script src="js/feature-shop.js?v=20261025m"></script>
+<script src="js/feature-class-tasks.js?v=20261025m"></script>
+<script src="js/feature-ai-features.js?v=20261025m"></script>
+<script src="js/feature-projector.js?v=20261025m"></script>
+<script src="js/feature-overview.js?v=20261025m"></script>
+<script src="js/feature-report.js?v=20261025m"></script>
+<script src="js/feature-rules.js?v=20261025m"></script>
+<script src="js/feature-help.js?v=20261025m"></script>
+<script src="js/feature-settings.js?v=20261025m"></script>
+<script src="js/99-app.js?v=20261025m"></script>
 
 </body>
 </html>
