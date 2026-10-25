@@ -138,6 +138,7 @@ Object.assign(StudentApp, {
           <div class="war-my-group" style="color:${color}">我是第 ${groupIdx + 1} 組</div>
           <button class="btn btn-ghost btn-small"
                   onclick="centerOnGroup(${groupIdx})">⌖ 回到我的領地</button>
+          ${typeof SFX !== 'undefined' ? sfxToggleHtml() : ''}
           ${this.skillsOn() && this.owns('war_power') && this.skillPower('war_power') > 0 ? `
             <button class="btn btn-small ${this.armedSkill === 'war_power' ? 'btn-accent' : 'btn-ghost'}"
                     ${this.skillLeft('war_power') > 0 ? '' : 'disabled'}
@@ -153,7 +154,8 @@ Object.assign(StudentApp, {
             : '地圖已全部開放'}
         </div>
       </div>
-      ${renderStandings(c, map, groupIdx)}
+      ${/* 戰況排名改成蓋在地圖上(見 renderMapHud)——
+            原本地圖上下各一份是重複的,而且投影時下面那份不在視線裡 */''}
       ${renderHexMap(c, map, { groupIdx, onClick: 'StudentApp.attackHex', zoom: _territoryZoom })}
       <div class="war-legend">
         <strong>空白的地</strong>:累積到 ${c.threshold} 分就立刻佔領。<br>
@@ -453,6 +455,8 @@ Object.assign(StudentApp, {
       if (!el) { this.stopCooldownTimer(); return; }
       if (left <= 0) {
         this.stopCooldownTimer();
+        // 冷卻結束是「可以再出手了」—— 學生通常已經把視線移開,出個聲
+        if (typeof SFX !== 'undefined') SFX.play('ready');
         if (this.tab === 'war' && !this.tQuestion) this.render();
         return;
       }
@@ -688,11 +692,13 @@ Object.assign(StudentApp, {
         skillUseId: boosted ? this.warPowerUse : ''
       });
       this.tSolved[this.tQuestion.id] = true;
+      if (typeof SFX !== 'undefined') SFX.play('correct');
       showWarResult(true, `為第 ${groupIdx + 1} 組拿下 ${points} 佔領分` +
         (boosted ? `(⚔️ 猛擊 ×${mult})` : ''));
     } catch (e) {
       if (e.code === 'permission-denied') {
         // 答案由安全規則在伺服器端比對,被拒絕就代表答錯
+        if (typeof SFX !== 'undefined') SFX.play('wrong');
         this.reportFail('答錯');
         const pen = (TerritoryGame.config || {}).wrongPenalty || 0;
         showWarResult(false, '這一題答錯了' +

@@ -114,6 +114,9 @@ const TerritoryGame = {
     this.shielded = new Set();
     this._written = new Set();
     this.map = {};
+    /* 忘掉上一局的歸屬,否則下一局一開圖就整片在閃
+       (「剛剛被搶下來」是靠和上一次比對認出來的) */
+    resetMapAnimState();
   },
 
   rebuild() {

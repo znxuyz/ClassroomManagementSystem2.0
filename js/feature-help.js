@@ -378,6 +378,23 @@ const HELP = {
       ]
     },
     {
+      icon: '◈',
+      title: '蜂巢戰紀的畫面',
+      items: [
+        '地圖左上角有<strong>常駐的戰況牌</strong>:各組名次、格數與長條。' +
+          '投影到大螢幕時,學生一抬頭就知道誰在贏。',
+        '<strong>交戰中的格子</strong>是一個環:環上每一段的長度就是那一組目前的佔比,' +
+          '中間的數字是<strong>領先的那組還差幾分</strong>就拿下這一格。',
+        '<strong>★ 徽章</strong>是各組基地(不能被攻佔)。領地上的<strong>旗子</strong>寫著第幾組、幾格。',
+        '<strong>灰色加虛線邊</strong>的是還沒開放的區域 —— 底下也是陸地,時間到了會開放。',
+        '有一組搶下一格時,那一格會<strong>閃一下並擴散出光環</strong>。' +
+          '這是刻意的:「我們拿下了!」那一秒值得被看見。',
+        '<strong>🔊 音效</strong>:答對、答錯、搶下、被搶、冷卻結束各有聲音。' +
+          '<strong>老師端預設開啟、學生端預設關閉</strong> —— 28 台平板同時嗶是教室災難,' +
+          '但你投影的那一台需要聲音。兩邊都可以自己開關,記在那台裝置上。'
+      ]
+    },
+    {
       icon: '◫',
       title: '數據與報表',
       items: [
@@ -485,7 +502,8 @@ const HELP_GROUPS = {
     { key: 'points', icon: '✦',  name: '積分規則', titles: ['積分怎麼拿', '守護獸的經驗怎麼來', '發放積分'] },
     { key: 'pet',    icon: '🐣', name: '守護獸技能', titles: ['守護獸技能'] },
     { key: 'quiz',   icon: '✎',  name: '測驗',     titles: ['線上測驗'] },
-    { key: 'war',    icon: '⬡',  name: '蜂巢戰紀',   titles: ['蜂巢戰紀', '蜂巢戰紀的計分規則'] },
+    { key: 'war',    icon: '⬡',  name: '蜂巢戰紀',
+      titles: ['蜂巢戰紀', '蜂巢戰紀的計分規則', '蜂巢戰紀的畫面'] },
     { key: 'shop',   icon: '🎁', name: '商店',     titles: ['獎品商店'] },
     { key: 'class',  icon: '☰',  name: '班級管理', titles: ['班級管理與課堂工具'] },
     { key: 'data',   icon: '◫',  name: '數據報表', titles: ['數據與報表'] },

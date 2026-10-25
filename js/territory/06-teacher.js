@@ -195,9 +195,10 @@ function renderTerritoryBoard() {
         : ''}
       ${c.status === 'running'
         ? '<button class="btn btn-ghost btn-small" onclick="endTerritoryGame()">結束這一局</button>' : ''}
+      ${typeof SFX !== 'undefined' ? sfxToggleHtml() : ''}
     </div>
     ${_liveSettingsOpen ? renderLiveSettings(c) : ''}
-    ${renderStandings(c, TerritoryGame.map)}
+    ${/* 排名蓋在地圖上了(renderMapHud),這裡不再重複一份 */''}
     ${renderHexMap(c, TerritoryGame.map, {
         zoom: _territoryZoom,
         editMode: TerritoryEdit.active,

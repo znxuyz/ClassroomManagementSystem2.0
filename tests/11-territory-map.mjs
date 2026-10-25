@@ -117,6 +117,59 @@ const lines = await page.evaluate(() => {
     `${Object.keys(bigMap).length} 格 · ${Math.round(ms)}ms`);
   t.ok('格子太多時關掉模糊(每秒重繪會卡)', !bigHtml.includes('filter="url(#tgSoft)"'));
 
+  /* ---- 剛剛被搶下來 ---- */
+  resetMapAnimState();
+  host.innerHTML = renderHexMap(config, map, { zoom: 1, groupIdx: 0 });
+  t.ok('第一次繪製不播動畫(否則一進畫面全圖在閃)',
+    host.querySelectorAll('.hex.just-taken').length === 0);
+
+  const free = Object.keys(map).filter(k => map[k].owner === null && !map[k].battle).slice(0, 2);
+  free.forEach(k => { map[k].owner = 0; });
+  host.innerHTML = renderHexMap(config, map, { zoom: 1, groupIdx: 0 });
+  t.ok('易主的格子會標記出來', host.querySelectorAll('.hex.just-taken').length === 2,
+    host.querySelectorAll('.hex.just-taken').length + ' 格');
+  t.ok('而且畫出擴散的光環', host.querySelectorAll('.tg-taken').length === 2);
+  t.ok('光環不吃點擊',
+    [...host.querySelectorAll('.tg-taken')].every(g => getComputedStyle(g).pointerEvents === 'none'));
+
+  host.innerHTML = renderHexMap(config, map, { zoom: 1, groupIdx: 0 });
+  t.ok('同樣的戰況再繪一次就不會再閃',
+    host.querySelectorAll('.hex.just-taken').length === 0);
+
+  // 換一局要忘掉上一局的歸屬
+  resetMapAnimState();
+  host.innerHTML = renderHexMap(config, map, { zoom: 1, groupIdx: 0 });
+  t.ok('換一局之後第一張圖也不閃',
+    host.querySelectorAll('.hex.just-taken').length === 0);
+
+  /* ---- 地圖上的戰況牌 ---- */
+  t.ok('地圖上有戰況牌', host.querySelectorAll('.tg-hud-row').length === 5,
+    host.querySelectorAll('.tg-hud-row').length + ' 列');
+  t.ok('戰況牌標出「我這一組」',
+    host.querySelectorAll('.tg-hud-row.is-me').length === 1);
+  t.ok('戰況牌不擋住地圖',
+    getComputedStyle(host.querySelector('.tg-hud')).pointerEvents === 'none');
+  t.ok('名次是照格數排的', (() => {
+    const n = [...host.querySelectorAll('.tg-hud-count')].map(e => +e.textContent);
+    return n.every((v, i) => i === 0 || n[i - 1] >= v);
+  })());
+  host.innerHTML = renderHexMap(config, map, { zoom: 1, hud: false });
+  t.ok('可以關掉戰況牌', host.querySelectorAll('.tg-hud').length === 0);
+
+  /* ---- 音效 ---- */
+  t.ok('音效不靠任何音檔(合成的)', Object.keys(SFX.SOUNDS).length >= 5,
+    Object.keys(SFX.SOUNDS).join(','));
+  t.ok('老師端預設開啟音效', SFX.defaultOn() === true);
+  const keepInfo = (typeof StudentApp !== 'undefined') ? StudentApp.classInfo : null;
+  StudentApp.classInfo = { classId: 'C1', studentId: 's0' };
+  t.ok('學生端預設關閉(28 台平板同時嗶是教室災難)', SFX.defaultOn() === false);
+  StudentApp.classInfo = keepInfo;
+  t.ok('出不了聲不會變成錯誤', (() => {
+    const keep = SFX.ctx; SFX._on = true; SFX.ctx = () => null;
+    let ok2 = true; try { SFX.play('capture'); } catch (e) { ok2 = false; }
+    SFX.ctx = keep; SFX._on = null; return ok2;
+  })());
+
   host.remove();
   return t.out;
 });

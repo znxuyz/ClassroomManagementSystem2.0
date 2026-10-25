@@ -671,3 +671,123 @@
     flex: 1 1 140px;
   }
 }
+
+/* ============================================
+   剛剛被搶下來
+   ────────────────────────────────────────────
+   原本一格被拿下只是靜靜地換個顏色 —— 對小學生來說,
+   「我們拿下了!」那一秒完全沒有被看見,而那正是這個遊戲最該有的瞬間。
+
+   擴散的光環用 SVG 的 <animate> 畫(見 04-map-view.js),
+   這裡只負責格子本身的那一下閃動。
+============================================ */
+.hex.just-taken polygon {
+  animation: hex-claim 0.7s var(--ease-out);
+}
+
+@keyframes hex-claim {
+  0%   { filter: brightness(2.1) saturate(1.6); }
+  35%  { filter: brightness(1.5) saturate(1.3); }
+  100% { filter: none; }
+}
+
+/* 會暈眩的人、或是「減少動態」的系統設定,一律不要動畫 */
+@media (prefers-reduced-motion: reduce) {
+  .hex.just-taken polygon { animation: none; }
+  .tg-taken { display: none; }
+}
+
+/* ============================================
+   地圖上的戰況牌(投影時一抬頭就看得到)
+============================================ */
+.hex-map-wrap { position: relative; }
+
+.tg-hud {
+  position: absolute;
+  top: 46px;
+  left: 12px;
+  z-index: 3;
+  background: rgba(10, 22, 30, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 168px;
+  /* 牌子只是資訊,不要擋住下面的格子 */
+  pointer-events: none;
+}
+
+.tg-hud-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.tg-hud-row.is-me .tg-hud-name {
+  font-weight: 900;
+  color: #fff;
+}
+
+.tg-hud-row.is-me .tg-hud-name::after {
+  content: " ★";
+  color: var(--gold);
+}
+
+.tg-hud-rank {
+  width: 14px;
+  text-align: center;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.55);
+  font-variant-numeric: tabular-nums;
+}
+
+.tg-hud-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+.tg-hud-name { white-space: nowrap; }
+
+.tg-hud-bar {
+  flex: 1;
+  min-width: 34px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+
+.tg-hud-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.5s var(--ease-out);
+}
+
+.tg-hud-count {
+  min-width: 22px;
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 手機上地圖本來就小,牌子要再收一點 */
+@media (max-width: 760px) {
+  .tg-hud {
+    top: 40px;
+    left: 8px;
+    min-width: 132px;
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+  .tg-hud-bar { min-width: 20px; }
+}

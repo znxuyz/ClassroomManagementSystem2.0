@@ -12,6 +12,47 @@
 /* 大地圖有上千格,重繪成本高。指紋沒變就整段跳過。 */
 let _lastMapSig = null;
 
+/* ============================================
+   「剛剛被搶下來」
+   ────────────────────────────────────────────
+   戰況每秒重繪一次,所以只要和上一次的歸屬比一比,就知道哪幾格
+   剛剛易主 —— 不需要任何事件系統,也不怕漏接。
+
+   為什麼要做:原本一格被拿下就只是靜靜地換個顏色。對小學生來說,
+   「我們拿下了!」那一秒完全沒有被看見,而那正是這個遊戲最該有的瞬間。
+
+   第一次繪製時不播 —— 不然一進畫面全圖都在閃。
+============================================ */
+let _lastOwners = null;
+
+let _lostByMe = null;
+
+function _takenSince(map, myGroup) {
+  const taken = new Set();
+  const lost = new Set();
+  const now = {};
+  Object.keys(map).forEach(k => { now[k] = map[k].owner; });
+  if (_lastOwners) {
+    Object.keys(now).forEach(k => {
+      const was = _lastOwners[k];
+      if (now[k] !== null && was !== undefined && was !== now[k]) {
+        taken.add(k);
+        // 原本是我的、現在變成別人的 —— 這是「被搶走」
+        if (myGroup != null && was === myGroup && now[k] !== myGroup) lost.add(k);
+      }
+    });
+  }
+  _lastOwners = now;
+  _lostByMe = lost;
+  return taken;
+}
+
+/* 換一局(或換班)時要忘掉上一局的歸屬,否則新地圖會整片閃。 */
+function resetMapAnimState() {
+  _lastOwners = null;
+  _lostByMe = null;
+}
+
 /* 捲動位置要跨重繪保留。
    地圖每秒會因為戰況更新而重畫,如果不記住捲動位置,學生一放大想看別的地方
    就會被彈回原點,根本沒辦法看地圖。
@@ -85,6 +126,23 @@ function renderHexMap(config, map, opts) {
      霧的模糊與地表顆粒都關掉,顏色與輪廓保留 —— 那兩樣才是看得懂的關鍵。 */
   const heavy = cells.length <= 600;
 
+  /* 剛易主的格子。放在這裡算(每次繪製一次),
+     所以老師端與學生端各自都會在自己那一次重繪時看到動畫。 */
+  const justTaken = o.noAnim ? new Set() : _takenSince(map, o.groupIdx);
+  if (justTaken.size > 0 && typeof SFX !== 'undefined') {
+    /* 自己的地被搶走和自己搶下別人的地,聽起來要不一樣 ——
+       同一個聲音的話,學生會以為被搶走是好事。 */
+    const mine = o.groupIdx;
+    let gained = 0, lost = 0;
+    justTaken.forEach(k => {
+      if (mine == null) { gained++; return; }
+      if (map[k].owner === mine) gained++;
+      else if (_lostByMe && _lostByMe.has(k)) lost++;
+    });
+    if (lost > 0) SFX.play('lost');
+    if (gained > 0) SFX.playCaptures(gained);
+  }
+
   const openOf = {};
   cells.forEach(k => { openOf[k] = Territory.isOpenCell(config, k, map[k].depth, now); });
 
@@ -141,7 +199,8 @@ function renderHexMap(config, map, opts) {
               fill="${A.hill}" />` : '';
 
     return `<g class="hex ${canAttack && !editing ? 'attackable' : ''} ${cell.isBase ? 'base' : ''}
-                 ${cell.battle ? 'in-battle' : ''} ${selected.has(k) ? 'picked' : ''}"
+                 ${cell.battle ? 'in-battle' : ''} ${selected.has(k) ? 'picked' : ''}
+                 ${justTaken.has(k) ? 'just-taken' : ''}"
       ${owned ? `data-owner="${cell.owner}"` : ''}
       ${canAttack ? 'data-attackable="1"' : ''}
       ${editing ? `onclick="territoryPick('${k}')"`
@@ -306,6 +365,25 @@ function renderHexMap(config, map, opts) {
                 style="paint-order:stroke" stroke="rgba(0,0,0,.45)" stroke-width="3">${need}</text>
         </g>`;
     }
+    if (justTaken.has(k) && cell.owner !== null) {
+      /* 擴散出去的光環。用 SVG 動畫而不是 CSS,
+         因為 CSS 的 transform 在 SVG 裡以使用者座標為準,
+         換算起來很容易在縮放後跑掉。 */
+      out += `
+        <g class="tg-taken" pointer-events="none">
+          <circle cx="${p.x}" cy="${p.y}" r="${(size * 0.3).toFixed(1)}" fill="none"
+                  stroke="${gc(cell.owner)}" stroke-width="4">
+            <animate attributeName="r" from="${(size * 0.3).toFixed(1)}"
+                     to="${(size * 2.6).toFixed(1)}" dur="0.75s" fill="freeze" />
+            <animate attributeName="stroke-width" from="5" to="0" dur="0.75s" fill="freeze" />
+            <animate attributeName="opacity" from=".95" to="0" dur="0.75s" fill="freeze" />
+          </circle>
+          <circle cx="${p.x}" cy="${p.y}" r="${(size * 0.9).toFixed(1)}"
+                  fill="#fff" opacity="0">
+            <animate attributeName="opacity" values="0;.55;0" dur="0.5s" fill="freeze" />
+          </circle>
+        </g>`;
+    }
     return out;
   }).join('');
 
@@ -339,6 +417,7 @@ function renderHexMap(config, map, opts) {
             <span class="lg lg-sea"></span>海洋
           </span>`}
       </div>
+      ${o.hud === false ? '' : renderMapHud(config, map, o.groupIdx)}
       <div class="hex-map-scroll" onscroll="_hexScrollSave(this)">
         <svg class="hex-map" width="${width}" viewBox="${vb.join(' ')}"
              preserveAspectRatio="xMidYMid meet">
@@ -432,6 +511,38 @@ function territoryFit() {
   _lastMapSig = null;
   if (typeof StudentApp !== 'undefined' && StudentApp.tab === 'war') StudentApp.render();
   else renderTerritoryLive();
+}
+
+/* ============================================
+   地圖上的戰況牌
+   ────────────────────────────────────────────
+   蓋在地圖左上角,常駐。
+
+   為什麼不只靠地圖下面那份排名:投影到教室大螢幕的時候,學生抬頭
+   看到的是地圖那一塊,下面的排名根本不在視線裡 —— 而「誰在贏」
+   正是他們最想知道的事。做成浮在地圖上,一抬頭就看得到。
+============================================ */
+function renderMapHud(config, map, highlightGroup) {
+  const rows = Territory.standings(config, map);
+  if (rows.length === 0) return '';
+  const top = rows[0].count || 1;
+  return `
+    <div class="tg-hud">
+      ${rows.map((s, i) => {
+        const c = GROUP_COLORS[s.groupIdx % GROUP_COLORS.length];
+        return `
+          <div class="tg-hud-row ${s.groupIdx === highlightGroup ? 'is-me' : ''}">
+            <span class="tg-hud-rank">${i + 1}</span>
+            <span class="tg-hud-dot" style="background:${c}"></span>
+            <span class="tg-hud-name">第 ${s.groupIdx + 1} 組</span>
+            <span class="tg-hud-bar">
+              <span class="tg-hud-fill" style="width:${(s.count / top * 100).toFixed(1)}%;
+                    background:${c}"></span>
+            </span>
+            <span class="tg-hud-count">${s.count}</span>
+          </div>`;
+      }).join('')}
+    </div>`;
 }
 
 function renderStandings(config, map, highlightGroup) {
