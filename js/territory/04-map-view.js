@@ -71,44 +71,74 @@ function renderHexMap(config, map, opts) {
   const editing = !!o.editMode;
   const selected = o.selected || new Set();
 
+  const A = TERRITORY_ART;
+  const gc = i => GROUP_COLORS[i % GROUP_COLORS.length];
+  /* 同一格永遠配到同一種地表(交錯色、有沒有小山丘)。
+     用亂數的話每秒重繪一次地表就會閃。 */
+  const hashOf = k => {
+    let h = 2166136261;
+    for (let i = 0; i < k.length; i++) { h ^= k.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return Math.abs(h);
+  };
+
+  /* 大地圖特效會拖慢重繪(戰況每秒更新一次),所以格子一多就收斂:
+     霧的模糊與地表顆粒都關掉,顏色與輪廓保留 —— 那兩樣才是看得懂的關鍵。 */
+  const heavy = cells.length <= 600;
+
+  const openOf = {};
+  cells.forEach(k => { openOf[k] = Territory.isOpenCell(config, k, map[k].depth, now); });
+
+  /* 每一格的六個角。輪廓與旗幟都要用,算一次就好。 */
+  const cornersOf = k => {
+    const c = pos[k];
+    const out = [];
+    for (let i = 0; i < 6; i++) {
+      const a = Math.PI / 180 * (60 * i - 90);
+      out.push([c.x + size * Math.cos(a), c.y + size * Math.sin(a)]);
+    }
+    return out;
+  };
+
+  /* 共用的那條邊 = 離鄰居中心最近的兩個角。
+     這樣寫就不必去記「第幾個方向對應第幾條邊」—— 那是最容易寫錯的地方。 */
+  const sharedEdge = (corners, np) =>
+    corners.map((pt, i) => ({ i, d: (pt[0] - np.x) ** 2 + (pt[1] - np.y) ** 2 }))
+           .sort((a, b) => a.d - b.d).slice(0, 2).map(e => e.i);
+
+  const centerOf = nk => map[nk]
+    ? pos[nk]
+    : Hex.toPixel(Hex.parse(nk).q, Hex.parse(nk).r, size);
+
+  /* ---------- 1. 格子本體(這一層才接點擊) ---------- */
   const polys = cells.map(k => {
     const cell = map[k];
     const p = pos[k];
-    const open = Territory.isOpenCell(config, k, cell.depth, now);
+    const open = openOf[k];
     const owned = cell.owner !== null;
     const canAttack = targets.has(k);
     const pts = Hex.corners(p.x, p.y, size);
+    const h = hashOf(k);
 
-    // 未開放的區域用深色石板 + 斜線紋,和「空白但可打」的淺色明顯區隔
     if (!open) {
+      /* 未開放 = 褪色的陸地,上面再蓋一層薄霧(見下面的霧層)。
+         以前這裡畫深灰色塊加斜線,整片看起來像「世界破了一個洞」,
+         看不出那裡其實也是可以打的地。 */
       return `<g class="hex locked ${selected.has(k) ? 'picked' : ''}"
         ${editing ? `onclick="territoryPick('${k}')"` : ''}>
-        <polygon points="${pts}" fill="#7d7368" stroke="#585047" stroke-width="1.5" />
-        <polygon points="${pts}" fill="url(#lockHatch)" />
+        <polygon points="${pts}" fill="${A.landLock}" stroke="${A.grid}" stroke-width="1" />
         ${selected.has(k) ? `<polygon points="${pts}" class="pick-ring" />` : ''}
       </g>`;
     }
 
-    // 已開放但無人佔領的陸地。用暖草色而不是接近背景的米白,
-    // 在深色海面上才看得出「這裡是可以搶的地」。
-    const fill = owned ? GROUP_COLORS[cell.owner % GROUP_COLORS.length] : '#e3d9ae';
-
-    let battleMarks = '';
-    if (cell.battle) {
-      const ranked = Object.entries(cell.battle.points)
-        .map(([g, pts2]) => ({ g: Number(g), pts: pts2 }))
-        .sort((a, b) => b.pts - a.pts);
-      const total = ranked.reduce((s2, e) => s2 + e.pts, 0) || 1;
-      let x = p.x - size * 0.62;
-      battleMarks = ranked.map(e => {
-        const w = (size * 1.24) * (e.pts / total);
-        const rect = `<rect x="${x.toFixed(1)}" y="${(p.y + size * 0.42).toFixed(1)}"
-          width="${w.toFixed(1)}" height="5" fill="${GROUP_COLORS[e.g % GROUP_COLORS.length]}" />`;
-        x += w;
-        return rect;
-      }).join('') +
-      `<text x="${p.x.toFixed(1)}" y="${(p.y + 5).toFixed(1)}" class="hex-battle-mark">⚔</text>`;
-    }
+    const fill = owned
+      ? `url(#tgGrad${cell.owner % GROUP_COLORS.length})`
+      : (h % 3 === 0 ? A.landAlt : A.land);
+    // 偶爾來一座小山丘。地表有一點起伏才不像色塊
+    const hill = (!owned && h % 7 === 0)
+      ? `<path d="M${(p.x - size * 0.2).toFixed(1)} ${(p.y + size * 0.16).toFixed(1)}
+                  l${(size * 0.2).toFixed(1)} ${(-size * 0.3).toFixed(1)}
+                  l${(size * 0.2).toFixed(1)} ${(size * 0.3).toFixed(1)} z"
+              fill="${A.hill}" />` : '';
 
     return `<g class="hex ${canAttack && !editing ? 'attackable' : ''} ${cell.isBase ? 'base' : ''}
                  ${cell.battle ? 'in-battle' : ''} ${selected.has(k) ? 'picked' : ''}"
@@ -116,11 +146,167 @@ function renderHexMap(config, map, opts) {
       ${canAttack ? 'data-attackable="1"' : ''}
       ${editing ? `onclick="territoryPick('${k}')"`
                 : (canAttack && o.onClick ? `onclick="${o.onClick}('${k}')"` : '')}>
-      <polygon points="${pts}" fill="${fill}" stroke="#fbf8f0" stroke-width="2" />
-      ${cell.isBase ? `<text x="${p.x.toFixed(1)}" y="${(p.y + 6).toFixed(1)}" class="hex-base-mark">★</text>` : ''}
-      ${battleMarks}
+      <polygon points="${pts}" fill="${fill}"
+               stroke="${owned ? 'rgba(255,255,255,.16)' : A.grid}" stroke-width="1" />
+      ${hill}
       ${selected.has(k) ? `<polygon points="${pts}" class="pick-ring" />` : ''}
     </g>`;
+  }).join('');
+
+  /* ---------- 2. 霧:未開放區域 ----------
+     一整片合成「一個 path」再模糊一次,不要每格各自模糊 ——
+     上千格的地圖那樣會卡到不能用。 */
+  const lockedKeys = cells.filter(k => !openOf[k]);
+  let fogLayer = '';
+  if (lockedKeys.length > 0) {
+    const veil = lockedKeys.map(k => {
+      const c = Hex.corners(pos[k].x, pos[k].y, size * 1.12).split(' ');
+      return 'M' + c.join('L') + 'Z';
+    }).join('');
+
+    // 邊界畫虛線,一看就知道是「還沒開放」,不是「這裡沒東西」
+    const edges = [];
+    lockedKeys.forEach(k => {
+      const { q, r } = Hex.parse(k);
+      const corners = cornersOf(k);
+      Hex.neighbors(q, r).forEach(nk => {
+        if (map[nk] && !openOf[nk]) return;          // 鄰居也是未開放,內部邊不畫
+        const [i1, i2] = sharedEdge(corners, centerOf(nk));
+        edges.push(`M${corners[i1][0].toFixed(1)} ${corners[i1][1].toFixed(1)}`
+                 + `L${corners[i2][0].toFixed(1)} ${corners[i2][1].toFixed(1)}`);
+      });
+    });
+
+    fogLayer = `
+      <g class="tg-fog" pointer-events="none">
+        <path d="${veil}" fill="${A.fog}" ${heavy ? 'filter="url(#tgSoft)"' : ''} />
+        ${edges.length ? `<path d="${edges.join('')}" fill="none" stroke="${A.fogLine}"
+          stroke-width="2" stroke-dasharray="7 6" stroke-linecap="round" />` : ''}
+      </g>`;
+  }
+
+  /* ---------- 3. 領地輪廓 ----------
+     只畫「和鄰居不同主人」的那幾條邊,整塊領地就有一圈輪廓。
+     以前每一格都描白邊,看起來像一張塗了顏色的試算表。 */
+  const edgesByGroup = {};
+  cells.forEach(k => {
+    const cell = map[k];
+    if (cell.owner === null || !openOf[k]) return;
+    const { q, r } = Hex.parse(k);
+    const corners = cornersOf(k);
+    Hex.neighbors(q, r).forEach(nk => {
+      if (map[nk] && map[nk].owner === cell.owner) return;
+      const [i1, i2] = sharedEdge(corners, centerOf(nk));
+      (edgesByGroup[cell.owner] = edgesByGroup[cell.owner] || []).push(
+        `M${corners[i1][0].toFixed(1)} ${corners[i1][1].toFixed(1)}`
+        + `L${corners[i2][0].toFixed(1)} ${corners[i2][1].toFixed(1)}`);
+    });
+  });
+  const outlines = Object.keys(edgesByGroup).map(g => {
+    const d = edgesByGroup[g].join('');
+    return `<path d="${d}" fill="none" stroke="${gc(Number(g))}"
+                  stroke-width="${(A.outline * 2.2).toFixed(1)}"
+                  stroke-linecap="round" opacity=".35" />
+            <path d="${d}" fill="none" stroke="#fff" stroke-width="${A.outline}"
+                  stroke-linecap="round" opacity=".9" />`;
+  }).join('');
+
+  /* ---------- 4. 組別旗幟 ----------
+     地圖上只有顏色的話,老師得自己記「紫色是第幾組」。
+     旗面寬度跟著字長算,重心不算基地那一格,太小的領地不插旗
+     —— 否則旗子會蓋住基地徽章。 */
+  const flags = Object.keys(edgesByGroup).map(gs => {
+    const g = Number(gs);
+    const own = cells.filter(k => map[k].owner === g);
+    const body = own.filter(k => !map[k].isBase);
+    if (body.length < 4) return '';
+    let cx = body.reduce((t, k) => t + pos[k].x, 0) / body.length;
+    let cy = body.reduce((t, k) => t + pos[k].y, 0) / body.length;
+    const label = `第 ${g + 1} 組 · ${own.length} 格`;
+    const fs = size * 0.46;
+    const w = label.length * fs * 0.72 + fs * 1.6;
+    const hh = fs * 1.75;
+    /* 旗子是橫的而且不短,所以不能只看「重心離基地多遠」——
+       重心在右邊,旗面的左端照樣會壓到基地的徽章。
+       要比的是旗面實際蓋到的範圍。壓到就往下挪一格,兩個都看得見。 */
+    const baseKey = own.find(k => map[k].isBase);
+    if (baseKey) {
+      const bx = pos[baseKey].x, by = pos[baseKey].y;
+      const overlapX = Math.abs(cx - bx) < w / 2 + size * 0.55;
+      const overlapY = Math.abs(cy - by) < hh / 2 + size * 0.55;
+      if (overlapX && overlapY) cy += (by >= cy ? -1 : 1) * size * 1.5;
+    }
+    return `
+      <g transform="translate(${cx.toFixed(1)} ${cy.toFixed(1)})">
+        <path d="M${(-w / 2).toFixed(1)} ${(-hh / 2).toFixed(1)} h${w.toFixed(1)}
+                 l${(-hh * 0.4).toFixed(1)} ${(hh / 2).toFixed(1)}
+                 l${(hh * 0.4).toFixed(1)} ${(hh / 2).toFixed(1)} h${(-w).toFixed(1)} z"
+              fill="${gc(g)}" stroke="#fff" stroke-width="1.6" opacity=".96" />
+        <text x="${(-hh * 0.18).toFixed(1)}" y="${(fs * 0.36).toFixed(1)}" text-anchor="middle"
+              font-size="${fs.toFixed(1)}" font-weight="900" fill="#fff">${label}</text>
+      </g>`;
+  }).join('');
+
+  /* ---------- 5. 基地徽章 / 交戰 ---------- */
+  const marks = cells.map(k => {
+    const cell = map[k];
+    const p = pos[k];
+    let out = '';
+
+    if (cell.isBase && cell.owner !== null) {
+      // 以前是一個小小的 ★,在大地圖上幾乎看不見
+      const c = gc(cell.owner);
+      const s1 = size * 0.11, s2 = size * 0.22, s3 = size * 0.24, s4 = size * 0.19,
+            s5 = size * 0.07, s6 = size * 0.23, s7 = size * 0.14;
+      out += `
+        <g class="tg-base">
+          <circle cx="${p.x}" cy="${p.y}" r="${(size * 0.6).toFixed(1)}" fill="#fff" opacity=".92" />
+          <circle cx="${p.x}" cy="${p.y}" r="${(size * 0.52).toFixed(1)}" fill="${c}" />
+          <path d="M${p.x} ${(p.y - size * 0.34).toFixed(1)}
+                   l${s1.toFixed(1)} ${s2.toFixed(1)} l${s3.toFixed(1)} .03
+                   l-${s4.toFixed(1)} ${(size * 0.15).toFixed(1)}
+                   l${s5.toFixed(1)} ${s6.toFixed(1)} l-${s6.toFixed(1)} -${s7.toFixed(1)}
+                   l-${s6.toFixed(1)} ${s7.toFixed(1)} l${s5.toFixed(1)} -${s6.toFixed(1)}
+                   l-${s4.toFixed(1)} -${(size * 0.15).toFixed(1)} l${s3.toFixed(1)} -.03 z"
+                fill="#fff" />
+        </g>`;
+    }
+
+    if (cell.battle) {
+      /* 交戰中。以前是一個 ⚔ 字 —— 而那個字型裡沒有,實際畫出來是方框,
+         外加一條看不懂的細長條。
+         改成「各組佔比的分環 + 領先者還差幾分」:
+         環上每一段的長度就是那一組的佔比,中間的數字是還差多少就拿下。
+         既是裝飾也是資訊,一眼看得出這一格快被誰吃掉。 */
+      const ranked = Object.entries(cell.battle.points)
+        .map(([g, v]) => ({ g: Number(g), v })).sort((a, b) => b.v - a.v);
+      const total = ranked.reduce((t, e) => t + Math.max(0, e.v), 0) || 1;
+      const lead = ranked[0] || { g: 0, v: 0 };
+      const need = Math.max(0, (config.threshold || 5) - lead.v);
+      const R = size * 0.72, C = 2 * Math.PI * R;
+      let off = 0;
+      const arcs = ranked.filter(e => e.v > 0).map(e => {
+        const len = C * (e.v / total);
+        const seg = `<circle cx="${p.x}" cy="${p.y}" r="${R.toFixed(1)}" fill="none"
+          stroke="${gc(e.g)}" stroke-width="5"
+          stroke-dasharray="${Math.max(0, len - 1.5).toFixed(1)} ${(C - len + 1.5).toFixed(1)}"
+          stroke-dashoffset="${(-off).toFixed(1)}"
+          transform="rotate(-90 ${p.x} ${p.y})" />`;
+        off += len;
+        return seg;
+      }).join('');
+      out += `
+        <g class="tg-battle">
+          <circle cx="${p.x}" cy="${p.y}" r="${(R * 1.35).toFixed(1)}" fill="url(#tgPulse)" />
+          <circle cx="${p.x}" cy="${p.y}" r="${R.toFixed(1)}" fill="rgba(0,0,0,.35)"
+                  stroke="rgba(255,255,255,.3)" stroke-width="1" />
+          ${arcs}
+          <text x="${p.x}" y="${(p.y + size * 0.2).toFixed(1)}" text-anchor="middle"
+                font-size="${(size * 0.62).toFixed(0)}" font-weight="900" fill="#fff"
+                style="paint-order:stroke" stroke="rgba(0,0,0,.45)" stroke-width="3">${need}</text>
+        </g>`;
+    }
+    return out;
   }).join('');
 
   /* 大地圖放進可捲動的容器,並提供縮放。
@@ -157,13 +343,35 @@ function renderHexMap(config, map, opts) {
         <svg class="hex-map" width="${width}" viewBox="${vb.join(' ')}"
              preserveAspectRatio="xMidYMid meet">
           <defs>
-            <pattern id="lockHatch" width="7" height="7" patternUnits="userSpaceOnUse"
-                     patternTransform="rotate(45)">
-              <rect width="7" height="7" fill="rgba(0,0,0,0)" />
-              <line x1="0" y1="0" x2="0" y2="7" stroke="rgba(255,255,255,0.22)" stroke-width="3" />
-            </pattern>
+            <radialGradient id="tgSea" cx="50%" cy="45%" r="75%">
+              <stop offset="0%" stop-color="${A.sea}" />
+              <stop offset="100%" stop-color="${A.seaDeep}" />
+            </radialGradient>
+            ${GROUP_COLORS.map((c, i) => `
+              <linearGradient id="tgGrad${i}" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="${c}" stop-opacity="1" />
+                <stop offset="100%" stop-color="${c}" stop-opacity=".72" />
+              </linearGradient>`).join('')}
+            <filter id="tgSoft"><feGaussianBlur stdDeviation="${(size * 0.5).toFixed(1)}" /></filter>
+            <radialGradient id="tgPulse" cx="50%" cy="50%" r="50%">
+              <stop offset="40%" stop-color="#fff" stop-opacity="0" />
+              <stop offset="75%" stop-color="#fff" stop-opacity=".22" />
+              <stop offset="100%" stop-color="#fff" stop-opacity="0" />
+            </radialGradient>
           </defs>
+
+          <!-- 海。地圖外面不是「背景」,是海 -->
+          <rect x="${vb[0]}" y="${vb[1]}" width="${vb[2]}" height="${vb[3]}" fill="url(#tgSea)" />
+
+          <!-- 格子在最下層,而且只有這一層接點擊;
+               上面的裝飾一律 pointer-events:none,否則基地徽章與交戰環
+               會把攻擊的點擊吃掉。 -->
           ${polys}
+
+          ${fogLayer}
+          <g pointer-events="none">${outlines}</g>
+          <g pointer-events="none">${flags}</g>
+          <g pointer-events="none">${marks}</g>
         </svg>
       </div>
     </div>`;

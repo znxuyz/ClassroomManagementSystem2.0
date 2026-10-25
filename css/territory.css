@@ -158,10 +158,12 @@
   margin-left: 8px;
 }
 
-.lg-open   { background: #e3d9ae; border: 1px solid #b9ad82; }
-.lg-lock   { background: #7d7368; }
-.lg-battle { background: #e3d9ae; border: 2px solid var(--sunset); }
-.lg-sea    { background: #0d181d; }
+/* 圖例要跟著地圖的配色走(見 js/01-constants.js 的 TERRITORY_ART)。
+   改了地圖卻忘了改這裡的話,圖例會指著根本不存在的顏色。 */
+.lg-open   { background: #cbd98b; border: 1px solid #8aa05a; }
+.lg-lock   { background: #8d9a6d; box-shadow: inset 0 0 0 13px rgba(26,36,30,.5); }
+.lg-battle { background: #cbd98b; border: 2px solid #fff; outline: 1px solid #8aa05a; }
+.lg-sea    { background: #2f6f8f; }
 
 /* 大地圖要能捲動,否則兩千格縮成一片馬賽克。
    底色做成深色海面 —— 陸地(暖草色)與未開放(灰藍石板)在上面
@@ -169,10 +171,9 @@
 .hex-map-scroll {
   overflow: auto;
   max-height: 62vh;
-  background:
-    repeating-linear-gradient(45deg,
-      #0d181d, #0d181d 14px,
-      #101d23 14px, #101d23 28px);
+  /* SVG 自己會畫海,所以這裡只要補上「SVG 以外」那一圈,
+     顏色跟深海一致才看不出接縫。 */
+  background: #1d4c66;
 }
 
 .hex-map {
