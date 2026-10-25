@@ -583,22 +583,38 @@
    (330 → 290,兩欄變一欄)。原本的直式清單也一直被這 40px 縮排著。 */
 .student-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
   gap: 8px;
   padding: 0;
   margin: 0;
 }
 
-/* 一列一位,比原本矮一截 —— 28 位才塞得進一個畫面 */
+/* ── 守護獸是主角 ──
+   原本牠只是名字旁邊 38px 的小圖示,根本看不出是哪一隻動物 ——
+   而這一頁處理的本來就是「每個孩子和他的獸」,那件事等於沒被看見。
+
+   改成直式:守護獸放大到 64px 在上,座號姓名與積分在下。
+   直式反而更省空間 —— 一格更窄,所以同樣 28 位佔的排數更少。
+   階段用外圈的光暈表示(幼獸→成獸→守護神獸),顏色就是現成的 stage-N。 */
 .student-item {
-  padding: 7px 10px;
-  gap: 10px;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 12px 8px 10px;
+  border-color: var(--paper-shadow);
+  background: var(--paper);
 }
 
 .student-avatar {
-  width: 38px;
-  height: 38px;
-  font-size: 19px;
+  width: 64px;
+  height: 64px;
+  font-size: 34px;
+}
+
+.student-info {
+  width: 100%;
+  min-width: 0;
 }
 
 .student-item .student-name {
@@ -607,15 +623,38 @@
 
 .student-meta {
   gap: 6px;
+  justify-content: center;
+  margin-top: 0;
+  line-height: 1.35;
+}
+
+.student-item .student-name {
+  line-height: 1.4;
+}
+
+.student-points {
+  font-size: 14px;
+  font-weight: 700;
 }
 
 /* 原本每一列都跟著寫一次「守護神獸」,28 次,而且灰到看不清楚 ——
    階段本來就用頭像外圈的顏色表示了,文字是純粹的雜訊。
-   但「還沒選守護獸」要留著:那是老師真的需要看到的。 */
+   但「還沒選守護獸」要留著:那是老師真的需要看到的。
+   格子窄了之後寫不下四個字,改成一顆小標籤。 */
 .student-nopet {
-  color: var(--sunset);
-  font-weight: 600;
+  color: #fff;
+  background: var(--sunset);
+  font-weight: 700;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 999px;
 }
+
+/* 階段的光暈。stage-3(守護神獸)本來就有金色外框,
+   這裡把 1/2 階也補上,一眼看得出誰養得比較前面。 */
+.student-item .student-avatar.stage-1 { box-shadow: 0 0 0 3px rgba(125,155,138,.28); }
+.student-item .student-avatar.stage-2 { box-shadow: 0 0 0 3px rgba(74,124,98,.3); }
+.student-item .student-avatar.stage-3 { box-shadow: 0 0 0 3px rgba(200,164,77,.4), 0 0 16px rgba(200,164,77,.35); }
 
 /* ---------- 加分面板 ---------- */
 .action-panel {
@@ -652,11 +691,31 @@
   display: none;
 }
 
+/* ---------- 筆電 / 平板橫向(約 1200 以下)----------
+   28 位在這個寬度是 7 欄 4 排。守護獸維持 64px 的話整塊會超出一個畫面,
+   所以把格子壓矮一點 —— 一眼看得完比大 6px 重要。 */
+@media (min-width: 761px) and (max-width: 1200px) {
+  .student-item { padding: 8px 6px 7px; gap: 4px; }
+  .student-avatar { width: 54px; height: 54px; font-size: 28px; }
+}
+
 /* ---------- 手機 ---------- */
 @media (max-width: 760px) {
+  /* 手機上一排放四位。
+     三位看起來比較舒服,但 28 位要排 10 列(1470px);
+     四位是 7 列(約 760px),少捲一半 —— 而且 80×95 的格子
+     對手指來說還是很好按。 */
   .student-list {
-    grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+    gap: 6px;
   }
+
+  .student-item { padding: 8px 2px 7px; gap: 3px; }
+  .student-avatar { width: 46px; height: 46px; font-size: 24px; }
+  .student-item .student-name { font-size: 11px; }
+  .student-points { font-size: 12px; }
+  .student-meta { gap: 4px; }
+  .seat-no { font-size: 9px; min-width: 15px; padding: 0 3px; }
 
   .student-board {
     padding: 14px;

@@ -39,7 +39,7 @@ function renderStudentList() {
           <div class="student-name">${seatLabel}${student.name}</div>
           <div class="student-meta">
             <span class="student-points">${student.currentPoints} 分</span>
-            ${student.pet ? '' : '<span class="student-nopet">未選守護獸</span>'}
+            ${student.pet ? '' : '<span class="student-nopet" title="還沒選守護獸">未選</span>'}
           </div>
         </div>
       </li>

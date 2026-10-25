@@ -37,9 +37,11 @@ for (const [w, h, tag] of [[1440, 1000, '1440'], [1024, 800, '1024'], [390, 844,
       t.ok('電腦上 28 位不必捲動就看得完', gridH < room,
         `${Math.round(gridH)}px / 可用 ${Math.round(room)}px`);
     } else {
-      t.ok('手機上一眼看得到的人數明顯變多(原本 3.5 位)',
-        Math.round(grid.children[0].getBoundingClientRect().height) * 1 < 110
-        && cols === 2, `${cols} 欄 · 每格 ${Math.round(grid.children[0].getBoundingClientRect().height)}px`);
+      /* 守護獸放大之後格子變成直式,所以不是比「格子多矮」,
+         而是比「整串要捲多久」—— 原本一欄 2600px、一眼 3.5 位。 */
+      t.ok('手機上一排放四位,整串高度大幅縮短',
+        cols === 4 && gridH < 1000,
+        `${cols} 欄 · 整串 ${Math.round(gridH)}px(原本 2600px)`);
     }
 
     t.ok('沒選人時不會整片空白板子(提示只有一行)',
@@ -48,7 +50,7 @@ for (const [w, h, tag] of [[1440, 1000, '1440'], [1024, 800, '1024'], [390, 844,
     t.ok('提示的字改掉了(手機沒有「左側」)',
       !document.querySelector('.action-panel').textContent.includes('從左側'));
     t.ok('還沒選守護獸的人看得出來',
-      grid.children[5].textContent.includes('未選守護獸'));
+      grid.children[5].querySelector('.student-nopet') !== null);
     t.ok('不再每一列都重複階段名稱',
       !grid.children[0].textContent.includes('守護神獸'));
 
