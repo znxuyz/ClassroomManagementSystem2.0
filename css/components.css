@@ -519,3 +519,118 @@ textarea.custom-points-input {
   color: var(--ink-muted);
   margin-top: 6px;
 }
+
+/* ============================================
+   表單:統一的質感與「標籤在上面」
+   ────────────────────────────────────────────
+   整個專案看起來最「沒做完」的地方,其實不是配色,是表單。
+
+   1) 同一排裡有的欄位有標籤(截止日期、每題分數),有的只有
+      placeholder 當標籤(測驗名稱、獎品名稱、點數)。
+      placeholder 一打字就消失 —— 使用者填到一半忘記這一格是什麼,
+      而且畫面上看起來就是「有的做完了、有的還沒」。
+
+   2) 輸入框的 focus 只換邊框顏色,很弱,看不出焦點在哪。
+
+   這一段只動共用的樣式與一個 .field 包裝,所以 163 個控制項
+   一次全部受惠,不必一頁一頁改。
+============================================ */
+
+/* ---------- 焦點:看得見的光圈 ----------
+   注意:極光主題(theme-aurora.css)本來就有這一圈,而且它的選擇器
+   更specific,所以在極光底下生效的是那一份。這裡這一份是給
+   **預設的森林主題**用的 —— 那一套原本只換邊框顏色,焦點很難看出來。
+   兩邊刻意做成同一個形狀(3px 的外圈),切主題時手感才不會變。 */
+.rule-editor-input:focus,
+.custom-points-input:focus,
+.toolbar-search:focus,
+.seating-size-input:focus,
+.setup-input:focus,
+.setup-textarea:focus {
+  outline: none;
+  border-color: var(--forest);
+  /* 光圈用 box-shadow,不用 outline —— outline 會被 overflow:hidden 的
+     父層切掉,而這個專案到處都是會捲動的卡片 */
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--forest) 22%, transparent);
+}
+
+/* 滑過時先給一點回應,讓人知道那是可以點的 */
+.rule-editor-input:hover:not(:focus):not(:disabled),
+.custom-points-input:hover:not(:focus):not(:disabled) {
+  border-color: color-mix(in srgb, var(--forest) 45%, var(--paper-shadow));
+}
+
+.rule-editor-input:disabled,
+.custom-points-input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* placeholder 淡一階 —— 它是提示,不是內容 */
+.rule-editor-input::placeholder,
+.custom-points-input::placeholder,
+.setup-input::placeholder,
+.setup-textarea::placeholder {
+  color: var(--ink-muted);
+  opacity: 0.75;
+}
+
+/* ---------- .field:標籤在上面 ----------
+   用法:
+     <label class="field">
+       <span class="field-label">獎品名稱</span>
+       <input class="rule-editor-input" />
+     </label>
+   和原本那種「裸 label + 裸 input」混在同一排也不會打架,
+   所以可以一頁一頁慢慢換過去。 */
+/* .quiz-field 是這一套的舊名字(測驗頁先做的),一起吃同一份樣式 ——
+   留著是為了不必一次改掉所有既有的標記,但新的地方一律寫 .field。 */
+.field,
+.quiz-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.field-label,
+.quiz-field-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.field input,
+.field select,
+.quiz-field input,
+.quiz-field select { width: 100%; }
+
+.field input[type="date"],
+.quiz-field input[type="date"] { min-width: 150px; }
+
+.field-label .req {
+  color: var(--sunset);
+  margin-left: 2px;
+}
+
+.field-hint {
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+/* 一整排欄位。grow 的那一格吃掉剩下的寬度 */
+.field-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.field-row .field.grow { flex: 1 1 200px; }
+.field-row .field.narrow { flex: 0 0 96px; }
+.field-row .field.mid { flex: 0 0 150px; }
+
+/* 一排的最後通常是送出鈕 —— 它要和輸入框底部對齊,不是和標籤對齊 */
+.field-row > .btn { flex-shrink: 0; }

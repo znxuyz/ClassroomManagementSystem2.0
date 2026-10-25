@@ -762,7 +762,8 @@ function renderQuizList() {
         <div>
           <div class="quiz-card-title">${escapeHtml(quiz.title)}</div>
           <div class="quiz-card-meta">
-            ${quiz.questions.length} 題 · 每題 ${quiz.pointsPerQuestion} 分
+            ${quiz.questions.length} 題 · 每題 ${quiz.pointsPerQuestion === undefined
+              ? 1 : quiz.pointsPerQuestion} 分
             · ${scoreModeLabel(quiz)}
             ${quiz.dueDate ? ' · 截止 ' + quiz.dueDate : ''}
             ${quiz.settleAt

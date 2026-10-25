@@ -9,28 +9,28 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700;900&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 
 <!-- 樣式表 -->
-<link rel="stylesheet" href="css/base.css?v=20261025h">
-<link rel="stylesheet" href="css/components.css?v=20261025h">
-<link rel="stylesheet" href="css/dashboard.css?v=20261025h">
-<link rel="stylesheet" href="css/tools.css?v=20261025h">
-<link rel="stylesheet" href="css/management.css?v=20261025h">
-<link rel="stylesheet" href="css/contact.css?v=20261025h">
-<link rel="stylesheet" href="css/shop.css?v=20261025h">
-<link rel="stylesheet" href="css/ai.css?v=20261025h">
-<link rel="stylesheet" href="css/report.css?v=20261025h">
-<link rel="stylesheet" href="css/projector.css?v=20261025h">
-<link rel="stylesheet" href="css/settings.css?v=20261025h">
-<link rel="stylesheet" href="css/auth.css?v=20261025h">
-<link rel="stylesheet" href="css/quiz.css?v=20261025h">
-<link rel="stylesheet" href="css/student.css?v=20261025h">
-<link rel="stylesheet" href="css/pet-picker.css?v=20261025h">
-<link rel="stylesheet" href="css/leaderboard.css?v=20261025h">
-<link rel="stylesheet" href="css/territory.css?v=20261025h">
-<link rel="stylesheet" href="css/help.css?v=20261025h">
-<link rel="stylesheet" href="css/skills.css?v=20261025h">
-<link rel="stylesheet" href="css/hud.css?v=20261025h">
+<link rel="stylesheet" href="css/base.css?v=20261025k">
+<link rel="stylesheet" href="css/components.css?v=20261025k">
+<link rel="stylesheet" href="css/dashboard.css?v=20261025k">
+<link rel="stylesheet" href="css/tools.css?v=20261025k">
+<link rel="stylesheet" href="css/management.css?v=20261025k">
+<link rel="stylesheet" href="css/contact.css?v=20261025k">
+<link rel="stylesheet" href="css/shop.css?v=20261025k">
+<link rel="stylesheet" href="css/ai.css?v=20261025k">
+<link rel="stylesheet" href="css/report.css?v=20261025k">
+<link rel="stylesheet" href="css/projector.css?v=20261025k">
+<link rel="stylesheet" href="css/settings.css?v=20261025k">
+<link rel="stylesheet" href="css/auth.css?v=20261025k">
+<link rel="stylesheet" href="css/quiz.css?v=20261025k">
+<link rel="stylesheet" href="css/student.css?v=20261025k">
+<link rel="stylesheet" href="css/pet-picker.css?v=20261025k">
+<link rel="stylesheet" href="css/leaderboard.css?v=20261025k">
+<link rel="stylesheet" href="css/territory.css?v=20261025k">
+<link rel="stylesheet" href="css/help.css?v=20261025k">
+<link rel="stylesheet" href="css/skills.css?v=20261025k">
+<link rel="stylesheet" href="css/hud.css?v=20261025k">
 <!-- 主題:掛在 <html data-theme> 上,一定要放最後才蓋得過前面的規則 -->
-<link rel="stylesheet" href="css/theme-aurora.css?v=20261025h">
+<link rel="stylesheet" href="css/theme-aurora.css?v=20261025k">
 <script>
   // 在 CSS 之後、畫面之前就決定主題,避免載入瞬間閃一下舊配色
   document.documentElement.dataset.theme =
@@ -389,7 +389,13 @@
       </div>
 
       <div class="quiz-create-form">
-        <input type="text" id="quizTitle" class="rule-editor-input" placeholder="測驗名稱(例:國語第三課隨堂測驗)" />
+        <!-- 這一排原本只有這一格沒有標籤(靠 placeholder),
+             所以整排看起來像「有的做完了、有的還沒」 -->
+        <label class="field grow">
+          <span class="field-label">測驗名稱<span class="req">*</span></span>
+          <input type="text" id="quizTitle" class="rule-editor-input"
+                 placeholder="例:國語第三課隨堂測驗" />
+        </label>
         <label class="quiz-field" title="截止日期">
           <span class="quiz-field-label">截止日期</span>
           <input type="date" id="quizDueDate" class="rule-editor-input" />
@@ -743,13 +749,33 @@
 
       <!-- 獎品管理 -->
       <div id="shopItemsSubView" class="sub-view active">
-        <div class="shop-create-form">
-          <input type="text" id="shopItemIcon" class="rule-editor-input" placeholder="🎁" maxlength="4"
-                 title="用一個 emoji 當圖示" style="width:70px; text-align:center;" />
-          <input type="text" id="shopItemName" class="rule-editor-input" placeholder="獎品名稱(例:免寫一項作業)" style="flex:2;" />
-          <input type="text" id="shopItemDesc" class="rule-editor-input" placeholder="說明(選填)" style="flex:2;" />
-          <input type="number" id="shopItemPrice" class="rule-editor-input" placeholder="點數" min="0" style="width:100px;" />
-          <input type="number" id="shopItemStock" class="rule-editor-input" placeholder="庫存(留空=不限)" min="0" style="width:170px;" />
+        <!-- 原本整排都是裸輸入框,靠 placeholder 當標籤 ——
+             一打字就不知道哪格是什麼了 -->
+        <div class="shop-create-form field-row">
+          <label class="field" style="flex:0 0 72px;">
+            <span class="field-label">圖示</span>
+            <input type="text" id="shopItemIcon" class="rule-editor-input" placeholder="🎁"
+                   maxlength="4" title="用一個 emoji 當圖示" style="text-align:center;" />
+          </label>
+          <label class="field grow">
+            <span class="field-label">獎品名稱<span class="req">*</span></span>
+            <input type="text" id="shopItemName" class="rule-editor-input"
+                   placeholder="例:免寫一項作業" />
+          </label>
+          <label class="field grow">
+            <span class="field-label">說明(選填)</span>
+            <input type="text" id="shopItemDesc" class="rule-editor-input"
+                   placeholder="學生看得到的一句話" />
+          </label>
+          <label class="field narrow">
+            <span class="field-label">點數<span class="req">*</span></span>
+            <input type="number" id="shopItemPrice" class="rule-editor-input" min="0" />
+          </label>
+          <label class="field mid">
+            <span class="field-label">庫存</span>
+            <input type="number" id="shopItemStock" class="rule-editor-input"
+                   placeholder="留空 = 不限" min="0" />
+          </label>
           <button class="btn btn-primary btn-small" onclick="addShopItem()">＋ 上架</button>
         </div>
 
@@ -774,10 +800,20 @@
 
       <!-- 班級共同任務 -->
       <div id="tasksSubView" class="sub-view">
-        <div class="task-create-form">
-          <input type="text" id="taskName" class="rule-editor-input" placeholder="任務名稱(例:全班閱讀王)" />
-          <input type="text" id="taskReward" class="rule-editor-input" placeholder="達成獎勵(例:校外教學優先選地點)" />
-          <input type="number" id="taskTarget" class="rule-editor-input" placeholder="目標分數" min="1" />
+        <div class="task-create-form field-row">
+          <label class="field grow">
+            <span class="field-label">任務名稱<span class="req">*</span></span>
+            <input type="text" id="taskName" class="rule-editor-input" placeholder="例:全班閱讀王" />
+          </label>
+          <label class="field grow">
+            <span class="field-label">達成獎勵</span>
+            <input type="text" id="taskReward" class="rule-editor-input"
+                   placeholder="例:校外教學優先選地點" />
+          </label>
+          <label class="field narrow">
+            <span class="field-label">目標分數<span class="req">*</span></span>
+            <input type="number" id="taskTarget" class="rule-editor-input" min="1" />
+          </label>
           <button class="btn btn-primary btn-small" onclick="createTask()">＋ 新增任務</button>
         </div>
 
@@ -925,6 +961,11 @@
             <div>本班守護獸</div>
             <div class="projector-meta-large" id="projTotalPoints">總積分 0</div>
           </div>
+          <!-- 投影到教室大螢幕時,上面那兩排選單只是在佔位置(115px)
+               而且讓整個畫面看起來像一個 App,不像一面班級榮譽榜 -->
+          <button class="btn btn-ghost btn-small projector-full-btn"
+                  onclick="toggleProjectorFull()" id="projFullBtn"
+                  title="隱藏選單、放大到整個螢幕(Esc 離開)">⛶ 全螢幕</button>
         </div>
         <div class="projector-grid" id="projectorGrid"></div>
       </div>
@@ -1175,62 +1216,62 @@
 
 
 <!-- 應用程式邏輯(載入順序很重要) -->
-<script src="js/00-firebase.js?v=20261025h"></script>
-<script src="js/00b-session.js?v=20261025h"></script>
-<script src="js/00c-auth-ui.js?v=20261025h"></script>
-<script src="js/00d-switch-hud.js?v=20261025h"></script>
-<script src="js/01-constants.js?v=20261025h"></script>
-<script src="js/skills/01-defs.js?v=20261025h"></script>
-<script src="js/02-state.js?v=20261025h"></script>
-<script src="js/03-storage.js?v=20261025h"></script>
-<script src="js/03b-history-archive.js?v=20261025h"></script>
-<script src="js/03c-question-bank.js?v=20261025h"></script>
-<script src="js/03d-roster.js?v=20261025h"></script>
-<script src="js/04-utils.js?v=20261025h"></script>
-<script src="js/05-pet-engine.js?v=20261025h"></script>
-<script src="js/06-ai.js?v=20261025h"></script>
-<script src="js/06b-ai-hud.js?v=20261025h"></script>
-<script src="js/07-excel.js?v=20261025h"></script>
-<script src="js/10-nav.js?v=20261025h"></script>
-<script src="js/10b-nav-groups.js?v=20261025h"></script>
-<script src="js/feature-setup.js?v=20261025h"></script>
-<script src="js/feature-students.js?v=20261025h"></script>
-<script src="js/feature-dashboard.js?v=20261025h"></script>
-<script src="js/feature-batch-award.js?v=20261025h"></script>
-<script src="js/feature-attendance.js?v=20261025h"></script>
-<script src="js/feature-picker.js?v=20261025h"></script>
-<script src="js/feature-timer.js?v=20261025h"></script>
-<script src="js/feature-seating.js?v=20261025h"></script>
-<script src="js/feature-grouping.js?v=20261025h"></script>
-<script src="js/feature-quiz.js?v=20261025h"></script>
-<script src="js/territory/01-hex.js?v=20261025h"></script>
-<script src="js/territory/02-shapes.js?v=20261025h"></script>
-<script src="js/territory/03-engine.js?v=20261025h"></script>
-<script src="js/territory/04-map-view.js?v=20261025h"></script>
-<script src="js/territory/05-game.js?v=20261025h"></script>
-<script src="js/territory/06-teacher.js?v=20261025h"></script>
-<script src="js/territory/07-weekly.js?v=20261025h"></script>
-<script src="js/territory/08-sfx.js?v=20261025h"></script>
-<script src="js/feature-leaderboard.js?v=20261025h"></script>
-<script src="js/student/01-app.js?v=20261025h"></script>
-<script src="js/student/02-tabs.js?v=20261025h"></script>
-<script src="js/skills/02-student.js?v=20261025h"></script>
-<script src="js/student/03-quiz.js?v=20261025h"></script>
-<script src="js/student/04-war.js?v=20261025h"></script>
-<script src="js/student/05-result.js?v=20261025h"></script>
-<script src="js/skills/03-teacher.js?v=20261025h"></script>
-<script src="js/feature-contact-book.js?v=20261025h"></script>
-<script src="js/feature-homework.js?v=20261025h"></script>
-<script src="js/feature-shop.js?v=20261025h"></script>
-<script src="js/feature-class-tasks.js?v=20261025h"></script>
-<script src="js/feature-ai-features.js?v=20261025h"></script>
-<script src="js/feature-projector.js?v=20261025h"></script>
-<script src="js/feature-overview.js?v=20261025h"></script>
-<script src="js/feature-report.js?v=20261025h"></script>
-<script src="js/feature-rules.js?v=20261025h"></script>
-<script src="js/feature-help.js?v=20261025h"></script>
-<script src="js/feature-settings.js?v=20261025h"></script>
-<script src="js/99-app.js?v=20261025h"></script>
+<script src="js/00-firebase.js?v=20261025k"></script>
+<script src="js/00b-session.js?v=20261025k"></script>
+<script src="js/00c-auth-ui.js?v=20261025k"></script>
+<script src="js/00d-switch-hud.js?v=20261025k"></script>
+<script src="js/01-constants.js?v=20261025k"></script>
+<script src="js/skills/01-defs.js?v=20261025k"></script>
+<script src="js/02-state.js?v=20261025k"></script>
+<script src="js/03-storage.js?v=20261025k"></script>
+<script src="js/03b-history-archive.js?v=20261025k"></script>
+<script src="js/03c-question-bank.js?v=20261025k"></script>
+<script src="js/03d-roster.js?v=20261025k"></script>
+<script src="js/04-utils.js?v=20261025k"></script>
+<script src="js/05-pet-engine.js?v=20261025k"></script>
+<script src="js/06-ai.js?v=20261025k"></script>
+<script src="js/06b-ai-hud.js?v=20261025k"></script>
+<script src="js/07-excel.js?v=20261025k"></script>
+<script src="js/10-nav.js?v=20261025k"></script>
+<script src="js/10b-nav-groups.js?v=20261025k"></script>
+<script src="js/feature-setup.js?v=20261025k"></script>
+<script src="js/feature-students.js?v=20261025k"></script>
+<script src="js/feature-dashboard.js?v=20261025k"></script>
+<script src="js/feature-batch-award.js?v=20261025k"></script>
+<script src="js/feature-attendance.js?v=20261025k"></script>
+<script src="js/feature-picker.js?v=20261025k"></script>
+<script src="js/feature-timer.js?v=20261025k"></script>
+<script src="js/feature-seating.js?v=20261025k"></script>
+<script src="js/feature-grouping.js?v=20261025k"></script>
+<script src="js/feature-quiz.js?v=20261025k"></script>
+<script src="js/territory/01-hex.js?v=20261025k"></script>
+<script src="js/territory/02-shapes.js?v=20261025k"></script>
+<script src="js/territory/03-engine.js?v=20261025k"></script>
+<script src="js/territory/04-map-view.js?v=20261025k"></script>
+<script src="js/territory/05-game.js?v=20261025k"></script>
+<script src="js/territory/06-teacher.js?v=20261025k"></script>
+<script src="js/territory/07-weekly.js?v=20261025k"></script>
+<script src="js/territory/08-sfx.js?v=20261025k"></script>
+<script src="js/feature-leaderboard.js?v=20261025k"></script>
+<script src="js/student/01-app.js?v=20261025k"></script>
+<script src="js/student/02-tabs.js?v=20261025k"></script>
+<script src="js/skills/02-student.js?v=20261025k"></script>
+<script src="js/student/03-quiz.js?v=20261025k"></script>
+<script src="js/student/04-war.js?v=20261025k"></script>
+<script src="js/student/05-result.js?v=20261025k"></script>
+<script src="js/skills/03-teacher.js?v=20261025k"></script>
+<script src="js/feature-contact-book.js?v=20261025k"></script>
+<script src="js/feature-homework.js?v=20261025k"></script>
+<script src="js/feature-shop.js?v=20261025k"></script>
+<script src="js/feature-class-tasks.js?v=20261025k"></script>
+<script src="js/feature-ai-features.js?v=20261025k"></script>
+<script src="js/feature-projector.js?v=20261025k"></script>
+<script src="js/feature-overview.js?v=20261025k"></script>
+<script src="js/feature-report.js?v=20261025k"></script>
+<script src="js/feature-rules.js?v=20261025k"></script>
+<script src="js/feature-help.js?v=20261025k"></script>
+<script src="js/feature-settings.js?v=20261025k"></script>
+<script src="js/99-app.js?v=20261025k"></script>
 
 </body>
 </html>

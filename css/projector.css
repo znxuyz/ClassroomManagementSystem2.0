@@ -169,3 +169,42 @@
     padding: 20px 12px;
   }
 }
+
+/* ============================================
+   全螢幕投影
+   ────────────────────────────────────────────
+   把上面兩排選單收起來,畫面全部讓給守護獸。
+   掛在 <html> 上而不是某個容器,因為要蓋掉的是 app 的外層框架。
+============================================ */
+html.projector-full .app-topbar,
+html.projector-full .app-header,
+html.projector-full .nav-subtabs {
+  display: none !important;
+}
+
+html.projector-full .app-main {
+  padding: 0 !important;
+}
+
+html.projector-full .projector-view {
+  margin: 0;
+  min-height: 100vh;
+  border-radius: 0;
+}
+
+/* 全螢幕時字可以再大一點 —— 教室後排看得到才有意義 */
+html.projector-full .projector-class-name { font-size: clamp(28px, 3.4vw, 54px); }
+html.projector-full .projector-meta-large { font-size: clamp(18px, 1.8vw, 30px); }
+
+/* 離開鈕要留著,不然沒有滑鼠的情況下出不去 */
+.projector-full-btn {
+  margin-left: 16px;
+  flex-shrink: 0;
+}
+
+html.projector-full .projector-full-btn {
+  opacity: 0.35;
+  transition: opacity 0.2s var(--ease-out);
+}
+
+html.projector-full .projector-full-btn:hover { opacity: 1; }

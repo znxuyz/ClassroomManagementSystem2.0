@@ -345,16 +345,112 @@
   gap: 14px;
 }
 
+/* ============================================
+   獎品卡
+   ────────────────────────────────────────────
+   以前每一張卡都是四個永遠攤著的輸入框 —— 功能沒問題,
+   但整頁看起來像沒做完的後台,而且老師一眼看不出
+   「這件獎品長什麼樣、學生看到的是什麼」。
+
+   改成:平常是一件獎品(圖示 + 名稱 + 說明 + 點數/庫存標籤),
+   按「編輯」那一張才變成表單。
+============================================ */
 .shop-item-card {
   background: var(--paper);
   border: 1px solid var(--paper-shadow);
   border-left: 4px solid var(--gold);
-  border-radius: 3px;
+  border-radius: 10px;
   padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  transition: box-shadow .18s var(--ease-out), transform .18s var(--ease-out);
 }
+
+.shop-item-card:not(.is-editing):hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.shop-item-card.is-editing {
+  border-left-color: var(--forest);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--forest) 25%, transparent);
+}
+
+/* ---------- 檢視狀態 ---------- */
+.shop-item-view {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+/* 圖示是一塊磚,不是一個輸入框 */
+.shop-item-emoji {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  border-radius: 10px;
+  background: var(--paper-warm);
+  border: 1px solid var(--paper-shadow);
+}
+
+.shop-item-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.shop-item-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+.shop-item-desc {
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-top: 2px;
+  line-height: 1.5;
+}
+
+.shop-item-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.shop-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--paper-warm);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.shop-tag.is-price {
+  background: color-mix(in srgb, var(--gold) 20%, transparent);
+  color: var(--gold-ink, var(--ink));
+}
+
+.shop-tag.is-out {
+  background: color-mix(in srgb, var(--sick) 16%, transparent);
+  color: var(--sick);
+}
+
+.shop-tag.is-off {
+  background: color-mix(in srgb, var(--ink-muted) 18%, transparent);
+}
+
+/* 賣完的卡片不要完全變灰(老師還是得看得見內容),只收掉存在感 */
+.shop-item-card.is-out:not(.inactive) { border-left-color: var(--sick); }
 
 .shop-item-card.inactive {
   opacity: 0.55;
@@ -405,6 +501,7 @@
 
 .shop-item-row input { width: 80px; }
 
+/* 操作鈕靠右下,和內容拉開 */
 .shop-item-actions {
   display: flex;
   gap: 6px;

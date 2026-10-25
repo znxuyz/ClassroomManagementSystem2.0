@@ -134,6 +134,15 @@ function deleteShopItem(itemId) {
   renderShopItems();
 }
 
+/* 哪一件獎品正在編輯。一次只開一件 ——
+   全部同時可編輯就是原本那個「整頁都是輸入框」的樣子。 */
+let _editingShopItem = null;
+
+function editShopItem(id) {
+  _editingShopItem = id;
+  renderShopItems();
+}
+
 function renderShopItems() {
   const el = document.getElementById('shopItemList');
   if (!el) return;
@@ -148,37 +157,79 @@ function renderShopItems() {
     return;
   }
 
-  el.innerHTML = `<div class="shop-item-grid">` + state.shopItems.map(item => `
-    <div class="shop-item-card ${item.active ? '' : 'inactive'}">
-      <div class="shop-item-head">
-        <input type="text" class="shop-item-icon-input" value="${escapeHtml(item.icon)}"
-               maxlength="4" title="用一個 emoji 當圖示"
-               onchange="updateShopItem('${item.id}','icon',this.value)" />
-        <input type="text" class="shop-item-name-input" value="${escapeHtml(item.name)}"
-               onchange="updateShopItem('${item.id}','name',this.value)" />
-      </div>
+  el.innerHTML = `<div class="shop-item-grid">` + state.shopItems.map(item => {
+    const out = item.stock !== null && item.stock <= 0;
 
-      <input type="text" class="rule-editor-input" placeholder="說明(選填)"
-             value="${escapeHtml(item.description || '')}"
-             onchange="updateShopItem('${item.id}','description',this.value)" />
+    /* 平常長得像一件獎品,按了「編輯」才變成表單。
+       以前四個輸入框永遠攤在那裡 —— 功能沒問題,但整頁看起來像
+       沒做完的後台,而且老師一眼看不出「這件獎品長什麼樣」。 */
+    if (_editingShopItem !== item.id) {
+      return `
+      <div class="shop-item-card ${item.active ? '' : 'inactive'} ${out ? 'is-out' : ''}">
+        <div class="shop-item-view">
+          <div class="shop-item-emoji">${escapeHtml(item.icon || '🎁')}</div>
+          <div class="shop-item-main">
+            <div class="shop-item-title">${escapeHtml(item.name)}</div>
+            ${item.description
+              ? `<div class="shop-item-desc">${escapeHtml(item.description)}</div>` : ''}
+            <div class="shop-item-tags">
+              <span class="shop-tag is-price">${item.price} 點</span>
+              <span class="shop-tag ${out ? 'is-out' : ''}">${
+                item.stock === null ? '不限' : '剩 ' + item.stock + ' 份'}</span>
+              ${item.active ? '' : '<span class="shop-tag is-off">已下架</span>'}
+            </div>
+          </div>
+        </div>
+        <div class="shop-item-actions">
+          <button class="btn btn-ghost btn-small"
+                  onclick="editShopItem('${item.id}')">編輯</button>
+          <button class="btn btn-ghost btn-small" onclick="toggleShopItem('${item.id}')">
+            ${item.active ? '下架' : '上架'}</button>
+          <button class="btn btn-ghost btn-small"
+                  onclick="deleteShopItem('${item.id}')">刪除</button>
+        </div>
+      </div>`;
+    }
 
-      <div class="shop-item-row">
-        <label>點數</label>
-        <input type="number" class="rule-editor-input" min="0" value="${item.price}"
-               onchange="updateShopItem('${item.id}','price',this.value)" />
-        <label>庫存</label>
-        <input type="number" class="rule-editor-input" min="0" placeholder="不限"
-               value="${item.stock === null ? '' : item.stock}"
-               onchange="updateShopItem('${item.id}','stock',this.value)" />
-      </div>
-
-      <div class="shop-item-actions">
-        <button class="btn btn-ghost btn-small" onclick="toggleShopItem('${item.id}')">
-          ${item.active ? '下架' : '上架'}
-        </button>
-        <button class="btn btn-ghost btn-small" onclick="deleteShopItem('${item.id}')">刪除</button>
-      </div>
-    </div>`).join('') + `</div>`;
+    return `
+      <div class="shop-item-card is-editing">
+        <div class="field-row">
+          <label class="field" style="flex:0 0 62px;">
+            <span class="field-label">圖示</span>
+            <input type="text" class="rule-editor-input" value="${escapeHtml(item.icon || '')}"
+                   maxlength="4" style="text-align:center;"
+                   onchange="updateShopItem('${item.id}','icon',this.value)" />
+          </label>
+          <label class="field grow">
+            <span class="field-label">獎品名稱</span>
+            <input type="text" class="rule-editor-input" value="${escapeHtml(item.name)}"
+                   onchange="updateShopItem('${item.id}','name',this.value)" />
+          </label>
+        </div>
+        <label class="field">
+          <span class="field-label">說明(選填)</span>
+          <input type="text" class="rule-editor-input" placeholder="學生看得到的一句話"
+                 value="${escapeHtml(item.description || '')}"
+                 onchange="updateShopItem('${item.id}','description',this.value)" />
+        </label>
+        <div class="field-row">
+          <label class="field grow">
+            <span class="field-label">點數</span>
+            <input type="number" class="rule-editor-input" min="0" value="${item.price}"
+                   onchange="updateShopItem('${item.id}','price',this.value)" />
+          </label>
+          <label class="field grow">
+            <span class="field-label">庫存(留空 = 不限)</span>
+            <input type="number" class="rule-editor-input" min="0" placeholder="不限"
+                   value="${item.stock === null ? '' : item.stock}"
+                   onchange="updateShopItem('${item.id}','stock',this.value)" />
+          </label>
+        </div>
+        <div class="shop-item-actions">
+          <button class="btn btn-primary btn-small" onclick="editShopItem(null)">完成</button>
+        </div>
+      </div>`;
+  }).join('') + `</div>`;
 }
 
 /* ============================================

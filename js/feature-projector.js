@@ -46,3 +46,43 @@ function triggerProjectorFlash(studentId, points) {
   document.body.appendChild(float);
   setTimeout(() => float.remove(), 1500);
 }
+
+
+/* ============================================
+   全螢幕投影
+   ────────────────────────────────────────────
+   投影到教室大螢幕時,上面那兩排選單只是在佔位置(115px),
+   而且讓整個畫面看起來像一個 App,不像一面班級榮譽榜。
+
+   真的要求瀏覽器全螢幕(不只是隱藏選單)—— 投影機通常只有 1024×768,
+   省下瀏覽器的網址列與分頁列,守護獸就能再大一圈。
+   不給全螢幕(或使用者按 Esc 退出)時,至少選單還是收起來的。
+============================================ */
+function toggleProjectorFull() {
+  const root = document.documentElement;
+  const on = !root.classList.contains('projector-full');
+  root.classList.toggle('projector-full', on);
+
+  const btn = document.getElementById('projFullBtn');
+  if (btn) btn.textContent = on ? '⛶ 離開全螢幕' : '⛶ 全螢幕';
+
+  if (on) {
+    if (root.requestFullscreen) root.requestFullscreen().catch(() => { });
+  } else if (document.fullscreenElement) {
+    document.exitFullscreen().catch(() => { });
+  }
+  // 格子大小是算出來的,所以尺寸變了要重畫
+  requestAnimationFrame(renderProjector);
+}
+
+/* 使用者按 Esc 離開全螢幕時,把選單收回來 ——
+   不然會停在「沒有選單又沒有全螢幕」的半吊子狀態,出不去。 */
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement &&
+      document.documentElement.classList.contains('projector-full')) {
+    document.documentElement.classList.remove('projector-full');
+    const btn = document.getElementById('projFullBtn');
+    if (btn) btn.textContent = '⛶ 全螢幕';
+    requestAnimationFrame(renderProjector);
+  }
+});

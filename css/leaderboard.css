@@ -95,6 +95,13 @@
   min-height: 300px;
 }
 
+/* 手機上方塊最寬只有 130px,三個並排加上間距會頂到邊 */
+@media (max-width: 760px) {
+  .podium { gap: 8px; }
+  .podium-column { max-width: 108px; }
+  .podium-icon { font-size: 36px; }
+}
+
 .podium-column {
   flex: 1;
   max-width: 130px;
