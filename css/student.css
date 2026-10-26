@@ -125,7 +125,7 @@
   overflow: hidden;
   background: var(--paper);
   border: 1px solid var(--paper-shadow);
-  border-radius: 16px;
+  border-radius: var(--r-card);
   box-shadow: var(--shadow-sm);
   padding: 30px 20px 26px;
   text-align: center;
@@ -215,7 +215,7 @@
 .student-pet-empty {
   background: var(--paper);
   border: 1px dashed var(--paper-shadow);
-  border-radius: 4px;
+  border-radius: var(--r-card);
   padding: 32px 20px;
   text-align: center;
   color: var(--ink-muted);
@@ -295,7 +295,7 @@
   background: var(--paper);
   border: 1px solid var(--paper-shadow);
   border-left: 4px solid var(--sunset);
-  border-radius: 3px;
+  border-radius: var(--r-card);
   padding: 14px 16px;
   margin-bottom: 10px;
   display: flex;
@@ -461,7 +461,7 @@
 .student-question {
   background: var(--paper);
   border: 1px solid var(--paper-shadow);
-  border-radius: 4px;
+  border-radius: var(--r-card);
   padding: 18px;
   margin-bottom: 14px;
 }
@@ -496,7 +496,7 @@
   padding: 14px 14px;
   min-height: 52px;
   border: 1px solid var(--paper-shadow);
-  border-radius: 3px;
+  border-radius: var(--r-tile);
   margin-bottom: 8px;
   font-size: 15px;
   cursor: pointer;
@@ -522,7 +522,7 @@
   font-size: 15px;
   font-family: var(--font-body);
   border: 1px solid var(--paper-shadow);
-  border-radius: 3px;
+  border-radius: var(--r-tile);
   background: var(--paper-warm);
 }
 
@@ -568,7 +568,7 @@
 .student-degraded {
   background: rgba(217, 164, 65, 0.16);
   border-left: 3px solid var(--mild);
-  border-radius: 3px;
+  border-radius: var(--r-card);
   padding: 10px 14px;
   margin-bottom: 14px;
   font-size: 13px;
@@ -620,7 +620,7 @@
 .war-result-card {
   width: min(340px, 100%);
   background: var(--paper);
-  border-radius: 14px;
+  border-radius: var(--r-card);
   padding: 26px 24px 20px;
   text-align: center;
   box-shadow: var(--shadow-lg);

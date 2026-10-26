@@ -11,7 +11,7 @@
 .stat-card {
   background: var(--paper-warm);
   padding: 22px;
-  border-radius: 8px;
+  border-radius: var(--r-card);
   border-left: 4px solid var(--forest);
   box-shadow: var(--shadow-sm);
 }
@@ -62,7 +62,7 @@
   text-align: left;
   padding: 14px;
   border: 1.5px solid var(--paper-shadow);
-  border-radius: 10px;
+  border-radius: var(--r-tile);
   background: var(--paper);
   cursor: pointer;
   font-family: inherit;

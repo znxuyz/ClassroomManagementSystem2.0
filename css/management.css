@@ -9,7 +9,7 @@
   align-items: center;
   padding: 14px;
   background: var(--paper-warm);
-  border-radius: 8px;
+  border-radius: var(--r-card);
 }
 
 .seating-toolbar label {
@@ -32,7 +32,7 @@
 
 .seating-pool {
   background: var(--paper-warm);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   padding: 16px;
   max-height: 500px;
   overflow-y: auto;
@@ -83,7 +83,7 @@
 
 .seating-board {
   background: var(--paper-warm);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   padding: 24px;
   min-height: 500px;
 }
@@ -233,7 +233,7 @@
   align-items: center;
   padding: 14px;
   background: var(--paper-warm);
-  border-radius: 8px;
+  border-radius: var(--r-card);
 }
 
 .group-controls label {
@@ -274,7 +274,7 @@
 
 .group-card {
   background: var(--paper-warm);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   padding: 16px;
   border-top: 4px solid var(--forest);
   box-shadow: var(--shadow-sm);

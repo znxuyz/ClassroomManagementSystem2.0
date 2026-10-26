@@ -44,6 +44,21 @@
   --control-h-lg: 48px;   /* 大一號:btn-large、設定畫面的輸入框 */
   --control-px:   12px;   /* 左右內距 */
   --control-r:    8px;    /* 圓角 */
+
+  /* 圓角的尺度。
+     盤點過一次:卡片層級的元素用了 3/4/6/8/9/10/12/16px 八種圓角 ——
+     同一種東西在不同頁面長得不一樣,這是整個專案看起來「東拼西湊」
+     最主要的原因之一,而且比配色更容易被看出來。收斂成三階:
+
+       --r-card  大塊:面板、卡片、對話框
+       --r-tile  小塊:列、磚、按鈕大小的方塊
+       --r-pill  膠囊:標籤、徽章
+
+     --r-tile 刻意和 --control-r 同值 ——
+     輸入框和它旁邊的小方塊圓角不一樣會很明顯。 */
+  --r-card:  12px;
+  --r-tile:   8px;
+  --r-pill: 999px;
   --control-fs:   14px;   /* 字級 */
 
   /* 陰影與動態 */
@@ -274,7 +289,7 @@ body {
   margin: 60px auto;
   background: var(--paper-warm);
   padding: 48px;
-  border-radius: 8px;
+  border-radius: var(--r-card);
   box-shadow: var(--shadow-lg);
   position: relative;
 }

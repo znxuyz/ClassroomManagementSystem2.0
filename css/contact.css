@@ -8,7 +8,7 @@
   margin-bottom: 20px;
   padding: 14px 16px;
   background: var(--paper-warm);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   flex-wrap: wrap;
 }
 
@@ -32,7 +32,7 @@
 
 .contact-main {
   background: var(--paper-warm);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   padding: 24px;
   box-shadow: var(--shadow-sm);
 }
@@ -64,7 +64,7 @@
   background: var(--paper);
   border-left: 3px solid var(--moss);
   padding: 14px 16px;
-  border-radius: 4px;
+  border-radius: var(--r-card);
   font-size: 13px;
   line-height: 1.8;
   color: var(--ink-soft);
@@ -91,7 +91,7 @@
   width: 100%;
   padding: 12px 14px;
   border: 1.5px solid var(--paper-shadow);
-  border-radius: 6px;
+  border-radius: var(--r-tile);
   font-family: var(--font-body);
   font-size: 14px;
   background: var(--paper);
@@ -107,7 +107,7 @@
 
 .contact-sidebar {
   background: var(--paper-warm);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   padding: 20px;
   box-shadow: var(--shadow-sm);
   max-height: 70vh;
@@ -156,7 +156,7 @@
 .contact-print-preview {
   background: white;
   padding: 40px 50px;
-  border-radius: 8px;
+  border-radius: var(--r-card);
   font-family: var(--font-body);
   color: black;
   margin-top: 20px;
@@ -173,7 +173,7 @@
   gap: 10px;
   padding: 14px;
   background: var(--paper-warm);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   margin-bottom: 20px;
   align-items: center;
 }
@@ -184,7 +184,7 @@
 
 .hw-card {
   background: var(--paper-warm);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   padding: 20px;
   margin-bottom: 14px;
   box-shadow: var(--shadow-sm);

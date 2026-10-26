@@ -40,6 +40,33 @@ const used = new Set([...css.matchAll(/var\(\s*(--[a-z0-9-]+)/g)].map(m => m[1])
 const undef = [...used].filter(v => !defined.has(v));
 ok('CSS 變數都有定義', undef.length === 0, undef.join(', '));
 
+/* ── 3b. 卡片層級的圓角要用代幣 ──
+   盤點過一次:卡片類的元素曾經用了 3/4/6/8/9/10/12/16px 八種圓角,
+   同一種東西在不同頁面長得不一樣 —— 這是整個專案看起來「東拼西湊」
+   最主要的原因之一,而且比配色更容易被看出來。
+   收斂成 --r-card / --r-tile / --r-pill 三階之後,這一項負責讓它不再漂掉。
+
+   判斷方式:一個規則如果同時有 border-radius、padding ≥ 10px、
+   以及 background 或 border,那它就是「一塊卡片」,圓角必須用代幣。
+   小的裝飾(徽章、圓點、進度條)不在此限。 */
+const cardBlocks = [];
+for (const f of readdirSync(root + 'css').filter(x => x.endsWith('.css'))) {
+  const text = read('css/' + f);
+  for (const m of text.matchAll(/([.#][^{}]*?)\{([^}]*)\}/g)) {
+    const sel = m[1].trim(), body = m[2];
+    const r = body.match(/border-radius:\s*([0-9]+)px/);
+    if (!r) continue;
+    const pad = body.match(/padding:\s*([0-9]+)px/);
+    if (!pad || Number(pad[1]) < 10) continue;
+    if (!/background|border:/.test(body)) continue;
+    const px = Number(r[1]);
+    if (px < 3 || px > 20) continue;          // 50%、999px 這種不是卡片圓角
+    cardBlocks.push(`${f} ${sel.split('\n')[0].slice(0, 40)} = ${px}px`);
+  }
+}
+ok('卡片層級的圓角都用代幣(--r-card / --r-tile)',
+   cardBlocks.length === 0, cardBlocks.slice(0, 6).join(' · '));
+
 /* ── 4. 存檔是對稱的 ──
    serializeState() 寫出去的欄位,applyBlobToState() 要讀回來,
    而且都要列在 KNOWN_BLOB_KEYS 裡(沒列的會被當成「未知欄位」原封帶回,

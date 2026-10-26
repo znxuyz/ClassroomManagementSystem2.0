@@ -5,7 +5,7 @@
   background: linear-gradient(135deg, #2A1A3A 0%, #4D2D5C 50%, #1F3A2E 100%);
   color: var(--paper);
   padding: 24px 28px;
-  border-radius: 10px;
+  border-radius: var(--r-card);
   margin-bottom: 24px;
   display: flex;
   justify-content: space-between;
@@ -63,7 +63,7 @@
 
 .ai-form {
   background: var(--paper-warm);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   padding: 24px;
   box-shadow: var(--shadow-sm);
   margin-bottom: 20px;
@@ -86,7 +86,7 @@
   width: 100%;
   padding: 10px 14px;
   border: 1.5px solid var(--paper-shadow);
-  border-radius: 6px;
+  border-radius: var(--r-tile);
   font-family: var(--font-body);
   font-size: 14px;
   background: var(--paper);
@@ -109,7 +109,7 @@
   background: var(--paper);
   border-left: 3px solid var(--moss);
   padding: 12px 14px;
-  border-radius: 4px;
+  border-radius: var(--r-card);
   font-size: 13px;
   line-height: 1.7;
   color: var(--ink-soft);
@@ -131,7 +131,7 @@
 
 .ai-result-card {
   background: var(--paper-warm);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   padding: 20px;
   box-shadow: var(--shadow-sm);
   border-top: 3px solid var(--plum);
@@ -193,7 +193,7 @@
   background: rgba(181, 86, 61, 0.1);
   border-left: 3px solid var(--sick);
   padding: 14px 16px;
-  border-radius: 4px;
+  border-radius: var(--r-card);
   color: var(--sick);
   font-size: 13px;
   line-height: 1.6;
@@ -203,7 +203,7 @@
   text-align: center;
   padding: 40px 20px;
   background: var(--paper-warm);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   border: 1px dashed var(--paper-shadow);
 }
 
