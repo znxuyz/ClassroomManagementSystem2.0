@@ -9,7 +9,7 @@
   background: var(--paper);
   border: 1px solid var(--paper-shadow);
   border-radius: var(--r-card);
-  padding: 16px;
+  padding: var(--pad);
   margin-bottom: 20px;
 }
 
@@ -101,7 +101,7 @@
 .question-editor {
   background: var(--paper-warm);
   border-radius: var(--r-card);
-  padding: 14px;
+  padding: var(--pad-sm);
   margin-bottom: 12px;
 }
 

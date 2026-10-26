@@ -199,6 +199,33 @@ const lines = await page.evaluate(async () => {
   petBox.remove();
   StudentApp.classInfo = null;
 
+  /* ---- 8. 一排裡最多一顆非 ghost 的按鈕 ----
+     primary(綠)與 accent(橘)都被當成「主要動作」在用,分界又是隨機的 ——
+     測驗頁甚至同一排有兩個「建立」,一藍一金,看起來像兩個不同重要性的
+     東西,其實是同一件事的兩條路。兩顆以上就分不出主從了。 */
+  const tooMany = [];
+  NAV_GROUPS.forEach(g => g.items.forEach(it => {
+    navGoItem(g.key, it.view, it.sub || '');
+    const view = document.querySelector('.view.active');
+    if (!view) return;
+    const rows = new Set();
+    view.querySelectorAll('.btn-primary, .btn-accent').forEach(b => {
+      if (b.offsetParent === null) return;
+      rows.add(b.parentElement);
+    });
+    rows.forEach(row => {
+      const n = [...row.children].filter(c =>
+        c.matches && c.matches('.btn-primary, .btn-accent') && c.offsetParent !== null).length;
+      if (n > 1) {
+        tooMany.push(`${g.name}/${it.name} · ${[...row.children]
+          .filter(c => c.matches && c.matches('.btn-primary, .btn-accent'))
+          .map(c => c.textContent.trim().slice(0, 8)).join(' + ')}`);
+      }
+    });
+  }));
+  t.ok('同一排最多一顆主要按鈕', tooMany.length === 0,
+    [...new Set(tooMany)].slice(0, 4).join(' | '));
+
   return t.out;
 });
 

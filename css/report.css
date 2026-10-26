@@ -6,7 +6,7 @@
   gap: 10px;
   align-items: center;
   margin-bottom: 20px;
-  padding: 14px 16px;
+  padding: var(--pad-sm) var(--pad);
   background: var(--paper-warm);
   border-radius: var(--r-card);
   flex-wrap: wrap;
@@ -21,7 +21,7 @@
 .report-student-card {
   background: var(--paper-warm);
   border-radius: var(--r-card);
-  padding: 14px;
+  padding: var(--pad-sm);
   cursor: pointer;
   transition: all 0.2s var(--ease-out);
   border: 1.5px solid var(--paper-shadow);
@@ -101,7 +101,7 @@
   display: flex;
   gap: 24px;
   background: var(--paper);
-  padding: 24px;
+  padding: var(--pad);
   border-radius: var(--r-card);
   margin-bottom: 24px;
   align-items: center;
@@ -160,7 +160,7 @@
 
 .report-chart-wrap {
   background: var(--paper);
-  padding: 24px;
+  padding: var(--pad);
   border-radius: var(--r-card);
   margin: 16px 0;
 }

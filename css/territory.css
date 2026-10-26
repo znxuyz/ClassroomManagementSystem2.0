@@ -20,7 +20,7 @@
   background: var(--paper);
   border: 1px solid var(--paper-shadow);
   border-radius: var(--r-card);
-  padding: 16px 18px;
+  padding: var(--pad);
   margin-bottom: 16px;
   font-size: 13px;
   color: var(--ink-soft);
@@ -306,7 +306,7 @@
   background: var(--paper);
   border: 1px solid var(--paper-shadow);
   border-radius: var(--r-card);
-  padding: 16px;
+  padding: var(--pad);
   margin-bottom: 20px;
 }
 
@@ -324,11 +324,18 @@
   margin-bottom: 12px;
 }
 
+/* min-width: 0 不是裝飾。
+   flex 子項的 min-width 預設是 auto(= 不准縮到比內容小),
+   而文字輸入框的「內容寬度」是瀏覽器給的預設字元數,
+   所以 flex:1 的輸入框在窄欄裡會把整排撐破。
+   這一排在 768px 剛好卡在邊界上 —— 卡片內距從 18px 改成 20px
+   就溢出了,那只是壓垮它的最後 2px,真正的原因在這裡。 */
 .tq-opt {
   display: flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
+  min-width: 0;
 }
 
 .tq-opt > span {
@@ -338,7 +345,7 @@
   width: 14px;
 }
 
-.tq-opt input[type="text"] { flex: 1; }
+.tq-opt input[type="text"] { flex: 1; min-width: 0; }
 
 .tq-summary {
   font-size: 12px;
@@ -386,7 +393,7 @@
   border: 1px solid var(--paper-shadow);
   border-left: 4px solid;
   border-radius: var(--r-card);
-  padding: 12px 16px;
+  padding: var(--pad-sm) var(--pad);
   margin-bottom: 14px;
 }
 
@@ -417,7 +424,7 @@
   background: var(--paper);
   border: 1px solid var(--paper-shadow);
   border-radius: var(--r-card);
-  padding: 18px;
+  padding: var(--pad);
 }
 
 @media (max-width: 760px) {

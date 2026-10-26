@@ -6,7 +6,7 @@
   gap: 10px;
   align-items: center;
   margin-bottom: 20px;
-  padding: 14px 16px;
+  padding: var(--pad-sm) var(--pad);
   background: var(--paper-warm);
   border-radius: var(--r-card);
   flex-wrap: wrap;
@@ -33,7 +33,7 @@
 .contact-main {
   background: var(--paper-warm);
   border-radius: var(--r-card);
-  padding: 24px;
+  padding: var(--pad);
   box-shadow: var(--shadow-sm);
 }
 
@@ -60,15 +60,22 @@
   border-radius: 2px;
 }
 
+/* 自動匯整的方塊。
+   原本有 white-space: pre-wrap —— 那是更早以前「一整串純文字」留下來的,
+   現在內容已經改成一列一個 .auto-line 的 DOM 了,
+   而 pre-wrap 會把那些列之間的換行與縮排也當成內容印出來,
+   結果兩列資料撐成一個 240px 高的空盒子。 */
 .contact-auto-block {
   background: var(--paper);
   border-left: 3px solid var(--moss);
-  padding: 14px 16px;
+  padding: var(--pad-sm) var(--pad);
   border-radius: var(--r-card);
   font-size: 13px;
-  line-height: 1.8;
+  line-height: 1.7;
   color: var(--ink-soft);
-  white-space: pre-wrap;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .contact-auto-block .auto-line {
@@ -108,7 +115,7 @@
 .contact-sidebar {
   background: var(--paper-warm);
   border-radius: var(--r-card);
-  padding: 20px;
+  padding: var(--pad);
   box-shadow: var(--shadow-sm);
   max-height: 70vh;
   overflow-y: auto;
@@ -171,7 +178,7 @@
   display: grid;
   grid-template-columns: 2fr 3fr 1fr 1fr auto;
   gap: 10px;
-  padding: 14px;
+  padding: var(--pad-sm);
   background: var(--paper-warm);
   border-radius: var(--r-card);
   margin-bottom: 20px;
@@ -185,7 +192,7 @@
 .hw-card {
   background: var(--paper-warm);
   border-radius: var(--r-card);
-  padding: 20px;
+  padding: var(--pad);
   margin-bottom: 14px;
   box-shadow: var(--shadow-sm);
   border-left: 4px solid var(--forest);

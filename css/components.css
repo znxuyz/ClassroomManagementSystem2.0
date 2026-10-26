@@ -305,7 +305,7 @@ textarea.custom-points-input {
   display: flex;
   gap: 10px;
   margin-bottom: 16px;
-  padding: 12px;
+  padding: var(--pad-sm);
   background: var(--paper);
   border-radius: var(--r-card);
 }
@@ -645,4 +645,70 @@ textarea.custom-points-input {
 
 .rule-editor-row.is-head .field-label {
   padding-left: 2px;
+}
+
+/* ============================================
+   區塊標題
+   ────────────────────────────────────────────
+   「卡片裡那一段內容的名字」。專案裡本來就有金色直條這個記號
+   (聯絡簿、學生加分面板用的),只是大小不一(4×18 與 3×14),
+   而且其他頁面各自用了底線或純粗體。
+
+   統一成同一個形狀,所有區塊標題吃同一份樣式。
+   已經自帶圖示的(使用說明的 ✦ / 🔑)不加直條 ——
+   一個標題前面兩個記號會很吵,那一類只對齊字級。
+============================================ */
+.panel-title,
+.contact-section-title,
+.contact-sidebar-title,
+.student-section-title,
+.tg-live-title,
+.tg-feed-title,
+.purchase-section-title,
+.sidebar-title,
+.gate-section-title,
+.help-sec-title {
+  font-family: var(--font-display);
+  font-size: var(--t-section);
+  font-weight: 700;
+  color: var(--forest-deep);
+  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* 原本有的底線一律拿掉,改用直條當記號 —— 兩個都有會很重 */
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.panel-title::before,
+.contact-section-title::before,
+.contact-sidebar-title::before,
+.student-section-title::before,
+.tg-live-title::before,
+.tg-feed-title::before,
+.purchase-section-title::before,
+.sidebar-title::before,
+.gate-section-title::before {
+  content: "";
+  width: 4px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--gold);
+  flex-shrink: 0;
+}
+
+/* ---------- 項目名稱 ----------
+   一張卡片代表的那一個東西(一份作業、一份測驗、一件獎品、一組)。
+   它不是區塊標題,所以不加直條 —— 但字級要和區塊標題成對。 */
+.hw-card-title,
+.quiz-card-title,
+.task-card-title,
+.shop-item-title,
+.group-card-title {
+  font-family: var(--font-display);
+  font-size: var(--t-item);
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.4;
 }

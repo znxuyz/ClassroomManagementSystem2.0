@@ -67,6 +67,33 @@ for (const f of readdirSync(root + 'css').filter(x => x.endsWith('.css'))) {
 ok('卡片層級的圓角都用代幣(--r-card / --r-tile)',
    cardBlocks.length === 0, cardBlocks.slice(0, 6).join(' · '));
 
+/* ── 3c. 卡片的內距也要用代幣 ──
+   同樣是「一塊卡片」,內距曾經出現 33 種不同的值。圓角統一之後,
+   這就變成最明顯的不整齊。收斂成 --pad-sm / --pad / --pad-lg 三階
+   (保留「緊湊 / 一般 / 寬鬆」的意圖,不是壓成同一個值)。
+
+   列印版面、登入頁、投影模式、全螢幕浮層刻意不在此限 ——
+   那些是「另一種介面」,照一般卡片的尺度反而會怪。 */
+const PAD_FREE = ['.report-page', '.gate-card', '.modal', '.contact-print-preview',
+  '.setup-container', '.projector-card', '.hud-panel', '.pet-picker',
+  '.war-result-card', '.ai-key-setup', '.action-panel', '.timer-stage', '.picker-stage'];
+const rawPad = [];
+for (const f of readdirSync(root + 'css').filter(x => x.endsWith('.css'))) {
+  const text = read('css/' + f);
+  for (const m of text.matchAll(/([.#][^{}]*?)\{([^}]*)\}/g)) {
+    const sel = m[1].trim(), body = m[2];
+    if (!body.includes('border-radius: var(--r-card)')) continue;
+    if (PAD_FREE.some(x => sel.includes(x))) continue;
+    const pm = body.match(/padding:\s*([^;]+);/);
+    if (!pm) continue;
+    const raw = pm[1].trim();
+    if (raw.includes('var(') || raw.includes('env(')) continue;
+    rawPad.push(`${f} ${sel.split('\n')[0].slice(0, 34)} = ${raw}`);
+  }
+}
+ok('卡片的內距都用代幣(--pad-sm / --pad / --pad-lg)',
+   rawPad.length === 0, rawPad.slice(0, 5).join(' · '));
+
 /* ── 4. 存檔是對稱的 ──
    serializeState() 寫出去的欄位,applyBlobToState() 要讀回來,
    而且都要列在 KNOWN_BLOB_KEYS 裡(沒列的會被當成「未知欄位」原封帶回,

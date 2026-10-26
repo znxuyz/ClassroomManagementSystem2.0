@@ -6,7 +6,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  padding: 16px 20px;
+  padding: var(--pad);
   background: var(--paper-warm);
   border-radius: var(--r-card);
   box-shadow: var(--shadow-sm);
@@ -434,7 +434,7 @@
   flex-wrap: wrap;
   align-items: center;
   margin-bottom: 14px;
-  padding: 14px;
+  padding: var(--pad-sm);
   background: var(--paper-warm);
   border-radius: var(--r-card);
 }

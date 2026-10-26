@@ -10,7 +10,7 @@
 
 .stat-card {
   background: var(--paper-warm);
-  padding: 22px;
+  padding: var(--pad);
   border-radius: var(--r-card);
   border-left: 4px solid var(--forest);
   box-shadow: var(--shadow-sm);

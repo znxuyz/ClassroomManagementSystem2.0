@@ -4,7 +4,7 @@
 .ai-banner {
   background: linear-gradient(135deg, #2A1A3A 0%, #4D2D5C 50%, #1F3A2E 100%);
   color: var(--paper);
-  padding: 24px 28px;
+  padding: var(--pad) var(--pad-lg);
   border-radius: var(--r-card);
   margin-bottom: 24px;
   display: flex;
@@ -64,7 +64,7 @@
 .ai-form {
   background: var(--paper-warm);
   border-radius: var(--r-card);
-  padding: 24px;
+  padding: var(--pad);
   box-shadow: var(--shadow-sm);
   margin-bottom: 20px;
 }
@@ -108,7 +108,7 @@
 .ai-context-card {
   background: var(--paper);
   border-left: 3px solid var(--moss);
-  padding: 12px 14px;
+  padding: var(--pad-sm);
   border-radius: var(--r-card);
   font-size: 13px;
   line-height: 1.7;
@@ -132,7 +132,7 @@
 .ai-result-card {
   background: var(--paper-warm);
   border-radius: var(--r-card);
-  padding: 20px;
+  padding: var(--pad);
   box-shadow: var(--shadow-sm);
   border-top: 3px solid var(--plum);
 }
@@ -192,7 +192,7 @@
 .ai-error {
   background: rgba(181, 86, 61, 0.1);
   border-left: 3px solid var(--sick);
-  padding: 14px 16px;
+  padding: var(--pad-sm) var(--pad);
   border-radius: var(--r-card);
   color: var(--sick);
   font-size: 13px;

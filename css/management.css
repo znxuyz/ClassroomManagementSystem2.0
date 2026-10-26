@@ -7,7 +7,7 @@
   margin-bottom: 16px;
   flex-wrap: wrap;
   align-items: center;
-  padding: 14px;
+  padding: var(--pad-sm);
   background: var(--paper-warm);
   border-radius: var(--r-card);
 }
@@ -33,7 +33,7 @@
 .seating-pool {
   background: var(--paper-warm);
   border-radius: var(--r-card);
-  padding: 16px;
+  padding: var(--pad);
   max-height: 500px;
   overflow-y: auto;
 }
@@ -84,7 +84,7 @@
 .seating-board {
   background: var(--paper-warm);
   border-radius: var(--r-card);
-  padding: 24px;
+  padding: var(--pad);
   min-height: 500px;
 }
 
@@ -231,7 +231,7 @@
   margin-bottom: 20px;
   flex-wrap: wrap;
   align-items: center;
-  padding: 14px;
+  padding: var(--pad-sm);
   background: var(--paper-warm);
   border-radius: var(--r-card);
 }
@@ -275,7 +275,7 @@
 .group-card {
   background: var(--paper-warm);
   border-radius: var(--r-card);
-  padding: 16px;
+  padding: var(--pad);
   border-top: 4px solid var(--forest);
   box-shadow: var(--shadow-sm);
 }

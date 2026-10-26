@@ -4,7 +4,7 @@
 .shop-header-card {
   background: linear-gradient(135deg, var(--forest-deep) 0%, var(--forest) 100%);
   color: var(--paper);
-  padding: 24px;
+  padding: var(--pad);
   border-radius: var(--r-card);
   margin-bottom: 20px;
   display: flex;
@@ -108,7 +108,7 @@
   background: var(--paper-warm);
   border: 1.5px solid var(--paper-shadow);
   border-radius: var(--r-card);
-  padding: 20px 16px;
+  padding: var(--pad);
   text-align: center;
   transition: all 0.2s var(--ease-out);
   box-shadow: var(--shadow-sm);
@@ -217,7 +217,7 @@
   display: grid;
   grid-template-columns: 2fr 3fr 100px auto;
   gap: 10px;
-  padding: 14px;
+  padding: var(--pad-sm);
   background: var(--paper-warm);
   border-radius: var(--r-card);
   margin-bottom: 20px;
@@ -231,7 +231,7 @@
 .task-card {
   background: var(--paper-warm);
   border-radius: var(--r-card);
-  padding: 24px;
+  padding: var(--pad);
   margin-bottom: 14px;
   box-shadow: var(--shadow-sm);
   position: relative;
@@ -335,7 +335,7 @@
   background: var(--paper);
   border: 1px solid var(--paper-shadow);
   border-radius: var(--r-card);
-  padding: 16px;
+  padding: var(--pad);
   margin-bottom: 20px;
 }
 
@@ -360,7 +360,7 @@
   border: 1px solid var(--paper-shadow);
   border-left: 4px solid var(--gold);
   border-radius: var(--r-card);
-  padding: 14px;
+  padding: var(--pad-sm);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -581,7 +581,7 @@
   background: var(--paper);
   border: 1px solid var(--paper-shadow);
   border-radius: var(--r-card);
-  padding: 14px 16px;
+  padding: var(--pad-sm) var(--pad);
   margin-bottom: 10px;
 }
 

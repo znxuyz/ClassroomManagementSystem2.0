@@ -52,7 +52,7 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 12px 14px;
+  padding: var(--pad-sm);
   border: 1px solid var(--paper-shadow);
   border-radius: var(--r-card);
   background: var(--paper-warm);
@@ -125,7 +125,7 @@
 /* 「再進化一次會變成什麼」 */
 .skill-next {
   margin-top: 14px;
-  padding: 12px 14px;
+  padding: var(--pad-sm);
   border: 1px dashed var(--paper-shadow);
   border-radius: var(--r-card);
   font-size: 13px;
