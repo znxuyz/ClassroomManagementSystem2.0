@@ -442,7 +442,7 @@
 
 .shop-tag.is-out {
   background: color-mix(in srgb, var(--sick) 16%, transparent);
-  color: var(--sick);
+  color: var(--sick-ink);
 }
 
 .shop-tag.is-off {
@@ -632,7 +632,7 @@
 
 .prize-status.paid      { background: rgba(217,119,66,0.18); color: var(--sunset); }
 .prize-status.delivered { background: rgba(74,124,98,0.18);  color: var(--forest); }
-.prize-status.rejected  { background: rgba(194,91,78,0.18);  color: var(--sick); }
+.prize-status.rejected  { background: rgba(194,91,78,0.18);  color: var(--sick-ink); }
 
 .prize-reason {
   display: block;

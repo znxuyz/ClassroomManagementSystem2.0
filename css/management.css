@@ -219,7 +219,7 @@
 
 .layout-chip-delete:hover {
   opacity: 1;
-  color: var(--sick);
+  color: var(--sick-ink);
 }
 
 /* ============================================

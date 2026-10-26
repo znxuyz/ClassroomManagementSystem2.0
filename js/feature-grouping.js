@@ -121,7 +121,7 @@ function renderGroups(groups) {
       <div class="group-card">
         <div class="group-card-title">
           <span>第 ${i + 1} 組</span>
-          <span style="font-size: 12px; color: var(--gold);">${totalPoints} 分</span>
+          <span style="font-size: 12px; color: var(--gold-ink);">${totalPoints} 分</span>
         </div>
         <div class="group-card-meta">${members.length} 位成員</div>
         <div class="group-members">
@@ -171,7 +171,7 @@ function renderManualGrouping() {
         ondragleave="onManualGroupDragLeave(event)">
         <div class="group-card-title">
           <span>第 ${i + 1} 組</span>
-          <span style="font-size: 12px; color: var(--gold);">${totalPoints} 分</span>
+          <span style="font-size: 12px; color: var(--gold-ink);">${totalPoints} 分</span>
         </div>
         <div class="group-card-meta">${members.length} 位 · 可拖曳新增/移除</div>
         <div class="group-members">
@@ -189,7 +189,7 @@ function renderManualGrouping() {
                   ${escapeHtml(m.name)}
                 </div>
                 <button onclick="removeFromManualGroup('${m.id}', ${i})" 
-                  style="background:none;border:none;color:var(--sick);cursor:pointer;font-size:14px;padding:2px 6px;" title="移出此組">✕</button>
+                  style="background:none;border:none;color:var(--sick-ink);cursor:pointer;font-size:14px;padding:2px 6px;" title="移出此組">✕</button>
               </div>
             `;
           }).join('')}

@@ -42,7 +42,7 @@
 }
 
 .summary-present { color: var(--healthy); }
-.summary-absent { color: var(--sick); }
+.summary-absent { color: var(--sick-ink); }
 .summary-late { color: var(--mild); }
 
 .attendance-grid {
@@ -182,7 +182,7 @@
 
 .timer-label {
   font-size: 14px;
-  color: var(--moss);
+  color: var(--on-dark-muted);
   letter-spacing: 0.3em;
   margin-bottom: 30px;
   text-transform: uppercase;
@@ -388,7 +388,7 @@
 
 .picker-label {
   font-size: 14px;
-  color: var(--moss);
+  color: var(--on-dark-muted);
   letter-spacing: 0.3em;
   margin-bottom: 30px;
   text-transform: uppercase;

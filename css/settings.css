@@ -178,7 +178,7 @@
 }
 
 .usage-tag.is-warn   { background: rgba(217, 164, 65, 0.18); color: var(--mild); }
-.usage-tag.is-urgent { background: rgba(194, 91, 78, 0.18); color: var(--sick); }
+.usage-tag.is-urgent { background: rgba(194, 91, 78, 0.18); color: var(--sick-ink); }
 
 .usage-parts {
   margin-top: 12px;

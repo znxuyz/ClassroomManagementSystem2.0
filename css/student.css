@@ -453,7 +453,7 @@
 }
 
 .qmark.ok   { background: rgba(74, 124, 98, 0.18);  color: var(--forest); }
-.qmark.no   { background: rgba(194, 91, 78, 0.16);  color: var(--sick); }
+.qmark.no   { background: rgba(194, 91, 78, 0.16);  color: var(--sick-ink); }
 .qmark.skip { background: var(--paper-shadow);      color: var(--ink-muted); }
 
 /* ---------- 作答 ---------- */
@@ -562,7 +562,7 @@
 }
 
 .student-history-points.pos { color: var(--forest-light); }
-.student-history-points.neg { color: var(--sick); }
+.student-history-points.neg { color: var(--sick-ink); }
 
 /* 部分功能讀不到時的提示。不擋畫面,但要讓學生知道該找老師 */
 .student-degraded {
@@ -655,7 +655,7 @@
 }
 
 .is-ok  .war-result-title { color: var(--healthy); }
-.is-no  .war-result-title { color: var(--sick); }
+.is-no  .war-result-title { color: var(--sick-ink); }
 .is-err .war-result-title { color: var(--mild); }
 
 .war-result-msg {

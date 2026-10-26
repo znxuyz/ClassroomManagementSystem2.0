@@ -84,9 +84,10 @@
   gap: 8px;
 }
 
+/* 白字的小徽章要用深一階的底 —— 原色當底時對比只有 3.47 */
 .contact-auto-block .auto-tag {
   font-size: 11px;
-  background: var(--moss);
+  background: var(--moss-deep);
   color: var(--paper);
   padding: 2px 6px;
   border-radius: 3px;
@@ -250,9 +251,9 @@
   background: var(--paper);
 }
 
-.hw-stat-pill.green { background: var(--healthy); color: var(--paper); }
-.hw-stat-pill.yellow { background: var(--mild); color: var(--paper); }
-.hw-stat-pill.red { background: var(--sick); color: var(--paper); }
+.hw-stat-pill.green { background: var(--healthy-deep); color: var(--paper); }
+.hw-stat-pill.yellow { background: var(--mild-deep); color: var(--paper); }
+.hw-stat-pill.red { background: var(--sick-deep); color: var(--paper); }
 
 .hw-submissions {
   margin-top: 14px;

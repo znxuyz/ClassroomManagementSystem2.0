@@ -110,7 +110,7 @@
 
 /* 扣分項用紅色,正負一眼分得開 */
 .help-rule.is-minus { border-color: rgba(194, 91, 78, 0.35); }
-.help-rule.is-minus b { color: var(--sick); }
+.help-rule.is-minus b { color: var(--sick-ink); }
 
 /* 經驗來源:一列一種,標題固定寬度,四種並排看得出是「就這四種」 */
 .help-ways {

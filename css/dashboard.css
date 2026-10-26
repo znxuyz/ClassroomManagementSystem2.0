@@ -376,7 +376,7 @@
 }
 
 .rule-card.negative .rule-card-points {
-  color: var(--sick);
+  color: var(--sick-ink);
 }
 
 .custom-points-row {
@@ -643,7 +643,7 @@
    格子窄了之後寫不下四個字,改成一顆小標籤。 */
 .student-nopet {
   color: #fff;
-  background: var(--sunset);
+  background: var(--sunset-deep);
   font-weight: 700;
   font-size: 10px;
   padding: 1px 5px;

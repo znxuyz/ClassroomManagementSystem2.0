@@ -278,6 +278,26 @@ const GROUP_COLORS = [
   '#8a5a72', '#d97742', '#6b7f4a', '#7a6aa8'
 ];
 
+/* 同一組顏色的「文字版」。
+
+   上面那組是挑來當**地圖填色**的 —— 彼此要分得開、在深色海面上要亮。
+   但同樣的顏色拿來當淺色卡片上的**文字**就太淡了:量過之後
+   金色 2.09、橘色 2.78、藍色 3.25,全都低於 4.5(分組頁的組別分數、
+   班級任務的百分比都中招)。
+
+   所以另外給一組:**色相與飽和度完全不動,只把亮度壓到剛好達標**,
+   所以看起來還是「那一組的顏色」,只是讀得到。
+   填色用 GROUP_COLORS,文字用這一組。 */
+const GROUP_COLORS_INK = [
+  '#b74c3f', '#47775e', '#49728b', '#856a29',
+  '#8a5972', '#ae5322', '#617343', '#7463a4'
+];
+
+/* 第 i 組的文字顏色 */
+function groupInk(i) {
+  return GROUP_COLORS_INK[i % GROUP_COLORS_INK.length];
+}
+
 const DIFFICULTY = {
   easy:   { label: '簡單', points: 1, color: '#7d9b8a' },
   medium: { label: '普通', points: 2, color: '#c8a44d' },

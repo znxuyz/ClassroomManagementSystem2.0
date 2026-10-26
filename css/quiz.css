@@ -287,7 +287,7 @@
 
 .quiz-live-count.is-error {
   background: rgba(194, 91, 78, 0.14);
-  color: var(--sick);
+  color: var(--sick-ink);
 }
 
 .quiz-live-board {

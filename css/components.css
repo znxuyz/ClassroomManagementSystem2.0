@@ -30,13 +30,18 @@
   box-shadow: var(--shadow-md);
 }
 
+/* 橘底白字只有 2.94 對比,而這顆按鈕全站用了十幾次
+   (為出席者加分、產生分組、開始新的一局、標記達成…)。
+   把橘色壓深會失去強調感,所以改成**深色文字**(4.72)——
+   橘色看起來還是那個橘色。極光主題的金色按鈕同理。 */
 .btn-accent {
   background: var(--sunset);
-  color: var(--paper);
+  color: var(--ink);
 }
 
 .btn-accent:hover {
   background: var(--plum);
+  color: var(--paper);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
@@ -289,16 +294,61 @@ textarea.custom-points-input {
 /* ============================================
    空白狀態 / 工具列
 ============================================ */
+/* ============================================
+   空狀態
+   ────────────────────────────────────────────
+   專案裡本來有 7 種寫法(.empty-state / .student-empty / .backup-empty /
+   .live-empty / .quiz-results-empty / .skill-empty / .student-pet-empty),
+   內距從 10px 到 60px、圖示 48px、有的有虛線框有的沒有。
+
+   兩件事:
+   · 字級與顏色統一,所有空狀態看起來是同一種「這裡還沒有東西」
+   · 48px 的圖示與 60px 的內距縮小 —— 那是「沒有東西」佔掉最多版面,
+     剛開學每一頁都空的時候特別明顯
+
+   空狀態最重要的其實不是好看,是**告訴使用者下一步該做什麼**。
+   .empty-state-action 就是放那句話的地方(獎品管理本來就有
+   「用上方表單新增,或載入範例獎品」,其他頁照這個樣子補)。
+============================================ */
 .empty-state {
   text-align: center;
-  padding: 60px 20px;
+  padding: var(--pad-lg) var(--pad);
   color: var(--ink-muted);
+  font-size: 13px;
+  line-height: 1.7;
 }
 
 .empty-state-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-  opacity: 0.5;
+  font-size: 30px;
+  margin-bottom: 8px;
+  opacity: 0.45;
+  line-height: 1;
+}
+
+.empty-state-action {
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+.empty-state-action a,
+.empty-state a {
+  color: var(--forest);
+  font-weight: 600;
+}
+
+/* 卡片裡的小空狀態(交卷名單、備份清單、技能…)。
+   它們是「一張卡片裡面的一段」,不是整頁都空,所以內距要小一截,
+   但字級與顏色和上面同一套。 */
+.student-empty,
+.backup-empty,
+.live-empty,
+.quiz-results-empty,
+.skill-empty {
+  color: var(--ink-muted);
+  font-size: 13px;
+  line-height: 1.7;
+  text-align: center;
+  padding: var(--pad-sm) 0;
 }
 
 .toolbar {

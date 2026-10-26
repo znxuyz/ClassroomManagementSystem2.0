@@ -88,7 +88,7 @@ function renderTasksList() {
           </div>
           <div class="task-progress-text">
             <span><strong>${progress}</strong> / ${task.target} ${unit}</span>
-            <span style="color: ${isAchieved ? 'var(--gold)' : 'var(--ink-muted)'};">${pct.toFixed(0)}%</span>
+            <span style="color: ${isAchieved ? 'var(--gold-ink)' : 'var(--ink-muted)'};">${pct.toFixed(0)}%</span>
           </div>
         </div>
         
@@ -111,7 +111,7 @@ function renderTasksList() {
             `<button class="btn btn-accent btn-small" onclick="completeTask('${task.id}')">標記達成</button>` : ''}
           ${isCompleted ? 
             `<button class="btn btn-ghost btn-small" onclick="uncompleteTask('${task.id}')">取消達成</button>` : ''}
-          <button class="btn btn-ghost btn-small" onclick="deleteTask('${task.id}')" style="color: var(--sick);">刪除</button>
+          <button class="btn btn-ghost btn-small" onclick="deleteTask('${task.id}')" style="color: var(--sick-ink);">刪除</button>
         </div>
       </div>
     `;

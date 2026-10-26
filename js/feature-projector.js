@@ -40,7 +40,7 @@ function triggerProjectorFlash(studentId, points) {
   const float = document.createElement('div');
   float.className = 'float-points';
   float.textContent = (points > 0 ? '+' : '') + points;
-  float.style.color = points > 0 ? 'var(--gold)' : 'var(--sick)';
+  float.style.color = points > 0 ? 'var(--gold)' : 'var(--sick-ink)';
   float.style.left = (rect.left + rect.width / 2) + 'px';
   float.style.top = (rect.top + 20) + 'px';
   document.body.appendChild(float);

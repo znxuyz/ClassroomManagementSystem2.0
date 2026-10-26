@@ -101,7 +101,7 @@ function renderHomeworkCard(hw, isArchived) {
             `<button class="btn btn-ghost btn-small" onclick="toggleHomeworkArchive('${hw.id}')">取消封存</button>` :
             `<button class="btn btn-ghost btn-small" onclick="toggleHomeworkArchive('${hw.id}')">封存</button>`
           }
-          <button class="btn btn-ghost btn-small" onclick="deleteHomework('${hw.id}')" style="color: var(--sick);">刪除</button>
+          <button class="btn btn-ghost btn-small" onclick="deleteHomework('${hw.id}')" style="color: var(--sick-ink);">刪除</button>
         </div>
         
         <div class="hw-student-grid">

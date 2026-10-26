@@ -197,9 +197,18 @@ html.projector-full .projector-class-name { font-size: clamp(28px, 3.4vw, 54px);
 html.projector-full .projector-meta-large { font-size: clamp(18px, 1.8vw, 30px); }
 
 /* 離開鈕要留著,不然沒有滑鼠的情況下出不去 */
+/* ghost 按鈕的字色是給淺色底設計的,放在投影的深色底上只有 2.3 對比 */
 .projector-full-btn {
   margin-left: 16px;
   flex-shrink: 0;
+  color: var(--paper);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.projector-full-btn:hover {
+  color: var(--paper);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.55);
 }
 
 html.projector-full .projector-full-btn {

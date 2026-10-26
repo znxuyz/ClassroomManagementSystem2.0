@@ -27,21 +27,34 @@ html[data-theme="aurora"] {
   /* 文字 */
   --ink:       #0b1220;
   --ink-soft:  #47536b;
-  /* 4.59:1 —— 這是次要文字用了 68 次的顏色,再淡一階就不合格了 */
-  --ink-muted: #6b7688;
+  /* 次要文字。原本是 #6b7688,在白底上 4.59 剛好過 ——
+     但它實際上大量出現在 --paper-warm(#eef1f6)與頁面底上,
+     那裡只有 4.06 / 4.35,是不合格的。當初只量了白底。
+     #636d7b:白 5.24、暖灰 4.63、頁面底 4.97,三種底都過。 */
+  --ink-muted: #636d7b;
 
   /* 點綴 */
-  /* 金色當底色時用 --gold,當文字時用 --gold-ink(白底 4.9:1) */
+  /* 金色當底色時用 --gold,當文字時用 --gold-ink。
+     原本是 #8f6b1c(白底 4.9),但它也會出現在 --paper-warm 上,
+     那裡只有 4.33 —— 和 --ink-muted 同一個毛病:只量了白底。 */
   --gold:         #b78b2a;
-  --gold-ink:     #8f6b1c;
+  --gold-ink:     #7f5d1c;
   --sunset:       #e0552f;
   --sunset-light: #f2a58a;
   --plum:         #7b4ad1;
   --sky:          #1d84c9;
 
   --healthy: #14876b;
+  --healthy-deep: #0f7a60;   /* 白字徽章用 */
   --mild:    #c98a12;
+
+  /* 小徽章用的深色底(見 base.css 的說明) */
+  --moss-deep:   #5a6780;
+  --mild-deep:   #9a6809;
+  --sunset-deep: #c9471f;
   --sick:    #c4392e;   /* 白底 5.29、面板底 4.67,危險區的字才讀得清楚 */
+  --sick-ink:  #b1301f; /* 當文字用(白 6.34、暖灰 5.60) */
+  --sick-deep: #b1301f; /* 當底色配白字用 */
 
   /* 陰影收乾淨,層次靠細線不靠糊影 */
   --shadow-sm: 0 1px 2px rgba(11, 18, 32, 0.05);
@@ -135,9 +148,24 @@ html[data-theme="aurora"] .btn-primary:hover {
   transform: translateY(-1px);
 }
 
+/* accent 按鈕:金底白字只有 2.58~3.12 對比,而這顆按鈕全站用了十幾次
+   (為出席者加分、產生分組、開始新的一局、標記達成…)。
+   把金色壓深會失去「這是強調色」的感覺,所以改成**深色文字**——
+   對比直接變成 6.01~7.26,而且金色看起來還是那個金色。 */
 html[data-theme="aurora"] .btn-accent {
   background: linear-gradient(180deg, #c99a30 0%, #b78b2a 100%);
   border-color: transparent;
+  color: var(--ink);
+}
+
+html[data-theme="aurora"] .btn-accent:hover {
+  color: var(--ink);
+}
+
+/* 深色面板上的次要文字。
+   --moss 在紫色的抽籤機/AI 橫幅上只有 3.28 —— 它是為了淺色底挑的。 */
+html[data-theme="aurora"] {
+  --on-dark-muted: #a3aec4;
 }
 
 html[data-theme="aurora"] .btn:active { transform: translateY(0); }

@@ -39,7 +39,7 @@
 
 .ai-banner-subtitle {
   font-size: 13px;
-  color: var(--moss);
+  color: var(--on-dark-muted);
   letter-spacing: 0.05em;
 }
 
@@ -194,7 +194,7 @@
   border-left: 3px solid var(--sick);
   padding: var(--pad-sm) var(--pad);
   border-radius: var(--r-card);
-  color: var(--sick);
+  color: var(--sick-ink);
   font-size: 13px;
   line-height: 1.6;
 }
