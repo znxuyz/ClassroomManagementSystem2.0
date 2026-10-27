@@ -762,3 +762,40 @@ textarea.custom-points-input {
   color: var(--ink);
   line-height: 1.4;
 }
+
+/* ============================================
+   鍵盤焦點
+   ────────────────────────────────────────────
+   專案原本沒有任何 :focus-visible —— 用鍵盤 Tab 過去時,
+   完全看不出焦點停在哪一顆按鈕上。
+
+   用 :focus-visible 而不是 :focus:後者連「用滑鼠點」也會亮,
+   那會讓每一次點擊都留下一圈框,很吵。
+   :focus-visible 只在「瀏覽器判斷使用者正在用鍵盤」時才亮。
+
+   和輸入框的光圈做成同一個形狀(3px 的外圈),整套手感才一致。
+============================================ */
+.btn:focus-visible,
+.nav-tab:focus-visible,
+.nav-sub:focus-visible,
+.help-nav-btn:focus-visible,
+.student-item:focus-visible,
+.rule-card:focus-visible,
+.icon-btn:focus-visible,
+a:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--forest) 38%, transparent);
+  /* 深色面板上的按鈕用白圈才看得見 */
+  border-radius: var(--control-r);
+}
+
+.app-header .btn:focus-visible,
+.projector-view .btn:focus-visible,
+.timer-stage .btn:focus-visible,
+.picker-stage .btn:focus-visible,
+.nav-tab:focus-visible {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.65);
+}
+
+/* 可點的格子本來沒有 tabindex,焦點圈要貼著它的圓角 */
+.student-item:focus-visible { border-radius: var(--r-tile); }
