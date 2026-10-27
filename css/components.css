@@ -799,3 +799,30 @@ a:focus-visible {
 
 /* 可點的格子本來沒有 tabindex,焦點圈要貼著它的圓角 */
 .student-item:focus-visible { border-radius: var(--r-tile); }
+
+/* ============================================
+   「滑過去會有反應」的補完
+   ────────────────────────────────────────────
+   量過每一個可點的元素之後,有幾個滑鼠移上去完全沒變化。
+   可點卻沒反應,使用者會懷疑自己是不是按錯地方 ——
+   尤其是這幾個長得像文字、不像按鈕的切換。
+============================================ */
+.group-mode-btn:hover:not(.active),
+.rank-full-toggle:hover,
+.tg-live-check:hover,
+.tq-opt:hover {
+  background: var(--paper-warm);
+}
+
+.group-mode-btn,
+.rank-full-toggle,
+.tg-live-check,
+.tq-opt {
+  border-radius: var(--r-tile);
+  transition: background .15s var(--ease-out), color .15s var(--ease-out);
+}
+
+/* 文字連結本來完全沒有 hover。
+   加底線沒有用 —— 它們本來就有底線了,所以改成變色。 */
+a { transition: color .15s var(--ease-out); }
+a:hover { color: var(--forest-light); }

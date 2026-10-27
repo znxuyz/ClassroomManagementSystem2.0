@@ -48,10 +48,9 @@
   border: 1.5px solid transparent;
 }
 
-.student-item:hover {
-  background: var(--paper);
-  border-color: var(--paper-shadow);
-}
+/* (.student-item 的 hover 在檔案後面的「方格版面」那一段 ——
+   那裡的基底色就是 var(--paper) + var(--paper-shadow),
+   所以舊的 hover 設成同樣的值等於什麼都沒發生) */
 
 .student-item.selected {
   background: var(--paper);
@@ -604,6 +603,23 @@
   padding: 12px 8px 10px;
   border-color: var(--paper-shadow);
   background: var(--paper);
+}
+
+/* 滑過去要有反應。
+   改成方格之後,卡片的基底色剛好和原本的 hover 同值 ——
+   等於滑鼠移過去什麼都沒發生,而這是全系統按最多次的一頁。
+   靜態截圖看不出來,是量過每一個可點元素才發現的。 */
+.student-item:hover {
+  background: var(--paper-warm);
+  border-color: color-mix(in srgb, var(--forest) 40%, var(--paper-shadow));
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.student-item:active { transform: translateY(0); }
+
+.student-item:hover .student-avatar {
+  transform: scale(1.06);
 }
 
 .student-avatar {
