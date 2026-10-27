@@ -172,8 +172,11 @@ function buildStudentReport(s) {
       </div>
     </div>
     
-    <div style="margin-top: 16px; display: flex; gap: 10px; justify-content: center;">
+    <div class="report-actions">
       <button class="btn btn-primary" onclick="printStudentReport()">🖨 列印此報告</button>
+      <!-- 給家長的那一份:一個檔案,手機點開就看得到,不必登入也不必有網路 -->
+      <button class="btn btn-ghost" onclick="exportStudentReport('${s.id}')"
+              title="下載成一個檔案,可以用 LINE 或 email 傳給家長">⤓ 下載給家長</button>
       <button class="btn btn-ghost" onclick="document.getElementById('reportContainer').innerHTML=''; renderReportStudentList();">返回列表</button>
     </div>
   `;

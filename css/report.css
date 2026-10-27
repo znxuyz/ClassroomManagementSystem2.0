@@ -394,3 +394,15 @@
   .report-month-table th,
   .report-month-table td { padding: 6px; font-size: 12px; }
 }
+
+/* 報表底下那一排動作鈕。
+   手機上兩顆並排會超出 358px 的可用寬度,所以要准它換行。 */
+.report-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.report-actions .btn { flex-shrink: 0; }
