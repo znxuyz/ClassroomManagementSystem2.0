@@ -123,7 +123,8 @@ function buildStudentReport(s) {
           ${weeklyPoints.map(w => `
             <div class="report-bar" 
               style="height: ${Math.max(3, (Math.abs(w.points) / maxWeek * 100))}%; ${w.points < 0 ? 'background: linear-gradient(180deg, #B5563D, #8B3A4E);' : ''}"
-              data-value="${w.label}: ${w.points > 0 ? '+' : ''}${w.points} 分"></div>
+              data-value="${w.label}: ${w.points > 0 ? '+' : ''}${w.points} 分"><span
+              class="report-bar-num">${w.points > 0 ? '+' : ''}${w.points}</span></div>
           `).join('')}
         </div>
         <div class="report-chart-labels">

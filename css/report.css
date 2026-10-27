@@ -406,3 +406,23 @@
 }
 
 .report-actions .btn { flex-shrink: 0; }
+
+/* 長條上的數字。
+   原本每一根的數值只在滑鼠移上去才看得到(data-value)——
+   而這份報告最常見的用途是**印出來給家長看**,
+   紙上沒有滑鼠,於是那張圖變成一排沒有刻度的柱子。 */
+.report-bar-num {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%);
+  margin-bottom: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* 長條本身很矮的時候,數字壓在格線上會看不清楚 */
+.report-bar-chart { padding-top: 22px; }

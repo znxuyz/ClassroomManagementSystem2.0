@@ -52,6 +52,14 @@ const lines = await page.evaluate(() => {
   toggleHistoryDetail();
   t.ok('再按一下收起', detail.hasAttribute('hidden'));
 
+  /* 這份報告最常見的用途是印出來給家長看,而紙上沒有滑鼠 ——
+     長條的數值如果只放在 data-value(靠 hover 顯示),
+     印出來就是一排沒有刻度的柱子。 */
+  const nums = [...document.querySelectorAll('.report-bar-num')];
+  t.ok('長條圖的數字印得出來(不是只有滑鼠移上去才看得到)',
+    nums.length === 8 && nums.every(e => /^[+-]?\d+$/.test(e.textContent.trim())),
+    nums.length + ' 根');
+
   t.ok('原因欄有 HTML 轉義',
     !buildHistoryDetail({ history: [{ time: Date.now(), points: 1,
       reason: '<img src=x onerror=alert(1)>' }] }).includes('<img src=x'));

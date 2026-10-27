@@ -553,6 +553,22 @@
 
 .student-history-row:last-child { border-bottom: none; }
 
+/* 日期。原本這一列只有「上課發言 +1」—— 學生看到一排一樣的字,
+   卻不知道哪一筆是哪一天的,「我什麼時候被扣分?」完全答不出來。
+   原因那一欄要能縮(flex 子項預設不准縮到比內容小)。 */
+.student-history-when {
+  flex: 0 0 auto;
+  min-width: 42px;
+  font-size: 12px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.student-history-reason {
+  flex: 1;
+  min-width: 0;
+}
+
 .student-history-reason { color: var(--ink-soft); }
 
 .student-history-points {

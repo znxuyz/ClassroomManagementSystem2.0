@@ -448,6 +448,10 @@ Object.assign(StudentApp, {
     return `<div class="student-history">` +
       h.slice(-10).reverse().map(r => `
         <div class="student-history-row">
+          <span class="student-history-when">${r.time
+            ? new Date(r.time).toLocaleDateString('zh-TW',
+                { month: 'numeric', day: 'numeric' })
+            : ''}</span>
           <span class="student-history-reason">${escapeHtml(r.reason)}</span>
           <span class="student-history-points ${r.points >= 0 ? 'pos' : 'neg'}">
             ${r.points >= 0 ? '+' : ''}${r.points}
