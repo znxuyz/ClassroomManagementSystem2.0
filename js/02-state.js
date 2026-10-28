@@ -55,5 +55,7 @@ let state = {
   // 已經在結算時吃掉的技能使用 { useId: 時間 },避免同一筆被套用兩次
   skillConsumed: {},
   // 蜂巢戰紀每週結算 { enabled, prizes, lastWeek, log }
-  territoryWeekly: { ...TERRITORY_WEEKLY_DEFAULTS }
+  territoryWeekly: { ...TERRITORY_WEEKLY_DEFAULTS },
+  // 出席分 { present, late } —— 老師自己設,0 = 不發
+  attendanceAward: { ...ATTENDANCE_AWARD_DEFAULTS }
 };

@@ -53,6 +53,42 @@ const r = await page.evaluate(() => {
   out.attTopUp = [snap(), late.history.length];
   state.currentAttendanceDate = today;
 
+  // ── 出席分可以自己設 ──
+  const day2 = '2026-01-06';
+  state.currentAttendanceDate = day2;
+  state.attendanceAward = { present: 3, late: 1 };
+  state.attendance[day2] = { [s.id]: 'present', [late.id]: 'late' };
+  reset(); late.totalPoints = 100; late.currentPoints = 100; late.history = [];
+  awardAttendancePoints();
+  out.attCustom = [snap(), late.totalPoints, late.history.length];
+
+  // 遲到設成 0 就只發出席的
+  const day3 = '2026-01-07';
+  state.currentAttendanceDate = day3;
+  state.attendanceAward = { present: 2, late: 0 };
+  state.attendance[day3] = { [s.id]: 'present', [late.id]: 'late' };
+  reset(); late.totalPoints = 100; late.history = [];
+  awardAttendancePoints();
+  out.attLateZero = [snap(), late.totalPoints];
+
+  // 出席改成遲到之後再按一次,不會再領一次
+  state.attendance[day3][s.id] = 'late';
+  state.attendanceAward = { present: 2, late: 2 };
+  awardAttendancePoints();
+  out.attStatusFlip = snap();
+
+  // 兩個都設 0 就什麼都不發
+  const day4 = '2026-01-08';
+  state.currentAttendanceDate = day4;
+  state.attendanceAward = { present: 0, late: 0 };
+  state.attendance[day4] = { [s.id]: 'present' };
+  reset();
+  awardAttendancePoints();
+  out.attZero = snap();
+
+  state.attendanceAward = { present: 1, late: 0 };
+  state.currentAttendanceDate = today;
+
   // ── 作業 ──
   state.homework = [{ id: 'h1', name: '數學習作', submissionPoints: 4, submissions: {} }];
   const hw = state.homework[0];
@@ -109,6 +145,14 @@ ok('同一天再按兩次不會重複加', eq(r.att3, [101, 101, 1]), JSON.strin
 ok('換一天照樣發得出去', eq(r.attOtherDay, [102, 102, 2]), JSON.stringify(r.attOtherDay));
 ok('晚到的學生再按一次會補發,已發過的不會再加',
    eq(r.attTopUp, [[102, 102, 2], 1]), JSON.stringify(r.attTopUp));
+
+ok('出席分改成 3 分、遲到 1 分,就照這個發',
+   eq(r.attCustom, [[103, 103, 1], 101, 1]), JSON.stringify(r.attCustom));
+ok('遲到設成 0 分就只發出席的',
+   eq(r.attLateZero, [[102, 102, 1], 100]), JSON.stringify(r.attLateZero));
+ok('出席改標遲到之後再按一次,不會再領一次',
+   eq(r.attStatusFlip, [102, 102, 1]), JSON.stringify(r.attStatusFlip));
+ok('兩個都設 0 分就什麼都不發', eq(r.attZero, [100, 100, 0]), JSON.stringify(r.attZero));
 
 ok('標記繳交會加分', eq(r.hw1, [104, 104, 1]), JSON.stringify(r.hw1));
 ok('再點一次取消,分數與歷程都乾淨退回', eq(r.hwCancel, [100, 100, 0]), JSON.stringify(r.hwCancel));

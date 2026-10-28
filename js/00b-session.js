@@ -336,6 +336,7 @@ function applyBlobToState(blob) {
   state.skills        = SkillEngine.cfg(blob.skills);
   state.skillConsumed = blob.skillConsumed || {};
   state.territoryWeekly = blob.territoryWeekly || { ...TERRITORY_WEEKLY_DEFAULTS };
+  state.attendanceAward = { ...ATTENDANCE_AWARD_DEFAULTS, ...(blob.attendanceAward || {}) };
   state.selectedStudentId = null;
   state.students.forEach(migrateStudent);
 

@@ -22,6 +22,7 @@ function switchView(name) {
   if (name === 'territory') renderTerritoryView();
   if (name === 'help') renderHelpView();
   if (name === 'settings') renderSettings();
+  if (name === 'rules') { renderRulesEditor(); renderAttendanceAward(); }
 }
 
 /* 重畫目前停留的那一頁。

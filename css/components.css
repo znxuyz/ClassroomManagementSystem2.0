@@ -826,3 +826,13 @@ a:focus-visible {
    加底線沒有用 —— 它們本來就有底線了,所以改成變色。 */
 a { transition: color .15s var(--ease-out); }
 a:hover { color: var(--forest-light); }
+
+/* 「自動發分」那兩列的項目名稱 —— 它和規則列同一個格線,
+   但左邊是固定的文字而不是輸入框,所以要自己對齊高度。 */
+.auto-award-name {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  color: var(--ink);
+  min-width: 0;
+}

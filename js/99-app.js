@@ -23,6 +23,7 @@ function renderAll() {
   renderRuleGrid();
   renderProjector();
   renderRulesEditor();
+  renderAttendanceAward();
   renderDataUsage();
   renderSkillBoard();
   renderWeeklyPanel();
