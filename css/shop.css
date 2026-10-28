@@ -672,3 +672,12 @@
   width: auto;
   height: auto;
 }
+
+.shop-quick-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.shop-quick-row:empty { display: none; }

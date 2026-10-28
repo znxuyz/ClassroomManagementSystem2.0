@@ -143,6 +143,40 @@ const StudentApp = {
     this.student = { ...(this.myPrivate || {}), ...this.rosterEntry };
   },
 
+  /* ============================================
+     幫守護獸改名
+     ────────────────────────────────────────────
+     次數是兌換改名卡來的,而且**真正扣次數的是老師那一端** ——
+     學生寫不了班級資料,所以這裡只是送出請求。
+     老師開著系統的話幾秒內就會套用(他那邊有監聽)。
+  ============================================ */
+  async renamePet() {
+    const s = this.student;
+    if (!s || (s.renameLeft || 0) <= 0) return;
+
+    const now = s.petName || '';
+    const want = (prompt(
+      `幫你的守護獸取一個新名字(最多 ${PET_NAME_MAX} 個字):\n\n`
+      + `這會用掉一張改名卡,你還有 ${s.renameLeft} 張。`, now) || '').trim();
+    if (!want || want === now) return;
+
+    if (want.length > PET_NAME_MAX) {
+      toast(`名字最多 ${PET_NAME_MAX} 個字`);
+      return;
+    }
+
+    try {
+      await Cloud.requestPetRename(
+        this.classInfo.classId, Cloud.uid, this.classInfo.studentId, want);
+      /* 名字由老師那一端套用,所以這裡不能直接改 —— 直接改的話畫面上
+         變了、雲端沒變,下一次重新整理又會變回去,那比不會改更糟。 */
+      toast(`已送出:要改成「${want}」。老師那邊一開著就會生效。`, 6000);
+    } catch (e) {
+      console.error(e);
+      toast('送出失敗:' + e.message);
+    }
+  },
+
   /* 自己那份私有資料(加分明細、可用積分、測驗成績、背包)。 */
   async refreshMine() {
     if (!this.useRoster || !this.classInfo.studentId) return;

@@ -165,6 +165,7 @@ const Session = {
     TerritoryGame.start();
     SkillAdmin.start();
     TerritoryWeekly.start();
+    watchPetChoices();
     // 到了統一結算時間的測驗,老師一開系統就算完,不必先切到測驗分頁
     QuizWatch.startDueTimer();
 
@@ -260,6 +261,10 @@ function stopWatchingClass() {
     _classUnsub();
     _classUnsub = null;
   }
+  if (_petChoiceUnsub) {
+    _petChoiceUnsub();
+    _petChoiceUnsub = null;
+  }
 }
 
 /* ============================================
@@ -354,22 +359,75 @@ async function applyPendingPetChoices() {
   }
   if (choices.length === 0) return;
 
-  let applied = 0;
-  choices.forEach(c => {
-    const student = state.students.find(s => s.id === c.studentId);
-    if (!student || student.pet) return;      // 已有守護獸就不動
-    if (!PET_SPECIES.some(p => p.id === c.pet)) return;   // 防止偽造的物種 id
-
-    student.pet = c.pet;
-    if (c.petName) student.petName = c.petName;
-    applied++;
-  });
-
-  if (applied > 0) {
+  const n = applyChoiceList(choices);
+  if (n.picked > 0 || n.renamed > 0) {
     save();
     renderAll();
-    toast(`✦ ${applied} 位學生已選好守護獸`);
+    const parts = [];
+    if (n.picked > 0) parts.push(`${n.picked} 位選好守護獸`);
+    if (n.renamed > 0) parts.push(`${n.renamed} 位改了名字`);
+    toast('✦ ' + parts.join('、'));
   }
+}
+
+/* ============================================
+   套用學生送過來的「選守護獸」與「改名」
+   ────────────────────────────────────────────
+   學生寫不了班級資料(那一份只有導師碰得到),所以他們是把請求寫到
+   petChoices 子集合,由老師這一端套用。
+
+   改名的次數記在老師這邊 —— 學生那邊看得到還剩幾次,但真正扣的是
+   這裡。所以買一張改名卡就只能改一次,改前端也沒有用。
+============================================ */
+function applyChoiceList(choices) {
+  let picked = 0, renamed = 0;
+
+  (choices || []).forEach(c => {
+    const student = state.students.find(s => s.id === c.studentId);
+    if (!student) return;
+
+    // 選守護獸:只填補「還沒有」的,老師指定過的不會被蓋掉
+    if (!student.pet && PET_SPECIES.some(p => p.id === c.pet)) {
+      student.pet = c.pet;
+      if (c.petName) student.petName = c.petName;
+      picked++;
+    }
+
+    /* 改名。三個條件缺一不可:
+       · 真的還有次數(買一張卡只能改一次)
+       · 這一筆請求還沒套用過(比對時間戳,不然每次重畫都會再扣一次)
+       · 名字合法 */
+    const want = (c.rename || '').trim();
+    if (want
+        && (student.renameLeft || 0) > 0
+        && c.renameAt
+        && c.renameAt !== student.renameAppliedAt
+        && want.length <= PET_NAME_MAX
+        && want !== student.petName) {
+      student.petName = want;
+      student.renameLeft = Math.max(0, (student.renameLeft || 0) - 1);
+      student.renameAppliedAt = c.renameAt;
+      renamed++;
+    }
+  });
+
+  return { picked, renamed };
+}
+
+/* 老師開著的時候即時套用 —— 學生改完名字不必等到下次開班。 */
+let _petChoiceUnsub = null;
+
+function watchPetChoices() {
+  if (_petChoiceUnsub) { _petChoiceUnsub(); _petChoiceUnsub = null; }
+  if (!isCloudMode()) return;
+  _petChoiceUnsub = Cloud.watchPetChoices(state.classId, list => {
+    const n = applyChoiceList(list);
+    if (n.picked === 0 && n.renamed === 0) return;
+    save();
+    renderAll();
+    if (n.renamed > 0) toast(`✦ ${n.renamed} 位學生幫守護獸改了名字`);
+    else toast(`✦ ${n.picked} 位學生選好守護獸`);
+  });
 }
 
 /* ============================================

@@ -344,7 +344,13 @@ Object.assign(StudentApp, {
     return `
       <div class="student-pet-card stage-${stage}">
         <div class="student-pet-icon">${PetEngine.getIcon(s)}</div>
-        <div class="student-pet-name">${escapeHtml(s.petName || (species ? species.name : '守護獸'))}</div>
+        <div class="student-pet-name">
+          ${escapeHtml(s.petName || (species ? species.name : '守護獸'))}
+          ${(s.renameLeft || 0) > 0 ? `
+            <button class="btn btn-ghost btn-small student-rename-btn"
+                    onclick="StudentApp.renamePet()"
+                    title="用掉一張改名卡">✎ 改名(剩 ${s.renameLeft})</button>` : ''}
+        </div>
         <div class="student-pet-stage">${STAGE_NAMES[stage]}</div>
         <div class="student-points">
           <div><span class="student-points-num">${s.totalPoints}</span><span>累積經驗</span></div>

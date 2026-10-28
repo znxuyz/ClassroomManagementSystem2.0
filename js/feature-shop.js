@@ -39,8 +39,27 @@ const STARTER_SHOP_ITEMS = [
   { name: '當一日小老師', icon: '🎓', price: 40, description: '協助老師帶領一節課的活動' },
   { name: '選座位優先權', icon: '💺', price: 60, description: '下次換座位時優先選擇' },
   { name: '小點心一份',   icon: '🍪', price: 20, description: '老師準備的小點心' },
-  { name: '播放一首歌',   icon: '🎵', price: 25, description: '下課時間播放你點的歌' }
+  { name: '播放一首歌',   icon: '🎵', price: 25, description: '下課時間播放你點的歌' },
+  /* 改名卡的 id 必須固定(見 js/01-constants.js)——
+     結算時要認得出它才能發放改名次數。 */
+  { id: RENAME_CARD_ID, name: RENAME_CARD.name, icon: RENAME_CARD.icon,
+    price: RENAME_CARD.price, description: RENAME_CARD.description }
 ];
+
+/* 單獨上架改名卡。
+   給「已經載過範例獎品」的班級用 —— 他們不會想為了一張卡再載一次六項。 */
+function addRenameCard() {
+  if (state.shopItems.some(i => i.id === RENAME_CARD_ID)) {
+    toast('改名卡已經在架上了');
+    return;
+  }
+  state.shopItems.push({
+    ...RENAME_CARD, stock: null, active: true, createdAt: Date.now()
+  });
+  save();
+  renderShopItems();
+  toast('✦ 已上架守護獸改名卡');
+}
 
 function findShopItem(itemId) {
   return (state.shopItems || []).find(i => i.id === itemId)
@@ -87,8 +106,10 @@ function loadStarterShopItems() {
       !confirm('這會在現有獎品之後加入 6 項範例,確定嗎?')) return;
 
   STARTER_SHOP_ITEMS.forEach((item, i) => {
+    // 已經有的不要重複上架(改名卡可能是單獨加過的)
+    if (item.id && state.shopItems.some(x => x.id === item.id)) return;
     state.shopItems.push({
-      id: 'item_' + Date.now() + '_' + i,
+      id: item.id || ('item_' + Date.now() + '_' + i),
       ...item,
       stock: null,
       active: true,
@@ -143,7 +164,19 @@ function editShopItem(id) {
   renderShopItems();
 }
 
+/* 快捷列。目前只有「上架改名卡」—— 它是固定 id 的特殊商品,
+   沒辦法像一般獎品那樣用上面的表單新增。 */
+function renderShopQuickRow() {
+  const el = document.getElementById('shopQuickRow');
+  if (!el) return;
+  const has = state.shopItems.some(i => i.id === RENAME_CARD_ID);
+  el.innerHTML = has ? '' : `
+    <button class="btn btn-ghost btn-small" onclick="addRenameCard()">
+      ✎ 上架守護獸改名卡(${RENAME_CARD.price} 點)</button>`;
+}
+
 function renderShopItems() {
+  renderShopQuickRow();
   const el = document.getElementById('shopItemList');
   if (!el) return;
 
@@ -354,6 +387,12 @@ const PurchaseWatch = {
     if (!student.inventory) student.inventory = [];
     student.inventory.push(item.id);
 
+    /* 改名卡:兌換成功就多一次改名機會。
+       次數記在老師這邊(學生寫不了班級資料),學生改名時送請求過來,
+       由這一端核對次數再套用 —— 所以買一張就只能改一次。 */
+    const isRename = item.id === RENAME_CARD_ID;
+    if (isRename) student.renameLeft = (student.renameLeft || 0) + 1;
+
     const record = {
       studentId: student.id,
       itemId: item.id,
@@ -368,6 +407,7 @@ const PurchaseWatch = {
       result: { status: 'paid', settledPrice: price, settledAt: Date.now() },
       revert: () => {
         student.currentPoints += price;
+        if (isRename) student.renameLeft = Math.max(0, (student.renameLeft || 0) - 1);
         if (item.stock !== null) item.stock += 1;
         const i = student.inventory.lastIndexOf(item.id);
         if (i >= 0) student.inventory.splice(i, 1);

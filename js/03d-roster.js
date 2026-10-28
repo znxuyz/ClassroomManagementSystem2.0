@@ -56,6 +56,7 @@ const Roster = {
       history: s.history || [],
       quizResults: s.quizResults || {},
       inventory: s.inventory || [],
+      renameLeft: s.renameLeft || 0,   // 還剩幾次改名(改名卡兌換來的)
       at: Date.now()
     };
   },

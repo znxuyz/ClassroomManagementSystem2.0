@@ -680,3 +680,18 @@
   line-height: 1.7;
   margin-bottom: 18px;
 }
+
+/* 改名鈕。放在名字旁邊,只有真的有改名卡時才出現。 */
+.student-pet-name {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.student-rename-btn {
+  font-size: 11px;
+  padding: 2px 10px;
+  height: auto;
+}

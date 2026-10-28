@@ -9,28 +9,28 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700;900&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 
 <!-- 樣式表 -->
-<link rel="stylesheet" href="css/base.css?v=20261028a">
-<link rel="stylesheet" href="css/components.css?v=20261028a">
-<link rel="stylesheet" href="css/dashboard.css?v=20261028a">
-<link rel="stylesheet" href="css/tools.css?v=20261028a">
-<link rel="stylesheet" href="css/management.css?v=20261028a">
-<link rel="stylesheet" href="css/contact.css?v=20261028a">
-<link rel="stylesheet" href="css/shop.css?v=20261028a">
-<link rel="stylesheet" href="css/ai.css?v=20261028a">
-<link rel="stylesheet" href="css/report.css?v=20261028a">
-<link rel="stylesheet" href="css/projector.css?v=20261028a">
-<link rel="stylesheet" href="css/settings.css?v=20261028a">
-<link rel="stylesheet" href="css/auth.css?v=20261028a">
-<link rel="stylesheet" href="css/quiz.css?v=20261028a">
-<link rel="stylesheet" href="css/student.css?v=20261028a">
-<link rel="stylesheet" href="css/pet-picker.css?v=20261028a">
-<link rel="stylesheet" href="css/leaderboard.css?v=20261028a">
-<link rel="stylesheet" href="css/territory.css?v=20261028a">
-<link rel="stylesheet" href="css/help.css?v=20261028a">
-<link rel="stylesheet" href="css/skills.css?v=20261028a">
-<link rel="stylesheet" href="css/hud.css?v=20261028a">
+<link rel="stylesheet" href="css/base.css?v=20261028b">
+<link rel="stylesheet" href="css/components.css?v=20261028b">
+<link rel="stylesheet" href="css/dashboard.css?v=20261028b">
+<link rel="stylesheet" href="css/tools.css?v=20261028b">
+<link rel="stylesheet" href="css/management.css?v=20261028b">
+<link rel="stylesheet" href="css/contact.css?v=20261028b">
+<link rel="stylesheet" href="css/shop.css?v=20261028b">
+<link rel="stylesheet" href="css/ai.css?v=20261028b">
+<link rel="stylesheet" href="css/report.css?v=20261028b">
+<link rel="stylesheet" href="css/projector.css?v=20261028b">
+<link rel="stylesheet" href="css/settings.css?v=20261028b">
+<link rel="stylesheet" href="css/auth.css?v=20261028b">
+<link rel="stylesheet" href="css/quiz.css?v=20261028b">
+<link rel="stylesheet" href="css/student.css?v=20261028b">
+<link rel="stylesheet" href="css/pet-picker.css?v=20261028b">
+<link rel="stylesheet" href="css/leaderboard.css?v=20261028b">
+<link rel="stylesheet" href="css/territory.css?v=20261028b">
+<link rel="stylesheet" href="css/help.css?v=20261028b">
+<link rel="stylesheet" href="css/skills.css?v=20261028b">
+<link rel="stylesheet" href="css/hud.css?v=20261028b">
 <!-- 主題:掛在 <html data-theme> 上,一定要放最後才蓋得過前面的規則 -->
-<link rel="stylesheet" href="css/theme-aurora.css?v=20261028a">
+<link rel="stylesheet" href="css/theme-aurora.css?v=20261028b">
 <script>
   // 在 CSS 之後、畫面之前就決定主題,避免載入瞬間閃一下舊配色
   document.documentElement.dataset.theme =
@@ -833,8 +833,13 @@
           ✦ 學生用<strong>可用積分</strong>兌換。學生每得一分,累積經驗與可用積分會同時增加,
           所以兌換獎品<strong>不會讓守護獸退化</strong>。<br>
           ✦ 扣點在老師端執行,學生只能送出申請,無法自行更改點數。<br>
-          ✦ 庫存留空代表數量不限,適合「免寫作業」這類不會用完的獎勵。
+          ✦ 庫存留空代表數量不限,適合「免寫作業」這類不會用完的獎勵。<br>
+          ✦ <strong>守護獸改名卡</strong>:學生兌換後,守護獸頁面會出現「✎ 改名」,
+            可以改一次名字(每張卡一次)。
         </div>
+
+        <!-- 給已經載過範例獎品的班級:不必為了一張卡再載一次六項 -->
+        <div class="shop-quick-row" id="shopQuickRow"></div>
 
         <div id="shopItemList"></div>
       </div>
@@ -1270,64 +1275,64 @@
 
 
 <!-- 應用程式邏輯(載入順序很重要) -->
-<script src="js/00-firebase.js?v=20261028a"></script>
-<script src="js/00b-session.js?v=20261028a"></script>
-<script src="js/00c-auth-ui.js?v=20261028a"></script>
-<script src="js/00d-switch-hud.js?v=20261028a"></script>
-<script src="js/01-constants.js?v=20261028a"></script>
-<script src="js/skills/01-defs.js?v=20261028a"></script>
-<script src="js/02-state.js?v=20261028a"></script>
-<script src="js/03-storage.js?v=20261028a"></script>
-<script src="js/03b-history-archive.js?v=20261028a"></script>
-<script src="js/03c-question-bank.js?v=20261028a"></script>
-<script src="js/03d-roster.js?v=20261028a"></script>
-<script src="js/04-utils.js?v=20261028a"></script>
-<script src="js/05-pet-engine.js?v=20261028a"></script>
-<script src="js/06-ai.js?v=20261028a"></script>
-<script src="js/06b-ai-hud.js?v=20261028a"></script>
-<script src="js/07-excel.js?v=20261028a"></script>
-<script src="js/09-keyboard.js?v=20261028a"></script>
-<script src="js/10-nav.js?v=20261028a"></script>
-<script src="js/10b-nav-groups.js?v=20261028a"></script>
-<script src="js/feature-setup.js?v=20261028a"></script>
-<script src="js/feature-students.js?v=20261028a"></script>
-<script src="js/feature-dashboard.js?v=20261028a"></script>
-<script src="js/feature-batch-award.js?v=20261028a"></script>
-<script src="js/feature-attendance.js?v=20261028a"></script>
-<script src="js/feature-picker.js?v=20261028a"></script>
-<script src="js/feature-timer.js?v=20261028a"></script>
-<script src="js/feature-seating.js?v=20261028a"></script>
-<script src="js/feature-grouping.js?v=20261028a"></script>
-<script src="js/feature-quiz.js?v=20261028a"></script>
-<script src="js/territory/01-hex.js?v=20261028a"></script>
-<script src="js/territory/02-shapes.js?v=20261028a"></script>
-<script src="js/territory/03-engine.js?v=20261028a"></script>
-<script src="js/territory/04-map-view.js?v=20261028a"></script>
-<script src="js/territory/05-game.js?v=20261028a"></script>
-<script src="js/territory/06-teacher.js?v=20261028a"></script>
-<script src="js/territory/07-weekly.js?v=20261028a"></script>
-<script src="js/territory/08-sfx.js?v=20261028a"></script>
-<script src="js/feature-leaderboard.js?v=20261028a"></script>
-<script src="js/student/01-app.js?v=20261028a"></script>
-<script src="js/student/02-tabs.js?v=20261028a"></script>
-<script src="js/skills/02-student.js?v=20261028a"></script>
-<script src="js/student/03-quiz.js?v=20261028a"></script>
-<script src="js/student/04-war.js?v=20261028a"></script>
-<script src="js/student/05-result.js?v=20261028a"></script>
-<script src="js/skills/03-teacher.js?v=20261028a"></script>
-<script src="js/feature-contact-book.js?v=20261028a"></script>
-<script src="js/feature-homework.js?v=20261028a"></script>
-<script src="js/feature-shop.js?v=20261028a"></script>
-<script src="js/feature-class-tasks.js?v=20261028a"></script>
-<script src="js/feature-ai-features.js?v=20261028a"></script>
-<script src="js/feature-projector.js?v=20261028a"></script>
-<script src="js/feature-overview.js?v=20261028a"></script>
-<script src="js/feature-report.js?v=20261028a"></script>
-<script src="js/feature-report-export.js?v=20261028a"></script>
-<script src="js/feature-rules.js?v=20261028a"></script>
-<script src="js/feature-help.js?v=20261028a"></script>
-<script src="js/feature-settings.js?v=20261028a"></script>
-<script src="js/99-app.js?v=20261028a"></script>
+<script src="js/00-firebase.js?v=20261028b"></script>
+<script src="js/00b-session.js?v=20261028b"></script>
+<script src="js/00c-auth-ui.js?v=20261028b"></script>
+<script src="js/00d-switch-hud.js?v=20261028b"></script>
+<script src="js/01-constants.js?v=20261028b"></script>
+<script src="js/skills/01-defs.js?v=20261028b"></script>
+<script src="js/02-state.js?v=20261028b"></script>
+<script src="js/03-storage.js?v=20261028b"></script>
+<script src="js/03b-history-archive.js?v=20261028b"></script>
+<script src="js/03c-question-bank.js?v=20261028b"></script>
+<script src="js/03d-roster.js?v=20261028b"></script>
+<script src="js/04-utils.js?v=20261028b"></script>
+<script src="js/05-pet-engine.js?v=20261028b"></script>
+<script src="js/06-ai.js?v=20261028b"></script>
+<script src="js/06b-ai-hud.js?v=20261028b"></script>
+<script src="js/07-excel.js?v=20261028b"></script>
+<script src="js/09-keyboard.js?v=20261028b"></script>
+<script src="js/10-nav.js?v=20261028b"></script>
+<script src="js/10b-nav-groups.js?v=20261028b"></script>
+<script src="js/feature-setup.js?v=20261028b"></script>
+<script src="js/feature-students.js?v=20261028b"></script>
+<script src="js/feature-dashboard.js?v=20261028b"></script>
+<script src="js/feature-batch-award.js?v=20261028b"></script>
+<script src="js/feature-attendance.js?v=20261028b"></script>
+<script src="js/feature-picker.js?v=20261028b"></script>
+<script src="js/feature-timer.js?v=20261028b"></script>
+<script src="js/feature-seating.js?v=20261028b"></script>
+<script src="js/feature-grouping.js?v=20261028b"></script>
+<script src="js/feature-quiz.js?v=20261028b"></script>
+<script src="js/territory/01-hex.js?v=20261028b"></script>
+<script src="js/territory/02-shapes.js?v=20261028b"></script>
+<script src="js/territory/03-engine.js?v=20261028b"></script>
+<script src="js/territory/04-map-view.js?v=20261028b"></script>
+<script src="js/territory/05-game.js?v=20261028b"></script>
+<script src="js/territory/06-teacher.js?v=20261028b"></script>
+<script src="js/territory/07-weekly.js?v=20261028b"></script>
+<script src="js/territory/08-sfx.js?v=20261028b"></script>
+<script src="js/feature-leaderboard.js?v=20261028b"></script>
+<script src="js/student/01-app.js?v=20261028b"></script>
+<script src="js/student/02-tabs.js?v=20261028b"></script>
+<script src="js/skills/02-student.js?v=20261028b"></script>
+<script src="js/student/03-quiz.js?v=20261028b"></script>
+<script src="js/student/04-war.js?v=20261028b"></script>
+<script src="js/student/05-result.js?v=20261028b"></script>
+<script src="js/skills/03-teacher.js?v=20261028b"></script>
+<script src="js/feature-contact-book.js?v=20261028b"></script>
+<script src="js/feature-homework.js?v=20261028b"></script>
+<script src="js/feature-shop.js?v=20261028b"></script>
+<script src="js/feature-class-tasks.js?v=20261028b"></script>
+<script src="js/feature-ai-features.js?v=20261028b"></script>
+<script src="js/feature-projector.js?v=20261028b"></script>
+<script src="js/feature-overview.js?v=20261028b"></script>
+<script src="js/feature-report.js?v=20261028b"></script>
+<script src="js/feature-report-export.js?v=20261028b"></script>
+<script src="js/feature-rules.js?v=20261028b"></script>
+<script src="js/feature-help.js?v=20261028b"></script>
+<script src="js/feature-settings.js?v=20261028b"></script>
+<script src="js/99-app.js?v=20261028b"></script>
 
 </body>
 </html>

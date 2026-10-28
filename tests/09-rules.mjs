@@ -186,6 +186,18 @@ ok('學生讀得到自己的名冊索引',
 s = await req('GET', '/rosterIndex/kid1@chc.edu.tw', 'kid0');
 ok('學生讀不到別人的名冊索引(等於全班信箱)', s === DENY, 'HTTP ' + s);
 
+// ── 守護獸選擇 / 改名申請 ──
+// 學生寫不了班級主文件,所以改名是寫進這裡、再由老師端套用。
+// 這條規則擋掉的話,改名卡就只是一張廢紙。
+ok('學生送得出自己的改名申請',
+   await req('PATCH', '/classes/C1/petChoices/KID0_UID', 'kid0',
+             doc({ uid: 'KID0_UID', studentId: 's0', rename: '小火龍' })) === ALLOW);
+s = await req('PATCH', '/classes/C1/petChoices/KID1_UID', 'kid0',
+              doc({ uid: 'KID1_UID', studentId: 's1', rename: '笨蛋' }));
+ok('學生改不了同學的守護獸名字', s === DENY, 'HTTP ' + s);
+ok('導師讀得到改名申請',
+   await req('GET', '/classes/C1/petChoices/KID0_UID', 'teacher') === ALLOW);
+
 // ── 歷程:誰都不能改 ──
 await seed('/classes/C1/history/s0_1_0', { studentId: 's0', entries: [] });
 ok('學生改不了加分歷程',

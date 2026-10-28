@@ -460,6 +460,24 @@ const Cloud = {
     return snap.exists ? snap.data() : null;
   },
 
+  /* 送出改名請求。
+     用 merge 而不是整份覆蓋 —— savePetChoice 是 set(),直接沿用的話
+     會把「選了哪一隻守護獸」洗掉。 */
+  async requestPetRename(classId, uid, studentId, name) {
+    await this.db.collection('classes').doc(classId)
+      .collection('petChoices').doc(uid)
+      .set({ uid, studentId, rename: name, renameAt: Date.now() }, { merge: true });
+  },
+
+  /* 守護獸的選擇與改名請求都寫在同一份文件裡。
+     老師端開著的時候即時套用 —— 不然學生改完名字要等老師下次開班才會變。 */
+  watchPetChoices(classId, cb) {
+    return this.db.collection('classes').doc(classId)
+      .collection('petChoices')
+      .onSnapshot(snap => cb(snap.docs.map(d => ({ uid: d.id, ...d.data() }))),
+        err => console.warn('[守護獸] 選擇監聽中斷:', err.message));
+  },
+
   async listPetChoices(classId) {
     const snap = await this.db.collection('classes').doc(classId)
       .collection('petChoices').get();
