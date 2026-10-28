@@ -122,17 +122,36 @@ function awardAttendancePoints() {
     return;
   }
   
+  /* 同一天不會發第二次。
+     這顆按鈕本來按幾次就加幾次 —— 而點完名順手多按一下、或是「咦我按過了嗎」
+     再按一次,都是每天會發生的事。判斷的依據就是歷程裡有沒有這一天的出席分
+     (原因字串裡帶著日期),所以不必另外存一份「發過了沒」的紀錄,
+     也對先前已經發過的那些天同樣有效。 */
+  const reason = '出席分(' + date + ')';
+  const gotIt = id => {
+    const s = getStudent(id);
+    return !!s && (s.history || []).some(e => e.reason === reason);
+  };
+  const fresh = presentIds.filter(id => !gotIt(id));
+
+  if (fresh.length === 0) {
+    toast('這一天的出席分已經發過了,沒有重複加');
+    return;
+  }
+
   /* 一律走共用的發分函式。
      這裡本來是自己改欄位,而且寫了 currentPoints = totalPoints ——
      等於把學生在商店花掉的點數全部還給他:花了 90 點的學生只要被記一次
      出席,可用積分就跳回累積經驗的數字。 */
-  presentIds.forEach(id => {
-    applyPointsToStudent(id, 1, '出席分(' + date + ')');
+  fresh.forEach(id => {
+    applyPointsToStudent(id, 1, reason);
   });
-  
+
   save();
   renderAttendance();
-  toast('已為 ' + presentIds.length + ' 位出席同學各加 1 分');
+  const skipped = presentIds.length - fresh.length;
+  toast('已為 ' + fresh.length + ' 位出席同學各加 1 分'
+        + (skipped > 0 ? `(另外 ${skipped} 位先前已經發過了)` : ''));
 }
 
 function changeAttendanceDate() {

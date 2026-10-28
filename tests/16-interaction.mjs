@@ -87,9 +87,18 @@ for (const t of targets) {
   const before = await el.evaluate(PROPS);
   try { await el.hover({ timeout: 900 }); } catch { continue; }
   await page.waitForTimeout(220);
-  // 中途被重繪的話這個節點已經不在畫面上了,量到的不是同一個東西
-  const alive = await el.evaluate(e => e.isConnected).catch(() => false);
-  if (!alive) continue;
+  /* 中途被重繪、或是被別的東西蓋住,量到的就不是「滑鼠在這個元素上」
+     的樣子。直接問瀏覽器它現在是不是真的 :hover —— 不是的話這一次量測
+     本身就不算數,再試一次,還是不行就跳過。
+     (以前只檢查 isConnected,所以偶爾會把「根本沒摸到」判成「沒反應」,
+      這一套就隨機紅一次。) */
+  let hovered = await el.evaluate(e => e.isConnected && e.matches(':hover')).catch(() => false);
+  if (!hovered) {
+    try { await el.hover({ timeout: 900 }); } catch { continue; }
+    await page.waitForTimeout(220);
+    hovered = await el.evaluate(e => e.isConnected && e.matches(':hover')).catch(() => false);
+  }
+  if (!hovered) continue;
   const after = await el.evaluate(PROPS);
   if (before === after) dead.push(`${t.cls} @${t.page}`);
 }

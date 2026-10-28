@@ -89,6 +89,20 @@ const AwardLog = {
     this._finish(student, before, `已撤銷 ${student.name} 的 ${label}`);
   },
 
+  /* 安靜地收回某一筆 —— 不問、不跳提示、不重畫。
+     給別的功能用的:作業取消標記、出席分收回,都要把當初發的那一筆
+     原樣收回去。它們本來各自手算一次(而且都只退可用積分、歷程還留著
+     那一筆),現在統一走這裡。
+     回傳有沒有真的收回。 */
+  revertAt(sid, time) {
+    const hit = this.find(sid, time);
+    if (!hit) return false;
+    const { student, i, entry } = hit;
+    this._unapply(student, entry);
+    student.history.splice(i, 1);
+    return true;
+  },
+
   adjust(sid, time) {
     const hit = this.find(sid, time);
     if (!hit) { toast('這一筆已經不在了'); return; }

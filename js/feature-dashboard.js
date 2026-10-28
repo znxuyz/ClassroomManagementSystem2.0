@@ -201,9 +201,11 @@ function revertPointsCore(before) {
   if (student.history) student.history.length = before.historyLen;
 }
 
+/* 回傳剛寫進去的那一筆歷程 —— 呼叫端(作業繳交、出席分)靠它的 time
+   把這一筆記下來,之後要收回時才收得乾淨、不會多扣或少扣。 */
 function applyPointsToStudent(studentId, points, reason) {
   const student = getStudent(studentId);
-  if (!student) return;
+  if (!student) return null;
 
   const oldStage = student.pet ? PetEngine.getStage(student.totalPoints) : 0;
   awardPointsCore(student, points, reason);
@@ -226,6 +228,7 @@ function applyPointsToStudent(studentId, points, reason) {
   }
 
   triggerProjectorFlash(studentId, points);
+  return student.history[student.history.length - 1];
 }
 
 /* ============================================

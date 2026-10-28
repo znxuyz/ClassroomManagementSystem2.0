@@ -37,7 +37,7 @@ let state = {
   contactBook: {},          // { 'YYYY-MM-DD': { classNote, teacherMessage, studentNotes: {} } }
   currentContactDate: null,
   // 作業
-  homework: [],             // [{ id, name, description, assignedDate, dueDate, submissionPoints, submissions, archived }]
+  homework: [],             // [{ id, name, ..., submissionPoints, submissions, paid, archived }] paid = 誰已經領過分
   // 班級任務
   classTasks: [],           // [{ id, name, description, target, reward, completed, completedAt, claimedAmount }]
   // 商店相關紀錄(個人庫存放在 student.inventory)

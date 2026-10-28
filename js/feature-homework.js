@@ -130,49 +130,66 @@ function renderHomeworkCard(hw, isArchived) {
   `;
 }
 
+/* hw.paid:這一份作業誰已經領過分了。
+   舊資料的這個資訊記在 submissions[sid].awarded 裡,第一次碰到就搬過來 ——
+   不搬的話,已經領過的人在改一次標記之後會再領一次。 */
+function ensureHomeworkPaid(hw) {
+  if (hw.paid) return hw.paid;
+  hw.paid = {};
+  Object.keys(hw.submissions || {}).forEach(sid => {
+    const r = hw.submissions[sid];
+    if (r && r.awarded) hw.paid[sid] = r.awardTime || 0;
+  });
+  return hw.paid;
+}
+
 function markHomework(hwId, studentId, status) {
   const hw = state.homework.find(h => h.id === hwId);
   if (!hw) return;
   if (!hw.submissions) hw.submissions = {};
-  
+  ensureHomeworkPaid(hw);
   const prev = hw.submissions[studentId];
-  
+
+  /* 「誰已經領過這份作業的分」記在 hw.paid,而不是記在 submissions 裡。
+     記在 submissions 裡會跟著標記一起被清掉,於是
+     「繳交 → 遲交 → 繳交」、「清空全部 → 重新標繳交」都會再發一次分,
+     同一份作業領兩次。hw.paid 不受標記變動影響,所以一份作業一個人
+     就是一次,不管中間改過幾輪。
+     值是當初那一筆歷程的時間,收回時靠它收得乾淨。 */
+
   // 取消邏輯:再次點同樣狀態 = 清除
   if (prev && prev.status === status) {
-    // 如果之前有加分,要扣回
-    if (prev.awarded && prev.status === 'submitted') {
-      const student = getStudent(studentId);
-      if (student) {
-        student.currentPoints = Math.max(0, student.currentPoints - hw.submissionPoints);
-        // totalPoints 仍保留,寵物已得到的經驗不能拿走
-      }
+    /* 之前發過的那一筆要原樣收回 —— 連歷程裡那一筆一起拿掉。
+       本來這裡是自己算「currentPoints 減掉 submissionPoints」,有兩個問題:
+       一是老師事後改了作業的分數,收回的就不是當初發的那個數字;
+       二是歷程裡那一筆「繳交某某作業」還留著,家長看明細會看到一筆
+       對不上分數的紀錄。 */
+    if (studentId in hw.paid) {
+      if (hw.paid[studentId]) AwardLog.revertAt(studentId, hw.paid[studentId]);
+      delete hw.paid[studentId];
     }
     delete hw.submissions[studentId];
     save();
     renderHomeworkList();
     return;
   }
-  
-  // 設定新狀態
-  hw.submissions[studentId] = {
-    status,
-    submittedAt: Date.now(),
-    awarded: false
-  };
-  
-  // 如果是繳交,自動加分(只加一次)
-  if (status === 'submitted' && !prev?.awarded) {
-    applyPointsToStudent(studentId, hw.submissionPoints, '繳交「' + hw.name + '」');
-    hw.submissions[studentId].awarded = true;
-  } else if (status === 'late' && !prev?.awarded) {
+
+  hw.submissions[studentId] = { status, submittedAt: Date.now() };
+
+  // 這一份作業一位學生只發一次分,不管中間改過幾次狀態
+  /* 用 in 而不是真假值 —— 當初發的是 0 分(或分數是 0 的作業)也算領過,
+     寫成 !hw.paid[id] 的話那些人每改一次標記就會再發一次。 */
+  if (!(studentId in hw.paid) && (status === 'submitted' || status === 'late')) {
+    const late = status === 'late';
     // 遲交給一半分數(無條件捨去)
-    const latePts = Math.floor(hw.submissionPoints / 2);
-    if (latePts > 0) {
-      applyPointsToStudent(studentId, latePts, '遲交「' + hw.name + '」');
-    }
-    hw.submissions[studentId].awarded = true;
+    const pts = late ? Math.floor(hw.submissionPoints / 2) : hw.submissionPoints;
+    const entry = pts > 0
+      ? applyPointsToStudent(studentId, pts, (late ? '遲交「' : '繳交「') + hw.name + '」')
+      : null;
+    // 分數是 0 的作業也要記一筆,否則下一次又會走進這裡
+    hw.paid[studentId] = entry ? entry.time : 0;
   }
-  
+
   save();
   renderHomeworkList();
 }
@@ -180,7 +197,9 @@ function markHomework(hwId, studentId, status) {
 function bulkMarkHomework(hwId, status) {
   const hw = state.homework.find(h => h.id === hwId);
   if (!hw) return;
-  
+  if (!hw.submissions) hw.submissions = {};
+  ensureHomeworkPaid(hw);
+
   if (status === '') {
     if (!confirm('清空此作業的所有繳交標記?(已加分數會保留)')) return;
     hw.submissions = {};
@@ -191,9 +210,12 @@ function bulkMarkHomework(hwId, status) {
         if (!hw.submissions[s.id]) hw.submissions[s.id] = {};
         hw.submissions[s.id].status = status;
         hw.submissions[s.id].submittedAt = Date.now();
-        if (status === 'submitted' && !prev?.awarded) {
-          applyPointsToStudent(s.id, hw.submissionPoints, '繳交「' + hw.name + '」');
-          hw.submissions[s.id].awarded = true;
+        // 同樣看 hw.paid —— 清空過再按一次「全部標繳交」不會再發一次分
+        if (status === 'submitted' && !(s.id in hw.paid)) {
+          const entry = hw.submissionPoints > 0
+            ? applyPointsToStudent(s.id, hw.submissionPoints, '繳交「' + hw.name + '」')
+            : null;
+          hw.paid[s.id] = entry ? entry.time : 0;
         }
       }
     });
