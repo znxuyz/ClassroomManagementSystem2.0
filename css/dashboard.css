@@ -900,3 +900,138 @@
   gap: 10px;
   flex-wrap: wrap;
 }
+
+/* ============================================
+   加分紀錄(撤銷 / 調整)
+   接在加分面板下面,所以寬度很窄 —— 一行要塞分數、原因、時間、
+   兩個按鈕,原因那一欄吃掉剩下的空間並且允許折行。
+============================================ */
+.award-log-head {
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+/* 標題要靠左 —— 不寫這一行,space-between 會把標題推到正中間,
+   看起來像標語而不是一欄的抬頭 */
+.award-log-head > span:first-of-type { flex: 1 1 auto; }
+
+.award-log-scope {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.award-log-chip {
+  font-family: var(--font-body);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--paper-shadow);
+  background: var(--paper);
+  color: var(--moss);
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+
+.award-log-chip:hover:not(:disabled) {
+  border-color: var(--forest);
+  color: var(--forest-deep);
+}
+
+.award-log-chip.on {
+  background: var(--forest);
+  border-color: var(--forest);
+  color: #fff;
+}
+
+.award-log-chip:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.award-log-empty {
+  font-size: var(--t-sub);
+  color: var(--moss);
+  padding: 4px 2px;
+}
+
+.award-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.award-log-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: var(--r-tile);
+  transition: background .15s;
+}
+
+.award-log-row:hover {
+  background: var(--paper);
+}
+
+.award-log-pts {
+  flex: 0 0 auto;
+  min-width: 38px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--forest-deep);
+}
+
+.award-log-pts.neg { color: var(--sick-ink); }
+
+.award-log-text {
+  flex: 1 1 auto;
+  min-width: 0;          /* 不寫這一行,長原因會把按鈕擠出面板外 */
+  font-size: var(--t-sub);
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+.award-log-time {
+  color: var(--moss);
+  font-size: 12px;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
+.award-log-acts {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.award-log-btn {
+  font-family: var(--font-body);
+  font-size: 12px;
+  padding: 4px 9px;
+  border-radius: var(--r-pill);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--moss);
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+
+.award-log-btn:hover {
+  background: var(--paper-warm);
+  border-color: var(--paper-shadow);
+  color: var(--forest-deep);
+}
+
+.award-log-btn.danger:hover {
+  color: var(--sick-ink);
+  border-color: var(--sick-ink);
+}
+
+/* 手機上一行塞不下兩個按鈕加原因,讓按鈕掉到下一行 */
+@media (max-width: 480px) {
+  .award-log-row { flex-wrap: wrap; }
+  .award-log-acts { margin-left: auto; }
+}

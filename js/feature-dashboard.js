@@ -44,6 +44,7 @@ function renderSelectedStudent() {
   if (BatchAward.active) {
     display.innerHTML = BatchAward.renderPanel();
     panel.style.display = BatchAward.picked.size > 0 ? '' : 'none';
+    AwardLog.render();
     return;
   }
 
@@ -55,6 +56,7 @@ function renderSelectedStudent() {
       </div>
     `;
     panel.style.display = 'none';
+    AwardLog.render();
     return;
   }
   
@@ -110,6 +112,7 @@ function renderSelectedStudent() {
   `;
   
   panel.style.display = 'block';
+  AwardLog.render();
 }
 
 /* ============================================
