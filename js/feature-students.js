@@ -35,6 +35,15 @@ function renderStudentList() {
     const batch = BatchAward.active;
     const isPicked = batch && BatchAward.picked.has(student.id);
     const isSelected = batch ? isPicked : student.id === state.selectedStudentId;
+    /* 「幾天沒被加分」直接寫在卡片上。
+       守護獸本來就會因此微恙/生病,但那個訊息只藏在頭像的顏色裡,
+       老師要一個一個看才看得出來 —— 而「久沒被關注的那幾位」正是
+       最需要被看見的。抽籤機早就有這個概念了,加分頁反而沒有。 */
+    const quietDays = student.lastPointTime
+      ? Math.floor((Date.now() - student.lastPointTime) / 86400000) : 0;
+    const quietChip = health === 'healthy' ? '' :
+      `<span class="student-quiet ${health}" title="守護獸${health === 'sick' ? '生病了' : '微恙'}">`
+      + `${quietDays} 天沒加分</span>`;
     const seatLabel = student.seatNumber
       ? `<span class="seat-no">${escapeHtml(String(student.seatNumber))}</span> ` : '';
     
@@ -50,6 +59,7 @@ function renderStudentList() {
           <div class="student-meta">
             <span class="student-points">${student.currentPoints} 分</span>
             ${student.pet ? '' : '<span class="student-nopet" title="還沒選守護獸">未選</span>'}
+            ${quietChip}
           </div>
         </div>
       </li>

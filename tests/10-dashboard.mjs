@@ -51,6 +51,18 @@ for (const [w, h, tag] of [[1440, 1000, '1440'], [1024, 800, '1024'], [390, 844,
       !document.querySelector('.action-panel').textContent.includes('從左側'));
     t.ok('還沒選守護獸的人看得出來',
       grid.children[5].querySelector('.student-nopet') !== null);
+    /* 久沒被加分的那幾位要一眼看得出來 —— 本來只藏在頭像顏色裡 */
+    state.students[2].lastPointTime = Date.now() - 5 * 86400000;
+    state.students[3].lastPointTime = Date.now() - 9 * 86400000;
+    state.students[0].lastPointTime = Date.now();
+    renderStudentList();
+    const chips = document.querySelectorAll('.student-quiet');
+    t.ok('久沒加分的人卡片上有標示', chips.length === 2
+      && chips[0].textContent.includes('5 天') && chips[1].textContent.includes('9 天'),
+      [...chips].map(c => c.textContent).join(' · '));
+    t.ok('剛加過分的人沒有那個標示',
+      grid.children[0].querySelector('.student-quiet') === null);
+
     t.ok('不再每一列都重複階段名稱',
       !grid.children[0].textContent.includes('守護神獸'));
 
