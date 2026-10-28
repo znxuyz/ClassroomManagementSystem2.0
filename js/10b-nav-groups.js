@@ -73,7 +73,10 @@ const NAV_GROUPS = [
   {
     key: 'settings', icon: '⚙', name: '系統設定',
     items: [
-      { name: '系統設定', view: 'settings' }
+      { name: '班級與學生', view: 'settings', sub: 'setClass' },
+      { name: '遊戲設定',   view: 'settings', sub: 'setGame' },
+      { name: '資料與備份', view: 'settings', sub: 'setData' },
+      { name: '外觀與 AI',  view: 'settings', sub: 'setLook' }
     ]
   }
 ];

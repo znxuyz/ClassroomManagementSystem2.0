@@ -17,9 +17,15 @@ function ensureContactDate() {
   return state.contactBook[date];
 }
 
+/* 自動寫進今日聯絡簿的那幾則(守護獸進化、班級任務達成)。
+
+   同一天同樣一句話只留一則 —— 老師按了「取消達成」再按一次「標記達成」、
+   或是加分撤銷之後又加回去讓守護獸再進化一次,本來會在同一天的聯絡簿裡
+   留下兩則一模一樣的通知,印出去給家長看很奇怪。 */
 function logToContactBook(type, text) {
   const entry = ensureContactDate();
   if (!entry.autoLog) entry.autoLog = [];
+  if (entry.autoLog.some(l => l.type === type && l.text === text)) return;
   entry.autoLog.push({ type, text, time: Date.now() });
   save();
 }

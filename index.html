@@ -9,28 +9,28 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700;900&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 
 <!-- 樣式表 -->
-<link rel="stylesheet" href="css/base.css?v=20261028c">
-<link rel="stylesheet" href="css/components.css?v=20261028c">
-<link rel="stylesheet" href="css/dashboard.css?v=20261028c">
-<link rel="stylesheet" href="css/tools.css?v=20261028c">
-<link rel="stylesheet" href="css/management.css?v=20261028c">
-<link rel="stylesheet" href="css/contact.css?v=20261028c">
-<link rel="stylesheet" href="css/shop.css?v=20261028c">
-<link rel="stylesheet" href="css/ai.css?v=20261028c">
-<link rel="stylesheet" href="css/report.css?v=20261028c">
-<link rel="stylesheet" href="css/projector.css?v=20261028c">
-<link rel="stylesheet" href="css/settings.css?v=20261028c">
-<link rel="stylesheet" href="css/auth.css?v=20261028c">
-<link rel="stylesheet" href="css/quiz.css?v=20261028c">
-<link rel="stylesheet" href="css/student.css?v=20261028c">
-<link rel="stylesheet" href="css/pet-picker.css?v=20261028c">
-<link rel="stylesheet" href="css/leaderboard.css?v=20261028c">
-<link rel="stylesheet" href="css/territory.css?v=20261028c">
-<link rel="stylesheet" href="css/help.css?v=20261028c">
-<link rel="stylesheet" href="css/skills.css?v=20261028c">
-<link rel="stylesheet" href="css/hud.css?v=20261028c">
+<link rel="stylesheet" href="css/base.css?v=20261028d">
+<link rel="stylesheet" href="css/components.css?v=20261028d">
+<link rel="stylesheet" href="css/dashboard.css?v=20261028d">
+<link rel="stylesheet" href="css/tools.css?v=20261028d">
+<link rel="stylesheet" href="css/management.css?v=20261028d">
+<link rel="stylesheet" href="css/contact.css?v=20261028d">
+<link rel="stylesheet" href="css/shop.css?v=20261028d">
+<link rel="stylesheet" href="css/ai.css?v=20261028d">
+<link rel="stylesheet" href="css/report.css?v=20261028d">
+<link rel="stylesheet" href="css/projector.css?v=20261028d">
+<link rel="stylesheet" href="css/settings.css?v=20261028d">
+<link rel="stylesheet" href="css/auth.css?v=20261028d">
+<link rel="stylesheet" href="css/quiz.css?v=20261028d">
+<link rel="stylesheet" href="css/student.css?v=20261028d">
+<link rel="stylesheet" href="css/pet-picker.css?v=20261028d">
+<link rel="stylesheet" href="css/leaderboard.css?v=20261028d">
+<link rel="stylesheet" href="css/territory.css?v=20261028d">
+<link rel="stylesheet" href="css/help.css?v=20261028d">
+<link rel="stylesheet" href="css/skills.css?v=20261028d">
+<link rel="stylesheet" href="css/hud.css?v=20261028d">
 <!-- 主題:掛在 <html data-theme> 上,一定要放最後才蓋得過前面的規則 -->
-<link rel="stylesheet" href="css/theme-aurora.css?v=20261028c">
+<link rel="stylesheet" href="css/theme-aurora.css?v=20261028d">
 <script>
   // 在 CSS 之後、畫面之前就決定主題,避免載入瞬間閃一下舊配色
   document.documentElement.dataset.theme =
@@ -1145,6 +1145,14 @@
         </div>
       </div>
       
+      <div class="sub-tabs">
+        <button class="sub-tab active" data-subtab="setClass" onclick="switchSubTab('settings', 'setClass')">班級與學生</button>
+        <button class="sub-tab" data-subtab="setGame" onclick="switchSubTab('settings', 'setGame')">遊戲設定</button>
+        <button class="sub-tab" data-subtab="setData" onclick="switchSubTab('settings', 'setData')">資料與備份</button>
+        <button class="sub-tab" data-subtab="setLook" onclick="switchSubTab('settings', 'setLook')">外觀與 AI</button>
+      </div>
+
+      <div id="setClassSubView" class="sub-view active">
       <div class="panel-card">
         <div class="panel-title">班級基本資料</div>
         <div class="setup-step">
@@ -1158,47 +1166,6 @@
         <button class="btn btn-primary" onclick="saveSettings()">儲存變更</button>
       </div>
       
-      <div class="panel-card" style="margin-top: 16px;">
-        <div class="panel-title">資料備份</div>
-        <div class="text-muted" style="font-size: 12px; line-height: 1.9; margin-bottom: 12px;">
-          ✦ 每天第一次開啟這個班級時,系統會自動留一份當天的快照(保留最近 30 份)。<br>
-          ✦ 學生的交卷、逐題作答、蜂巢戰紀紀錄是各自獨立存放的,不在這份快照裡,
-            也不會被任何更新覆蓋。<br>
-          ✦ 還原會把班級資料整個換成那一天的樣子,請先確認再按。
-        </div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
-          <button class="btn btn-primary btn-small" onclick="renderBackupList()">查看備份</button>
-          <button class="btn btn-ghost btn-small" onclick="exportClassBackup()">⤓ 下載完整備份</button>
-        </div>
-        <div id="backupList"></div>
-      </div>
-
-      <div class="panel-card" style="margin-top: 16px;">
-        <div class="panel-title">資料用量</div>
-        <div id="dataUsage"></div>
-      </div>
-
-      <div class="panel-card" style="margin-top: 16px;">
-        <div class="panel-title">守護獸技能</div>
-        <div id="skillBoard"></div>
-      </div>
-
-      <div class="panel-card" style="margin-top: 16px;">
-        <div class="panel-title">外觀</div>
-        <div class="theme-choices">
-          <button class="theme-choice" data-theme-pick="aurora" onclick="setTheme('aurora')">
-            <span class="theme-swatch theme-swatch-aurora"></span>
-            <span class="theme-choice-name">極光</span>
-            <span class="theme-choice-desc">冷灰底、細線、電光藍。深色面板更深更有玻璃感。</span>
-          </button>
-          <button class="theme-choice" data-theme-pick="classic" onclick="setTheme('classic')">
-            <span class="theme-swatch theme-swatch-classic"></span>
-            <span class="theme-choice-name">紙感</span>
-            <span class="theme-choice-desc">原本的暖米色與森林綠。</span>
-          </button>
-        </div>
-      </div>
-
       <div class="panel-card" style="margin-top: 16px;">
         <div class="panel-title">學生管理</div>
         <div style="display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;">
@@ -1219,6 +1186,65 @@
         <button class="btn btn-primary" onclick="updateStudents()">更新學生名單</button>
       </div>
       
+      </div>
+
+      <div id="setGameSubView" class="sub-view">
+      <div class="panel-card">
+        <div class="panel-title">守護獸技能</div>
+        <div id="skillBoard"></div>
+      </div>
+
+      </div>
+
+      <div id="setDataSubView" class="sub-view">
+      <div class="panel-card">
+        <div class="panel-title">資料備份</div>
+        <div class="text-muted" style="font-size: 12px; line-height: 1.9; margin-bottom: 12px;">
+          ✦ 每天第一次開啟這個班級時,系統會自動留一份當天的快照(保留最近 30 份)。<br>
+          ✦ 學生的交卷、逐題作答、蜂巢戰紀紀錄是各自獨立存放的,不在這份快照裡,
+            也不會被任何更新覆蓋。<br>
+          ✦ 還原會把班級資料整個換成那一天的樣子,請先確認再按。
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+          <button class="btn btn-primary btn-small" onclick="renderBackupList()">查看備份</button>
+          <button class="btn btn-ghost btn-small" onclick="exportClassBackup()">⤓ 下載完整備份</button>
+        </div>
+        <div id="backupList"></div>
+      </div>
+
+      <div class="panel-card" style="margin-top: 16px;">
+        <div class="panel-title">資料用量</div>
+        <div id="dataUsage"></div>
+      </div>
+
+      <div class="panel-card" style="margin-top: 16px;">
+        <div class="panel-title" style="color: var(--sick-ink);">危險區</div>
+        <div class="text-muted" style="font-size: 13px; margin-bottom: 12px;">
+          清除所有資料後將無法復原。
+        </div>
+        <button class="btn btn-ghost" onclick="resetAll()" style="border-color: var(--sick-ink); color: var(--sick-ink);">
+          清除所有資料
+        </button>
+      </div>
+      </div>
+
+      <div id="setLookSubView" class="sub-view">
+      <div class="panel-card">
+        <div class="panel-title">外觀</div>
+        <div class="theme-choices">
+          <button class="theme-choice" data-theme-pick="aurora" onclick="setTheme('aurora')">
+            <span class="theme-swatch theme-swatch-aurora"></span>
+            <span class="theme-choice-name">極光</span>
+            <span class="theme-choice-desc">冷灰底、細線、電光藍。深色面板更深更有玻璃感。</span>
+          </button>
+          <button class="theme-choice" data-theme-pick="classic" onclick="setTheme('classic')">
+            <span class="theme-swatch theme-swatch-classic"></span>
+            <span class="theme-choice-name">紙感</span>
+            <span class="theme-choice-desc">原本的暖米色與森林綠。</span>
+          </button>
+        </div>
+      </div>
+
       <div class="panel-card api-key-section" style="margin-top: 16px;">
         <div class="panel-title">AI 助手 · API Key 設定</div>
         <div class="api-key-input-row">
@@ -1244,15 +1270,8 @@
         </div>
       </div>
       
-      <div class="panel-card" style="margin-top: 16px;">
-        <div class="panel-title" style="color: var(--sick-ink);">危險區</div>
-        <div class="text-muted" style="font-size: 13px; margin-bottom: 12px;">
-          清除所有資料後將無法復原。
-        </div>
-        <button class="btn btn-ghost" onclick="resetAll()" style="border-color: var(--sick-ink); color: var(--sick-ink);">
-          清除所有資料
-        </button>
       </div>
+
     </section>
     
   </main>
@@ -1278,65 +1297,65 @@
 
 
 <!-- 應用程式邏輯(載入順序很重要) -->
-<script src="js/00-firebase.js?v=20261028c"></script>
-<script src="js/00b-session.js?v=20261028c"></script>
-<script src="js/00c-auth-ui.js?v=20261028c"></script>
-<script src="js/00d-switch-hud.js?v=20261028c"></script>
-<script src="js/01-constants.js?v=20261028c"></script>
-<script src="js/skills/01-defs.js?v=20261028c"></script>
-<script src="js/02-state.js?v=20261028c"></script>
-<script src="js/03-storage.js?v=20261028c"></script>
-<script src="js/03b-history-archive.js?v=20261028c"></script>
-<script src="js/03c-question-bank.js?v=20261028c"></script>
-<script src="js/03d-roster.js?v=20261028c"></script>
-<script src="js/04-utils.js?v=20261028c"></script>
-<script src="js/05-pet-engine.js?v=20261028c"></script>
-<script src="js/06-ai.js?v=20261028c"></script>
-<script src="js/06b-ai-hud.js?v=20261028c"></script>
-<script src="js/07-excel.js?v=20261028c"></script>
-<script src="js/09-keyboard.js?v=20261028c"></script>
-<script src="js/10-nav.js?v=20261028c"></script>
-<script src="js/10b-nav-groups.js?v=20261028c"></script>
-<script src="js/feature-setup.js?v=20261028c"></script>
-<script src="js/feature-students.js?v=20261028c"></script>
-<script src="js/feature-dashboard.js?v=20261028c"></script>
-<script src="js/feature-batch-award.js?v=20261028c"></script>
-<script src="js/feature-award-log.js?v=20261028c"></script>
-<script src="js/feature-attendance.js?v=20261028c"></script>
-<script src="js/feature-picker.js?v=20261028c"></script>
-<script src="js/feature-timer.js?v=20261028c"></script>
-<script src="js/feature-seating.js?v=20261028c"></script>
-<script src="js/feature-grouping.js?v=20261028c"></script>
-<script src="js/feature-quiz.js?v=20261028c"></script>
-<script src="js/territory/01-hex.js?v=20261028c"></script>
-<script src="js/territory/02-shapes.js?v=20261028c"></script>
-<script src="js/territory/03-engine.js?v=20261028c"></script>
-<script src="js/territory/04-map-view.js?v=20261028c"></script>
-<script src="js/territory/05-game.js?v=20261028c"></script>
-<script src="js/territory/06-teacher.js?v=20261028c"></script>
-<script src="js/territory/07-weekly.js?v=20261028c"></script>
-<script src="js/territory/08-sfx.js?v=20261028c"></script>
-<script src="js/feature-leaderboard.js?v=20261028c"></script>
-<script src="js/student/01-app.js?v=20261028c"></script>
-<script src="js/student/02-tabs.js?v=20261028c"></script>
-<script src="js/skills/02-student.js?v=20261028c"></script>
-<script src="js/student/03-quiz.js?v=20261028c"></script>
-<script src="js/student/04-war.js?v=20261028c"></script>
-<script src="js/student/05-result.js?v=20261028c"></script>
-<script src="js/skills/03-teacher.js?v=20261028c"></script>
-<script src="js/feature-contact-book.js?v=20261028c"></script>
-<script src="js/feature-homework.js?v=20261028c"></script>
-<script src="js/feature-shop.js?v=20261028c"></script>
-<script src="js/feature-class-tasks.js?v=20261028c"></script>
-<script src="js/feature-ai-features.js?v=20261028c"></script>
-<script src="js/feature-projector.js?v=20261028c"></script>
-<script src="js/feature-overview.js?v=20261028c"></script>
-<script src="js/feature-report.js?v=20261028c"></script>
-<script src="js/feature-report-export.js?v=20261028c"></script>
-<script src="js/feature-rules.js?v=20261028c"></script>
-<script src="js/feature-help.js?v=20261028c"></script>
-<script src="js/feature-settings.js?v=20261028c"></script>
-<script src="js/99-app.js?v=20261028c"></script>
+<script src="js/00-firebase.js?v=20261028d"></script>
+<script src="js/00b-session.js?v=20261028d"></script>
+<script src="js/00c-auth-ui.js?v=20261028d"></script>
+<script src="js/00d-switch-hud.js?v=20261028d"></script>
+<script src="js/01-constants.js?v=20261028d"></script>
+<script src="js/skills/01-defs.js?v=20261028d"></script>
+<script src="js/02-state.js?v=20261028d"></script>
+<script src="js/03-storage.js?v=20261028d"></script>
+<script src="js/03b-history-archive.js?v=20261028d"></script>
+<script src="js/03c-question-bank.js?v=20261028d"></script>
+<script src="js/03d-roster.js?v=20261028d"></script>
+<script src="js/04-utils.js?v=20261028d"></script>
+<script src="js/05-pet-engine.js?v=20261028d"></script>
+<script src="js/06-ai.js?v=20261028d"></script>
+<script src="js/06b-ai-hud.js?v=20261028d"></script>
+<script src="js/07-excel.js?v=20261028d"></script>
+<script src="js/09-keyboard.js?v=20261028d"></script>
+<script src="js/10-nav.js?v=20261028d"></script>
+<script src="js/10b-nav-groups.js?v=20261028d"></script>
+<script src="js/feature-setup.js?v=20261028d"></script>
+<script src="js/feature-students.js?v=20261028d"></script>
+<script src="js/feature-dashboard.js?v=20261028d"></script>
+<script src="js/feature-batch-award.js?v=20261028d"></script>
+<script src="js/feature-award-log.js?v=20261028d"></script>
+<script src="js/feature-attendance.js?v=20261028d"></script>
+<script src="js/feature-picker.js?v=20261028d"></script>
+<script src="js/feature-timer.js?v=20261028d"></script>
+<script src="js/feature-seating.js?v=20261028d"></script>
+<script src="js/feature-grouping.js?v=20261028d"></script>
+<script src="js/feature-quiz.js?v=20261028d"></script>
+<script src="js/territory/01-hex.js?v=20261028d"></script>
+<script src="js/territory/02-shapes.js?v=20261028d"></script>
+<script src="js/territory/03-engine.js?v=20261028d"></script>
+<script src="js/territory/04-map-view.js?v=20261028d"></script>
+<script src="js/territory/05-game.js?v=20261028d"></script>
+<script src="js/territory/06-teacher.js?v=20261028d"></script>
+<script src="js/territory/07-weekly.js?v=20261028d"></script>
+<script src="js/territory/08-sfx.js?v=20261028d"></script>
+<script src="js/feature-leaderboard.js?v=20261028d"></script>
+<script src="js/student/01-app.js?v=20261028d"></script>
+<script src="js/student/02-tabs.js?v=20261028d"></script>
+<script src="js/skills/02-student.js?v=20261028d"></script>
+<script src="js/student/03-quiz.js?v=20261028d"></script>
+<script src="js/student/04-war.js?v=20261028d"></script>
+<script src="js/student/05-result.js?v=20261028d"></script>
+<script src="js/skills/03-teacher.js?v=20261028d"></script>
+<script src="js/feature-contact-book.js?v=20261028d"></script>
+<script src="js/feature-homework.js?v=20261028d"></script>
+<script src="js/feature-shop.js?v=20261028d"></script>
+<script src="js/feature-class-tasks.js?v=20261028d"></script>
+<script src="js/feature-ai-features.js?v=20261028d"></script>
+<script src="js/feature-projector.js?v=20261028d"></script>
+<script src="js/feature-overview.js?v=20261028d"></script>
+<script src="js/feature-report.js?v=20261028d"></script>
+<script src="js/feature-report-export.js?v=20261028d"></script>
+<script src="js/feature-rules.js?v=20261028d"></script>
+<script src="js/feature-help.js?v=20261028d"></script>
+<script src="js/feature-settings.js?v=20261028d"></script>
+<script src="js/99-app.js?v=20261028d"></script>
 
 </body>
 </html>

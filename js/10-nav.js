@@ -21,6 +21,7 @@ function switchView(name) {
   if (name === 'quiz') renderQuizList();
   if (name === 'territory') renderTerritoryView();
   if (name === 'help') renderHelpView();
+  if (name === 'settings') renderSettings();
 }
 
 /* 重畫目前停留的那一頁。
@@ -36,6 +37,15 @@ function renderActiveView() {
   const sub = view.querySelector('.sub-tab.active');
   if (sub) switchSubTab(name, sub.dataset.subtab);
 }
+
+/* 系統設定本來是一頁長長的捲動,八塊不相干的設定疊在一起。
+   拆成四個子分頁之後,副標題要跟著換,不然每一頁都寫「管理班級資料」。 */
+const SETTINGS_SUBTITLES = {
+  setClass: '班級名稱、老師稱呼、學生名單',
+  setGame:  '守護獸技能的開關與刷新',
+  setData:  '備份、還原、用量與封存',
+  setLook:  '配色主題與 AI 助手'
+};
 
 function switchSubTab(parent, subtab) {
   const container = document.getElementById(parent + 'View');
@@ -64,6 +74,13 @@ function switchSubTab(parent, subtab) {
   if (subtab === 'aiComment') renderAiCommentStudentList();
   if (subtab === 'aiPolish') {} // 純表單,不需特別渲染
   if (subtab === 'aiAnalyze') renderAiAnalyzeStudentList();
+  if (SETTINGS_SUBTITLES[subtab]) {
+    const el = document.querySelector('#settingsView .view-subtitle');
+    if (el) el.textContent = SETTINGS_SUBTITLES[subtab];
+  }
+  /* 系統設定的四個子分頁都是 renderAll() 一次畫好的(renderSettings、
+     renderSkillBoard、renderDataUsage),切分頁不必再畫一次。
+     唯一要補的是備份清單 —— 它是按「查看備份」才去雲端讀的。 */
 }
 
 function renderOverviewView() {
