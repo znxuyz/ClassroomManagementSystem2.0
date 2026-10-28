@@ -17,6 +17,16 @@ function renderStudentList() {
     btn.textContent = BatchAward.active ? '離開批次' : '批次加分';
     btn.classList.toggle('active', BatchAward.active);
   }
+
+  /* 「全選」只有批次模式用得到,而它必須待在標題列 ——
+     放在下面的面板裡的話,要先捲過 29 位學生才按得到。 */
+  const allBtn = document.getElementById('batchAllBtn');
+  if (allBtn) {
+    const allOn = state.students.length > 0
+      && BatchAward.picked.size === state.students.length;
+    allBtn.style.display = BatchAward.active ? '' : 'none';
+    allBtn.textContent = allOn ? '全部取消' : '全選';
+  }
   
   list.innerHTML = state.students.map(student => {
     const stage = student.pet ? PetEngine.getStage(student.totalPoints) : 0;

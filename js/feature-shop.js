@@ -159,15 +159,23 @@ function renderShopItems() {
 
   el.innerHTML = `<div class="shop-item-grid">` + state.shopItems.map(item => {
     const out = item.stock !== null && item.stock <= 0;
+    /* 技能果實用技能自己的圖,不要用 emoji 欄位。
+       學生端本來就是這樣畫的,只有老師端這邊還停在「一格 emoji 輸入框」——
+       於是同一件東西,老師看到 ⚔️,學生看到真正的圖。 */
+    const fruit = (typeof SkillEngine !== 'undefined')
+      ? SkillEngine.skillOfFruit(item.id) : null;
 
     /* 平常長得像一件獎品,按了「編輯」才變成表單。
        以前四個輸入框永遠攤在那裡 —— 功能沒問題,但整頁看起來像
        沒做完的後台,而且老師一眼看不出「這件獎品長什麼樣」。 */
     if (_editingShopItem !== item.id) {
       return `
-      <div class="shop-item-card ${item.active ? '' : 'inactive'} ${out ? 'is-out' : ''}">
+      <div class="shop-item-card ${item.active ? '' : 'inactive'} ${out ? 'is-out' : ''}
+                  ${fruit ? 'is-fruit' : ''}">
         <div class="shop-item-view">
-          <div class="shop-item-emoji">${escapeHtml(item.icon || '🎁')}</div>
+          <div class="shop-item-emoji">${fruit
+            ? skillIconHtml(fruit, 38)
+            : escapeHtml(item.icon || '🎁')}</div>
           <div class="shop-item-main">
             <div class="shop-item-title">${escapeHtml(item.name)}</div>
             ${item.description
@@ -194,12 +202,18 @@ function renderShopItems() {
     return `
       <div class="shop-item-card is-editing">
         <div class="field-row">
-          <label class="field" style="flex:0 0 62px;">
-            <span class="field-label">圖示</span>
-            <input type="text" class="rule-editor-input" value="${escapeHtml(item.icon || '')}"
-                   maxlength="4" style="text-align:center;"
-                   onchange="updateShopItem('${item.id}','icon',this.value)" />
-          </label>
+          ${fruit ? `
+            <div class="field" style="flex:0 0 62px;">
+              <span class="field-label">圖示</span>
+              <div class="shop-item-emoji">${skillIconHtml(fruit, 34)}</div>
+            </div>`
+          : `
+            <label class="field" style="flex:0 0 62px;">
+              <span class="field-label">圖示</span>
+              <input type="text" class="rule-editor-input" value="${escapeHtml(item.icon || '')}"
+                     maxlength="4" style="text-align:center;"
+                     onchange="updateShopItem('${item.id}','icon',this.value)" />
+            </label>`}
           <label class="field grow">
             <span class="field-label">獎品名稱</span>
             <input type="text" class="rule-editor-input" value="${escapeHtml(item.name)}"

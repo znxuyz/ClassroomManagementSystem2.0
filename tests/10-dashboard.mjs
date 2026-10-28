@@ -72,13 +72,39 @@ for (const [w, h, tag] of [[1440, 1000, '1440'], [1024, 800, '1024'], [390, 844,
     t.ok('收起之後面板關掉', !layout.classList.contains('has-selection')
       && document.getElementById('quickAssignPanel').style.display === 'none');
 
-    // 批次加分照舊
+    // ---- 批次加分 ----
     BatchAward.toggle();
     BatchAward.pick('s0'); BatchAward.pick('s1');
     t.ok('批次加分仍然可用',
       layout.classList.contains('has-selection')
       && document.querySelector('.batch-panel') !== null);
+
+    /* 「已選 N / 全選 / 離開批次」只能出現一次。
+       它們原本在下面的面板裡又寫了一份,而那塊在 29 位學生之後 ——
+       等於上面一份、下面一份,而下面那份還看不到。 */
+    const panel = document.querySelector('.batch-panel');
+    t.ok('批次面板不再重複「全選 / 離開批次」',
+      !/全選|離開批次|全部取消/.test(panel.textContent),
+      panel.textContent.replace(/\s+/g, ' ').trim().slice(0, 40));
+    t.ok('「全選」在標題列(勾選時看得到)',
+      document.getElementById('batchAllBtn').style.display !== 'none');
+    t.ok('小組快捷還在', panel.querySelector('.batch-group') !== null
+      || panel.textContent.includes('還沒有分組'));
+
+    /* 面板黏在底部時不可以把學生蓋光 —— 那就換成「看得到按鈕但勾不到人」 */
+    if (wide) {
+      const ap = document.querySelector('.action-panel');
+      const cs = getComputedStyle(ap);
+      t.ok('面板黏底但不會蓋掉半個畫面',
+        cs.position === 'sticky'
+        && ap.getBoundingClientRect().height <= window.innerHeight * 0.5,
+        `${cs.position} · ${Math.round(ap.getBoundingClientRect().height)}px / `
+        + `${Math.round(window.innerHeight * 0.5)}px`);
+    }
+
     BatchAward.toggle();
+    t.ok('離開批次之後那顆「全選」收起來',
+      document.getElementById('batchAllBtn').style.display === 'none');
 
     // 版面不可以溢出
     const over = [];

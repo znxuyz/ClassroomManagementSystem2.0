@@ -792,13 +792,6 @@
     padding: 14px 16px;
   }
 
-  /* 浮層是 flex 欄,裡面的卡片預設會被壓縮到比內容還矮 ——
-     而那張卡是 overflow: hidden,所以積分與階段就這樣被切掉了。
-     浮層自己會捲,所以裡面的東西一律不要縮。 */
-  .dashboard.has-selection .action-panel > * {
-    flex-shrink: 0;
-  }
-
   /* 進度條在「正在加分」的當下是雜訊,佔的高度又不小 */
   .dashboard.has-selection .progress-bar,
   .dashboard.has-selection .progress-text {
@@ -852,4 +845,58 @@
   .dashboard:not(.has-selection) .action-panel {
     display: none;
   }
+}
+
+/* 面板是 flex 欄,而且會限高自捲(手機的底部浮層、電腦黏底時都是)。
+   flex 子項預設會被壓縮到比內容還矮,而裡面那張守護獸卡是
+   overflow: hidden —— 積分與階段就這樣被切掉。
+   面板自己會捲,所以裡面的東西一律不要縮。
+
+   這一條原本只寫在手機那一段,電腦版黏底之後同一個坑又出現了一次,
+   所以提出來給兩邊共用。 */
+.dashboard.has-selection .action-panel > * {
+  flex-shrink: 0;
+}
+
+/* ============================================
+   批次加分時,面板黏在畫面底部
+   ────────────────────────────────────────────
+   改成方格版面之後,加分面板被推到 29 位學生的下面 ——
+   勾選的時候看不到「小組快捷」,也按不到積分按鈕,
+   得先捲到最底下再捲回來。原本左右兩欄時它一直在旁邊。
+
+   用 sticky 而不是 fixed:它仍然在版面流裡,所以不會蓋住最後一排學生,
+   只有在「捲過去了」的時候才黏住。
+============================================ */
+@media (min-width: 761px) {
+  .dashboard.has-selection .action-panel {
+    position: sticky;
+    bottom: 12px;
+    z-index: 5;
+    /* 限高很重要:面板裡有小組快捷 + 已選名單 + 八個積分按鈕,
+       整塊可能有 480px —— 黏住之後會蓋掉一半的學生,
+       那就換成「看得到按鈕但勾不到人」,一樣不能用。 */
+    max-height: 46vh;
+    overflow-y: auto;
+  }
+
+  /* 黏住的時候底下是學生方格,要有底才看得清楚 */
+  .dashboard.has-selection .action-panel::before {
+    content: "";
+    position: absolute;
+    inset: -10px -12px;
+    background: var(--paper);
+    border: 1px solid var(--paper-shadow);
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow-lg);
+    z-index: -1;
+  }
+}
+
+/* 小組快捷那一行的標題,和「目前剛好是第 N 組」同一行 */
+.batch-label {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
 }

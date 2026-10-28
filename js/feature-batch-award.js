@@ -129,23 +129,16 @@ const BatchAward = {
          </div>`;
 
     const names = state.students.filter(s => this.picked.has(s.id));
-    const allOn = state.students.length > 0 && this.picked.size === state.students.length;
 
+    /* 「已選 N 位 / 全選 / 離開批次」都在上面那張卡的標題列了 ——
+       這裡再放一次是重複的,而且會把真正有用的「小組快捷」往下推。
+       這一塊只留勾選時真正需要的:按哪一組、現在選了誰。 */
     return `
       <div class="batch-panel">
-        <div class="batch-head">
-          <div class="batch-count">
-            已選 <strong>${this.picked.size}</strong> 位
-            ${gi >= 0 ? `<span class="batch-ismatch">= 第 ${gi + 1} 組</span>` : ''}
-          </div>
-          <div class="batch-actions">
-            <button class="btn btn-ghost btn-small" onclick="BatchAward.pickAll()">
-              ${allOn ? '全部取消' : '全選'}</button>
-            <button class="btn btn-ghost btn-small" onclick="BatchAward.toggle()">離開批次</button>
-          </div>
+        <div class="batch-label">
+          小組快捷
+          ${gi >= 0 ? `<span class="batch-ismatch">目前剛好是第 ${gi + 1} 組</span>` : ''}
         </div>
-
-        <div class="batch-label">小組快捷</div>
         ${chips}
 
         <div class="batch-label">已選名單</div>

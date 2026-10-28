@@ -663,3 +663,12 @@
 .shop-item-card textarea {
   min-width: 0;
 }
+
+/* 技能果實的圖示是技能自己的圖(含外框),不是一個 emoji ——
+   所以那一格不要再加自己的底色與邊框,會變成框中框。 */
+.shop-item-card.is-fruit .shop-item-emoji {
+  background: none;
+  border: none;
+  width: auto;
+  height: auto;
+}
