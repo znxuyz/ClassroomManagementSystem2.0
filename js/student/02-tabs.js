@@ -6,6 +6,20 @@
 ============================================ */
 
 Object.assign(StudentApp, {
+  /* 整頁空白的提示。
+     本來這幾頁只有一行灰字(「目前沒有待作答的測驗」)飄在整片空白上,
+     看起來像壞掉。給它一個圖示和一句「什麼時候會出現」,
+     小朋友才知道不是自己的問題。
+     卡片裡面那種小空狀態(積分紀錄)維持原樣,不要用這個。 */
+  pageEmpty(icon, title, hint) {
+    return `
+      <div class="student-empty is-page">
+        <div class="student-empty-icon">${icon}</div>
+        <div class="student-empty-title">${escapeHtml(title)}</div>
+        ${hint ? `<div class="student-empty-hint">${escapeHtml(hint)}</div>` : ''}
+      </div>`;
+  },
+
   /* ---------- 分頁:我的守護獸 ---------- */
 
   renderPetTab() {
@@ -29,7 +43,8 @@ Object.assign(StudentApp, {
 
   renderQuizTab() {
     if (this.quizzes.length === 0) {
-      return '<div class="student-empty">目前沒有待作答的測驗</div>';
+      return this.pageEmpty('✎', '目前沒有待作答的測驗',
+        '老師開放測驗時會出現在這裡。答對拿到的分數會變成守護獸的經驗。');
     }
     const results = (this.student && this.student.quizResults) || {};
 
@@ -153,7 +168,8 @@ Object.assign(StudentApp, {
       .map(p => p.itemId);
 
     const cards = items.length === 0
-      ? '<div class="student-empty">老師還沒上架任何獎品</div>'
+      ? this.pageEmpty('🎁', '老師還沒上架任何獎品',
+          '獎品上架之後,就可以用可用積分來換。')
       : items.map(item => {
           const soldOut  = item.stock !== null && item.stock <= 0;
           const tooPoor  = points < item.price;

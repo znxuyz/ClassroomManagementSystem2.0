@@ -66,6 +66,13 @@ const r = await page.evaluate(async () => {
   StudentApp.render();
   out.empty = document.querySelectorAll('.student-empty').length > 0;
 
+  // ── 整頁的空狀態 ──
+  StudentApp.quizzes = [];
+  StudentApp.setTab('quiz');
+  const pe = document.querySelector('.student-empty.is-page');
+  out.pageEmpty = !!pe && !!pe.querySelector('.student-empty-icon')
+    && !!pe.querySelector('.student-empty-hint');
+
   // ── 排行榜:第 4 名之後 ──
   StudentApp.setTab('rank');
   const rows = [...document.querySelectorAll('.rank-row')];
@@ -116,6 +123,8 @@ ok('日期不再重複寫在每一列', r.noPerRowDate);
 ok('只有一筆也不會壞', JSON.stringify(r.single) === JSON.stringify([1, 1]),
    JSON.stringify(r.single));
 ok('完全沒有紀錄時有提示', r.empty);
+
+ok('沒有測驗時是一整塊有圖示與說明的空狀態,不是一行灰字', r.pageEmpty);
 
 ok('排行榜從第 4 名開始列', r.restFrom === '4', '從第 ' + r.restFrom + ' 名');
 ok('列到第 10 名', r.restTo === '10', '到第 ' + r.restTo + ' 名');

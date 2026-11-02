@@ -95,7 +95,9 @@ const Leaderboard = {
   renderPodium(rows, opts) {
     const o = opts || {};
     if (rows.length === 0) {
-      return '<div class="student-empty">還沒有人得分,快去努力吧</div>';
+      return typeof StudentApp !== 'undefined' && StudentApp.pageEmpty
+        ? StudentApp.pageEmpty('🏆', '還沒有人得分', '被老師加分之後就會出現名次。')
+        : '<div class="student-empty">還沒有人得分,快去努力吧</div>';
     }
 
     const top3 = rows.slice(0, 3);

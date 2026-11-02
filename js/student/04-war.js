@@ -92,18 +92,20 @@ Object.assign(StudentApp, {
         if (g != null && centerOnGroup(g, { instant: true })) this._warCentered = true;
       });
     }
-    if (!c) return '<div class="student-empty">老師還沒開始蜂巢戰紀</div>';
+    if (!c) return StudentApp.pageEmpty('⬡', '老師還沒開始蜂巢戰紀',
+      '開始之後,你和組員要一起答題搶格子。');
 
     const map = TerritoryGame.map;
     const groupIdx = this.myGroupIdx();
 
     if (c.status !== 'running') {
       return `${renderStandings(c, map, groupIdx)}
-              <div class="student-empty">這一局已經結束了</div>
+              ${StudentApp.pageEmpty('⬡', '這一局已經結束了', '等老師開下一局。')}
               ${renderHexMap(c, map, { zoom: _territoryZoom })}`;
     }
     if (groupIdx == null) {
-      return '<div class="student-empty">你不在這一局的任何一組,請找老師確認分組</div>';
+      return StudentApp.pageEmpty('⬡', '你不在這一局的任何一組',
+        '請找老師確認分組。');
     }
     if (this.tQuestion) return this.renderWarQuestion();
 
