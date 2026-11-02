@@ -243,7 +243,9 @@
 .hw-due-chip {
   font-size: 11px;
   font-weight: 700;
-  padding: 1px 8px;
+  /* 和它旁邊那幾段說明文字等高 —— 差 1px 也會讓那一排看起來歪一點 */
+  line-height: 18px;
+  padding: 0 8px;
   border-radius: var(--r-pill);
   background: var(--paper-warm);
   color: var(--ink-soft);

@@ -84,17 +84,22 @@
 }
 
 .student-avatar.health-mild::after {
-  content: "!";
+  /* 本來只寫「!」/「✚」—— 看得出有事,看不出多久。改成寫天數。
+     兩位數也要塞得下,所以寬度是 min-width 而不是固定值;
+     顏色換成加深版,白字在原色上只有 2.95 / 4.29,讀不清楚。 */
+  content: attr(data-quiet);
   position: absolute;
   top: -2px;
   right: -2px;
-  background: var(--mild);
-  color: var(--paper);
+  background: var(--mild-deep);
+  color: #fff;
   font-size: 10px;
   font-weight: 700;
-  width: 16px;
+  min-width: 16px;
+  padding: 0 3px;
+  box-sizing: border-box;
   height: 16px;
-  border-radius: 50%;
+  border-radius: 999px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -106,18 +111,37 @@
   opacity: 0.7;
 }
 
+/* 生病的灰階是下在整個頭像上的,連右上角那顆天數圓點也一起被洗淡 ——
+   圓點裡現在是老師要讀的數字,不能糊。
+   有圖片的時候改成只洗圖片本身(emoji 退路沒有可以單獨指定的元素,
+   維持原樣)。 */
+.student-avatar.health-sick:has(img) {
+  filter: none;
+  opacity: 1;
+}
+
+.student-avatar.health-sick:has(img) img {
+  filter: grayscale(0.7);
+  opacity: 0.7;
+}
+
 .student-avatar.health-sick::after {
-  content: "✚";
+  /* 本來只寫「!」/「✚」—— 看得出有事,看不出多久。改成寫天數。
+     兩位數也要塞得下,所以寬度是 min-width 而不是固定值;
+     顏色換成加深版,白字在原色上只有 2.95 / 4.29,讀不清楚。 */
+  content: attr(data-quiet);
   position: absolute;
   top: -2px;
   right: -2px;
-  background: var(--sick);
-  color: var(--paper);
+  background: var(--sick-deep);
+  color: #fff;
   font-size: 10px;
   font-weight: 700;
-  width: 16px;
+  min-width: 16px;
+  padding: 0 3px;
+  box-sizing: border-box;
   height: 16px;
-  border-radius: 50%;
+  border-radius: 999px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -642,7 +666,12 @@
   justify-content: center;
   margin-top: 0;
   line-height: 1.35;
+  flex-wrap: nowrap;
 }
+
+/* 「未選」要和分數同一行。
+   不寫 nowrap 的話它會掉到第二行,那張卡片就比別人高一截,
+   整排格子被它撐開 —— 同一排裡的名字與分數因此對不齊。 */
 
 .student-item .student-name {
   line-height: 1.4;

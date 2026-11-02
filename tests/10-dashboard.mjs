@@ -51,17 +51,43 @@ for (const [w, h, tag] of [[1440, 1000, '1440'], [1024, 800, '1024'], [390, 844,
       !document.querySelector('.action-panel').textContent.includes('從左側'));
     t.ok('還沒選守護獸的人看得出來',
       grid.children[5].querySelector('.student-nopet') !== null);
-    /* 久沒被加分的那幾位要一眼看得出來 —— 本來只藏在頭像顏色裡 */
+    /* 久沒被加分的那幾位要一眼看得出來。
+       天數寫在頭像右上角那顆圓點裡(::after 讀 data-quiet),
+       刻意不另外開一行文字標籤 —— 那會把整排格子撐高、彼此對不齊。 */
     state.students[2].lastPointTime = Date.now() - 5 * 86400000;
     state.students[3].lastPointTime = Date.now() - 9 * 86400000;
     state.students[0].lastPointTime = Date.now();
     renderStudentList();
-    const chips = document.querySelectorAll('.student-quiet');
-    t.ok('久沒加分的人卡片上有標示', chips.length === 2
-      && chips[0].textContent.includes('5 天') && chips[1].textContent.includes('9 天'),
-      [...chips].map(c => c.textContent).join(' · '));
-    t.ok('剛加過分的人沒有那個標示',
-      grid.children[0].querySelector('.student-quiet') === null);
+    const av = i => grid.children[i].querySelector('.student-avatar');
+    t.ok('微恙(3 天以上)的圓點寫著天數',
+      av(2).classList.contains('health-mild') && av(2).dataset.quiet === '5',
+      av(2).dataset.quiet);
+    t.ok('生病(7 天以上)的圓點寫著天數',
+      av(3).classList.contains('health-sick') && av(3).dataset.quiet === '9',
+      av(3).dataset.quiet);
+    t.ok('圓點真的把天數畫出來(::after 讀 data-quiet)',
+      getComputedStyle(av(3), '::after').content.includes('attr(data-quiet)')
+      || getComputedStyle(av(3), '::after').content.includes('9'),
+      getComputedStyle(av(3), '::after').content);
+    t.ok('剛加過分的人沒有那顆圓點',
+      av(0).classList.contains('health-healthy'));
+    /* 生病的灰階不可以把圓點裡的數字一起洗淡 —— 那是老師要讀的字 */
+    t.ok('生病頭像的圓點沒有被灰階洗掉',
+      getComputedStyle(av(3)).filter === 'none'
+      || !av(3).querySelector('img'),
+      getComputedStyle(av(3)).filter);
+    /* 有標籤的卡片不可以比較高 —— 整排格子會被它撐開,
+       同一排裡的名字與分數就對不齊(見 tests/21-grid-rows.mjs) */
+    const hs = [...grid.children].map(c => Math.round(c.getBoundingClientRect().height));
+    t.ok('有沒有標籤都一樣高', new Set(hs).size === 1, [...new Set(hs)].join(' / '));
+    /* 「未選」要和分數同一行,掉到第二行那張卡片就比別人高一截 */
+    state.students[3].pet = null;
+    renderStudentList();
+    const meta = grid.children[3].querySelector('.student-meta');
+    t.ok('「未選」和分數在同一行',
+      Math.round(meta.getBoundingClientRect().height)
+        === Math.round(grid.children[0].querySelector('.student-meta').getBoundingClientRect().height),
+      Math.round(meta.getBoundingClientRect().height) + 'px');
 
     t.ok('不再每一列都重複階段名稱',
       !grid.children[0].textContent.includes('守護神獸'));
