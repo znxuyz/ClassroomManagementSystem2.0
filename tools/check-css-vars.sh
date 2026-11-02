@@ -2,8 +2,9 @@
 # 檢查 css/ 裡用到的每一個 var(--x) 都真的有定義。
 # 沒定義的變數不會報錯,只會讓樣式悄悄失效 —— 所以要主動抓。
 #
-# 定義處有兩種:css/ 裡的 `--x: 值`,以及 js/ 裡由程式逐個元素指定的
-# `style="--x:…"`(例如每一組的顏色 --g、攻打目標的 --foe)。
+# 定義處有三種:css/ 裡的 `--x: 值`、js/ 裡寫在 `style="--x:…"` 的
+# (例如每一組的顏色 --g、攻打目標的 --foe),以及
+# `setProperty('--x', …)`(投影的欄數 --proj-cols)。
 # 兩邊都要算,否則會把「行內指定的變數」誤報成缺漏 ——
 # 這支腳本原本是靠一行寫死的白名單擋那個誤報,
 # 每加一個行內變數就得記得回來改,所以改成通用掃描。
@@ -12,7 +13,9 @@
 # 由 tests/run.sh 一起跑,兩邊的判斷邏輯刻意保持一致。
 cd "$(dirname "$0")/.."
 defined=$( { grep -rhoE "^\s*--[a-zA-Z0-9-]+\s*:" css/;
-             grep -rhoE -- "--[a-zA-Z0-9-]+\s*:" js/ | grep -v "^//"; } \
+             grep -rhoE -- "--[a-zA-Z0-9-]+\s*:" js/ | grep -v "^//";
+             grep -rhoE -- "setProperty\(['\"]--[a-zA-Z0-9-]+" js/ \
+               | sed -E "s/.*setProperty\(['\"]//"; } \
            | tr -d ' :' | sort -u )
 bad=0
 for f in css/*.css; do

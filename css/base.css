@@ -117,10 +117,18 @@
        --t-item     項目名稱:一張卡片代表的那一個東西(作業、測驗、獎品)
        --t-sub      副標與說明
 
-     頁面大標(--view-title 28px)與全幅覆蓋層(登入、對話框、結果卡)
-     刻意不在此限 —— 那是另一個層級,壓成一樣反而分不出主從。 */
-  --t-section: 16px;
-  --t-item:    15px;
+     ── 整個專案的字級只用這幾階 ──
+       介面文字  10 / 11 / 12 / 13 / 14 / 16 / 18
+       標題      20 / 22 / 24 / 26 / 28 / 32 以上
+     比例大約是 1.15–1.2。相鄰兩階差太小(15 和 16、13 和 13.5)的時候,
+     讀者分不出那是「不同層級」還是「做壞了」,所以半階一律不留 ——
+     以前散在各處的 9/10.5/11.5/12.5/13.5/14.5/15/17/21 都收攏掉了。
+     tests/12-visual-system.mjs 會擋住新的半階。
+
+     一次性的巨大數字(計時器 200px、投影的名次、守護獸大圖)不在此限 ——
+     那些是圖,不是文字。 */
+  --t-section: 18px;
+  --t-item:    16px;
   --t-sub:     13px;
   --control-fs:   14px;   /* 字級 */
 
@@ -441,7 +449,7 @@ body {
   border: 1.5px solid var(--paper-shadow);
   border-radius: var(--control-r);
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: 16px;
   background: var(--paper);
   color: var(--ink);
   transition: all 0.2s var(--ease-out);
@@ -742,7 +750,7 @@ select.setup-input {
   .brand-tagline { display: none; }
 
   .brand-mark {
-    font-size: 17px;
+    font-size: 18px;
   }
 
   .brand-mark::before {

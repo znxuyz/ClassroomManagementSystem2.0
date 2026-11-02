@@ -1,13 +1,23 @@
 /* ============================================
    投影模式
 ============================================ */
+/* 整頁是一欄的 flex:頁首固定高度,方格吃掉剩下的全部 ——
+   這樣「全班剛好一個畫面」才成立(原本是固定 180px 的方格,
+   1024×768 的投影機只看得到 8 位)。 */
 .projector-view {
   background: linear-gradient(180deg, var(--forest-deep) 0%, #0F2419 100%);
   color: var(--paper);
-  min-height: 100vh;
+  /* 固定一個畫面的高度(--proj-top 是上面兩排選單的高度,由 JS 量)。
+     寫 min-height 的話格子會被內容撐高,整班就排到畫面外面去了。 */
+  height: calc(100vh - var(--proj-top, 0px));
   margin: -32px;
-  padding: 40px;
+  /* 內距跟著畫面高度走:1024×768 的投影機上,40px 的四邊內距
+     等於從守護獸身上挖掉一整圈 */
+  padding: clamp(16px, 3.2vh, 40px) clamp(16px, 2.4vw, 40px);
   position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .projector-view::before {
@@ -24,8 +34,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 32px;
-  padding-bottom: 20px;
+  margin-bottom: clamp(12px, 2.4vh, 32px);
+  padding-bottom: clamp(8px, 1.6vh, 20px);
   border-bottom: 1px solid rgba(212, 164, 70, 0.3);
   position: relative;
 }
@@ -56,50 +66,68 @@
   font-weight: 700;
 }
 
+/* 欄數由 JS 依「人數 × 畫面比例」算出來(見 feature-projector.js),
+   每一列等高,所以格子自己縮放到剛好鋪滿。 */
 .projector-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(var(--proj-cols, 6), 1fr);
+  grid-auto-rows: 1fr;
+  gap: clamp(4px, 1.2vh, 22px);
   position: relative;
+  flex: 1 1 auto;
+  min-height: 0;        /* flex 子項預設不准縮到比內容小 */
 }
 
+/* 28 個卡片框等於 28 個互相競爭的框。框線與底色拿掉之後,
+   看起來才像一片森林,不像一個後台 —— 層次改由大小與留白負責。
+   框只在加分的那一瞬間出現(.flash)。 */
 .projector-card {
-  background: rgba(251, 246, 233, 0.05);
-  border: 1px solid rgba(212, 164, 70, 0.2);
   border-radius: var(--r-card);
-  padding: 20px 14px;
+  padding: clamp(1px, 0.6vh, 10px) 4px;
   text-align: center;
-  transition: all 0.3s var(--ease-out);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(1px, 0.4vh, 8px);
+  min-width: 0;
+  min-height: 0;
+  transition: background var(--dur) var(--ease-out),
+              transform var(--dur) var(--ease-out);
 }
 
 .projector-card.flash {
   animation: pointsFlash 1s var(--ease-out);
 }
 
+/* 加分的那一刻是全班一起看的,所以這裡刻意比別處誇張一點:
+   金色的底亮起來、整格彈一下,再慢慢退回透明。 */
 @keyframes pointsFlash {
-  0% { background: rgba(212, 164, 70, 0.3); transform: scale(1.05); }
-  100% { background: rgba(251, 246, 233, 0.05); transform: scale(1); }
+  0%   { background: rgba(212, 164, 70, 0.38); transform: scale(1.08); }
+  40%  { background: rgba(212, 164, 70, 0.22); transform: scale(1.02); }
+  100% { background: transparent; transform: scale(1); }
 }
 
+/* 守護獸「吃掉剩下的高度」:名字與分數先拿到它們需要的,
+   剩下的全給獸。寬度由 aspect-ratio 從高度推回來,所以格子一變小
+   縮的是獸,不是文字 —— 文字被壓扁就什麼都讀不到了。 */
 .projector-pet {
-  width: 90px;
-  height: 90px;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: auto;
+  max-width: 82%;
+  aspect-ratio: 1;
   border-radius: 50%;
   background: var(--paper);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 48px;
-  margin: 0 auto 14px;
+  font-size: clamp(22px, 6vh, 52px);
   position: relative;
-  transition: all 0.4s var(--ease-out);
+  transition: box-shadow var(--dur-slow) var(--ease-out);
 }
 
-.projector-pet.stage-0 { font-size: 36px; }
-.projector-pet.stage-1 { font-size: 42px; }
-.projector-pet.stage-2 { font-size: 48px; }
 .projector-pet.stage-3 {
-  font-size: 52px;
   background: linear-gradient(135deg, var(--gold), var(--sunset-light));
   box-shadow: 0 0 24px rgba(212, 164, 70, 0.6);
   animation: legendaryPulse 3s ease-in-out infinite;
@@ -114,24 +142,37 @@
   opacity: 0.7;
 }
 
+/* 教室後排也要看得到,所以字級跟著畫面高度走(vh),不是寫死的 px。
+   名字用 1ch 的字距撐開一點 —— 投影出去的細明體會糊,字距可以救回一些。 */
 .projector-name {
   font-family: var(--font-display);
-  font-size: 16px;
+  font-size: clamp(12px, 2.2vh, 24px);
   font-weight: 700;
-  margin-bottom: 4px;
+  letter-spacing: 0.02em;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .projector-pet-name {
-  font-size: 12px;
+  font-size: clamp(10px, 1.5vh, 16px);
   color: var(--moss);
-  margin-bottom: 8px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .projector-points {
   font-family: var(--font-display);
-  font-size: 24px;
+  font-size: clamp(14px, 3vh, 34px);
   font-weight: 700;
   color: var(--gold);
+  line-height: 1;
+  flex: 0 0 auto;
 }
 
 /* 漂浮積分動畫 */
@@ -184,11 +225,15 @@ html.projector-full .nav-subtabs {
 
 html.projector-full .app-main {
   padding: 0 !important;
+  /* .app-main 平常限寬 1760px 置中,全螢幕投影時兩側會空出白邊 ——
+     投影要的是整面牆,不是一欄文章。 */
+  max-width: none !important;
+  min-height: 0 !important;
 }
 
 html.projector-full .projector-view {
   margin: 0;
-  min-height: 100vh;
+  height: 100vh;
   border-radius: 0;
 }
 

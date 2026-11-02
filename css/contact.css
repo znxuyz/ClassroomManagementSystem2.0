@@ -49,7 +49,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .contact-section-title::before {
@@ -127,7 +127,7 @@
   font-weight: 700;
   color: var(--forest-deep);
   margin-bottom: 14px;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .student-note-row {
@@ -218,7 +218,7 @@
 .hw-card-title {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 17px;
+  font-size: 18px;
   color: var(--forest-deep);
   margin-bottom: 4px;
 }

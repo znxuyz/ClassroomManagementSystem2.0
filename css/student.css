@@ -275,7 +275,7 @@
 .student-section-title {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 15px;
+  font-size: 16px;
   color: var(--forest);
   margin-bottom: 12px;
   padding-bottom: 8px;
@@ -498,7 +498,7 @@
   border: 1px solid var(--paper-shadow);
   border-radius: var(--r-tile);
   margin-bottom: 8px;
-  font-size: 15px;
+  font-size: 16px;
   cursor: pointer;
   transition: background 0.2s;
 }
@@ -519,7 +519,7 @@
 .student-short-input {
   width: 100%;
   padding: 14px;
-  font-size: 15px;
+  font-size: 16px;
   font-family: var(--font-body);
   border: 1px solid var(--paper-shadow);
   border-radius: var(--r-tile);

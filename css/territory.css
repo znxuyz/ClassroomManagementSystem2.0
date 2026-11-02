@@ -545,7 +545,7 @@
 /* (.war-q-progress 隨著 .war-q-target 一起退場了) */
 
 .war-q-text {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 600;
   line-height: 1.7;
   color: var(--ink);
@@ -567,7 +567,7 @@
 
 .hex-battle-mark {
   text-anchor: middle;
-  font-size: 15px;
+  font-size: 16px;
   fill: rgba(255, 255, 255, 0.9);
   pointer-events: none;
 }
@@ -664,7 +664,7 @@
 .tg-live-title {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 15px;
+  font-size: 16px;
   color: var(--forest);
   margin-bottom: 12px;
 }

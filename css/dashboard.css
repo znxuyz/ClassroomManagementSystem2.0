@@ -483,7 +483,7 @@
   margin-bottom: 16px;
 }
 
-.batch-count { font-size: 15px; color: var(--ink-soft); }
+.batch-count { font-size: 16px; color: var(--ink-soft); }
 .batch-count strong {
   font-family: var(--font-display);
   font-size: 22px;
@@ -767,7 +767,7 @@
   .student-item .student-name { font-size: 11px; }
   .student-points { font-size: 12px; }
   .student-meta { gap: 4px; }
-  .seat-no { font-size: 9px; min-width: 15px; padding: 0 3px; }
+  .seat-no { font-size: 10px; min-width: 15px; padding: 0 3px; }
 
   .student-board {
     padding: 14px;
@@ -810,7 +810,7 @@
     border-radius: 50%;
     background: var(--paper-warm);
     color: var(--ink-soft);
-    font-size: 15px;
+    font-size: 16px;
     cursor: pointer;
     z-index: 1;
   }
@@ -1016,7 +1016,7 @@
   text-align: center;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 15px;
+  font-size: 16px;
   color: var(--forest-deep);
 }
 

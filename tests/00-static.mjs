@@ -29,12 +29,14 @@ ok('所有 ?v= 快取版號都一樣', new Set(vers).size === 1,
    但 console 不會報任何錯。 */
 const css = readdirSync(root + 'css').filter(f => f.endsWith('.css'))
   .map(f => read('css/' + f)).join('\n');
-/* 變數也可能是 JS 在 style="--g:…" 裡逐個元素設的(例如每一組的顏色),
-   所以定義要連 js/ 一起找,不然會誤報。 */
+/* 變數也可能是 JS 設的:寫在 style="--g:…" 裡(每一組的顏色),
+   或用 setProperty('--x', …)(投影的欄數)。兩種都要算成「有定義」,
+   不然會誤報。 */
 const jsAll = files.map(f => read(f)).join('\n');
 const defined = new Set([
   ...[...css.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gmi)].map(m => m[1]),
-  ...[...jsAll.matchAll(/(--[a-z0-9-]+)\s*:/g)].map(m => m[1])
+  ...[...jsAll.matchAll(/(--[a-z0-9-]+)\s*:/g)].map(m => m[1]),
+  ...[...jsAll.matchAll(/setProperty\(\s*['"`](--[a-z0-9-]+)/g)].map(m => m[1])
 ]);
 const used = new Set([...css.matchAll(/var\(\s*(--[a-z0-9-]+)/g)].map(m => m[1]));
 const undef = [...used].filter(v => !defined.has(v));

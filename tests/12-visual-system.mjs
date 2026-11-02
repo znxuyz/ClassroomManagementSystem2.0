@@ -226,6 +226,28 @@ const lines = await page.evaluate(async () => {
   t.ok('同一排最多一顆主要按鈕', tooMany.length === 0,
     [...new Set(tooMany)].slice(0, 4).join(' | '));
 
+  /* ── 字級只用訂好的那幾階 ──
+     相鄰兩階差太小(15 和 16、13 和 13.5)的時候,讀者分不出那是
+     「不同層級」還是「做壞了」。所以半階一律不留。
+     大於 18 的是標題與一次性的大數字,不在這一條的管轄內。 */
+  {
+    const ALLOWED = [10, 11, 12, 13, 14, 16, 18];
+    const bad = [];
+    [...document.styleSheets].forEach(ss => {
+      let rules; try { rules = ss.cssRules; } catch { return; }
+      const walk = list => [...list].forEach(r => {
+        if (r.cssRules) return walk(r.cssRules);
+        const v = r.style && r.style.fontSize;
+        if (!v || !/^[\d.]+px$/.test(v)) return;
+        const n = parseFloat(v);
+        if (n <= 18 && !ALLOWED.includes(n)) bad.push(`${r.selectorText} → ${v}`);
+      });
+      walk(rules);
+    });
+    t.ok('沒有半階的字級(15px、13.5px 這種)',
+      bad.length === 0, [...new Set(bad)].slice(0, 5).join(' | '));
+  }
+
   /* ── 圖示是一套系統 ──
      導覽本來混了幾何符號與彩色 emoji。混在同一排裡粗細與重心對不起來,
      而且 emoji 在不同系統長得不一樣、字型裡沒有的會變方框(⚔ 出過這件事)。
