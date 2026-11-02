@@ -32,10 +32,76 @@ Object.assign(StudentApp, {
 
     return `
       <section class="student-pet-section">${petHtml}</section>
+      ${s && s.pet ? this.renderWeekCard(s) : ''}
       ${this.renderSkillsPanel()}
       <section class="student-section">
         <div class="student-section-title">最近的積分紀錄</div>
         ${this.renderHistory()}
+      </section>`;
+  },
+
+  /* ---------- 這禮拜 ----------
+     累積經驗與可用積分都是「總量」,看不出最近有沒有在進步。
+     小朋友真正關心的是「我這禮拜拿了幾分」、「比上禮拜多還是少」。
+
+     一週從星期一算起(和老師的課表一致,也和蜂巢戰紀的週次同一天)。
+     七根小柱子是這一週每天的淨得分,今天那一根標起來 ——
+     「昨天被扣了兩分」這種事,看圖比看清單快。 */
+
+  weekStart(t) {
+    const d = new Date(t);
+    d.setHours(0, 0, 0, 0);
+    // getDay():星期日是 0,我們要的是「星期一為一週之始」
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return d.getTime();
+  },
+
+  renderWeekCard(s) {
+    const WEEK = 7 * 86400000;
+    const start = this.weekStart(Date.now());
+    const hist = (s.history || []).filter(r => r.time);
+
+    const sum = (from, to) => hist
+      .filter(r => r.time >= from && r.time < to)
+      .reduce((a, r) => a + (r.points || 0), 0);
+
+    const now = sum(start, start + WEEK);
+    const prev = sum(start - WEEK, start);
+    const diff = now - prev;
+
+    // 每天的淨得分,星期一到星期日
+    const days = Array.from({ length: 7 }, (_, i) =>
+      sum(start + i * 86400000, start + (i + 1) * 86400000));
+    const peak = Math.max(1, ...days.map(Math.abs));
+    const todayIdx = Math.floor((Date.now() - start) / 86400000);
+    const names = ['一', '二', '三', '四', '五', '六', '日'];
+
+    const bars = days.map((v, i) => {
+      const h = Math.round(Math.abs(v) / peak * 100);
+      const cls = v > 0 ? 'pos' : v < 0 ? 'neg' : 'zero';
+      return `
+        <div class="week-bar-col ${i === todayIdx ? 'today' : ''} ${i > todayIdx ? 'future' : ''}">
+          <div class="week-bar-slot">
+            <div class="week-bar ${cls}" style="height:${v === 0 ? 2 : Math.max(6, h)}%"
+                 title="${v > 0 ? '+' : ''}${v} 分"></div>
+          </div>
+          <div class="week-bar-day">${names[i]}</div>
+        </div>`;
+    }).join('');
+
+    const trend = prev === 0 && now === 0 ? '這禮拜還沒有紀錄'
+      : diff > 0 ? `比上禮拜多 ${diff} 分`
+      : diff < 0 ? `比上禮拜少 ${-diff} 分`
+      : '和上禮拜一樣';
+
+    return `
+      <section class="week-card">
+        <div class="week-card-head">
+          <span class="week-card-label">這禮拜拿到</span>
+          <span class="week-card-num ${now < 0 ? 'neg' : ''}">${now > 0 ? '+' : ''}${now}</span>
+        </div>
+        <div class="week-bars">${bars}</div>
+        <div class="week-card-trend">${escapeHtml(trend)}</div>
       </section>`;
   },
 

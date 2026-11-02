@@ -836,3 +836,43 @@ a:hover { color: var(--forest-light); }
   color: var(--ink);
   min-width: 0;
 }
+
+/* ============================================
+   守護獸成長分布(班級概況)
+   ────────────────────────────────────────────
+   0 人的那幾階本來照樣畫一條滿版的灰軌,乍看像「滿格」。
+   開學第一個月全班都在靈卵,另外三階整片灰條反而搶走注意力,
+   所以 0 人的整列淡化、軌道也收細。
+============================================ */
+.stage-dist {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stage-dist-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.stage-dist-count { color: var(--ink-muted); }
+
+.stage-dist-track {
+  height: 10px;
+  background: var(--paper-shadow);
+  border-radius: 5px;
+  overflow: hidden;
+  transition: height .2s var(--ease-out);
+}
+
+.stage-dist-fill {
+  height: 100%;
+  transition: width .6s var(--ease-out);
+}
+
+.stage-dist-row.is-zero { opacity: .45; }
+.stage-dist-row.is-zero .stage-dist-track { height: 4px; }

@@ -161,6 +161,19 @@ for (const [w, h, tag] of [[1440, 1000, '1440'], [1024, 800, '1024'], [390, 844,
     t.ok('地圖說明還算得出來',
       document.getElementById('tgShapeDesc').textContent.includes('格'));
 
+    /* 班級概況的成長分布:0 人的那幾階要淡化,
+       不然四條滿版灰軌看起來像「每一階都滿格」 */
+    navGoItem('data', 'overview', 'general');
+    const rows = [...document.querySelectorAll('.stage-dist-row')];
+    const zero = rows.filter(x => x.classList.contains('is-zero'));
+    t.ok('成長分布:0 人的階段整列淡化',
+      rows.length === 4 && zero.length === 3
+      && parseFloat(getComputedStyle(zero[0]).opacity) < 0.6,
+      `${rows.length} 列,其中 ${zero.length} 列是 0 人`);
+    t.ok('有人的那一階沒有被淡化',
+      parseFloat(getComputedStyle(rows[2]).opacity) === 1);
+    navGoItem('challenge', 'territory', 'tgBoard');
+
     const over2 = [];
     document.querySelectorAll('.view.active *').forEach(el => {
       if (el.scrollWidth > el.clientWidth + 2 && getComputedStyle(el).overflowX === 'visible')

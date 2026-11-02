@@ -66,6 +66,32 @@ const r = await page.evaluate(async () => {
   StudentApp.render();
   out.empty = document.querySelectorAll('.student-empty').length > 0;
 
+  // ── 這禮拜拿到幾分 ──
+  const WEEK = 7 * 86400000;
+  const start = StudentApp.weekStart(Date.now());
+  StudentApp.student.history = [
+    { time: start - WEEK + 3600000, points: 5, reason: '上禮拜' },
+    { time: start + 3600000,        points: 2, reason: '這禮拜一' },
+    { time: start + 3600000,        points: -1, reason: '這禮拜一扣分' }
+  ];
+  StudentApp.setTab('pet');
+  const wc = document.querySelector('.week-card');
+  out.week = wc ? [wc.querySelector('.week-card-num').textContent.trim(),
+                   wc.querySelector('.week-card-trend').textContent.trim(),
+                   wc.querySelectorAll('.week-bar-col').length,
+                   wc.querySelectorAll('.week-bar-col.today').length] : null;
+  // 星期一那一根是這週唯一有分的日子
+  const cols = [...document.querySelectorAll('.week-bar-col')];
+  out.weekMonBar = cols[0].querySelector('.week-bar').className.includes('pos');
+  // 一週從星期一算起
+  out.weekStartsMonday = new Date(start).getDay() === 1;
+  // 完全沒有紀錄也不會壞
+  StudentApp.student.history = [];
+  StudentApp.render();
+  const wc2 = document.querySelector('.week-card');
+  out.weekEmpty = [wc2.querySelector('.week-card-num').textContent.trim(),
+                   wc2.querySelector('.week-card-trend').textContent.trim()];
+
   // ── 整頁的空狀態 ──
   StudentApp.quizzes = [];
   StudentApp.setTab('quiz');
@@ -123,6 +149,17 @@ ok('日期不再重複寫在每一列', r.noPerRowDate);
 ok('只有一筆也不會壞', JSON.stringify(r.single) === JSON.stringify([1, 1]),
    JSON.stringify(r.single));
 ok('完全沒有紀錄時有提示', r.empty);
+
+ok('這禮拜的卡片算的是本週淨得分',
+   r.week && r.week[0] === '+1', r.week && r.week[0]);
+ok('會和上禮拜比', r.week && r.week[1] === '比上禮拜少 4 分', r.week && r.week[1]);
+ok('七天各一根柱子,今天標起來',
+   r.week && r.week[2] === 7 && r.week[3] === 1, JSON.stringify(r.week && r.week.slice(2)));
+ok('一週從星期一算起', r.weekStartsMonday);
+ok('有得分的那一天柱子是正的顏色', r.weekMonBar);
+ok('完全沒有紀錄時不會壞',
+   r.weekEmpty && r.weekEmpty[0] === '0' && r.weekEmpty[1] === '這禮拜還沒有紀錄',
+   JSON.stringify(r.weekEmpty));
 
 ok('沒有測驗時是一整塊有圖示與說明的空狀態,不是一行灰字', r.pageEmpty);
 

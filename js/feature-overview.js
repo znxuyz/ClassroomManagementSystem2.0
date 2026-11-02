@@ -41,23 +41,26 @@ function renderOverview() {
     </div>
   `;
   
-  // 階段分布
+  /* 階段分布。
+     0 人的那幾階本來照樣畫一條滿版的灰軌,乍看像「滿格」——
+     開學第一個月全班都在靈卵,另外三階整片灰條,反而看不出重點。
+     所以 0 人的整列淡化,軌道也變細。 */
   const distEl = document.getElementById('stageDistribution');
   const total2 = state.students.filter(s => s.pet).length || 1;
   distEl.innerHTML = `
-    <div style="display: flex; flex-direction: column; gap: 12px;">
+    <div class="stage-dist">
       ${STAGE_NAMES.map((name, i) => {
         const count = stageCount[i];
         const pct = (count / total2) * 100;
         const color = i === 3 ? 'var(--gold)' : i === 2 ? 'var(--sunset)' : i === 1 ? 'var(--forest-light)' : 'var(--moss)';
         return `
-          <div>
-            <div class="flex-between" style="margin-bottom: 6px; font-size: 13px;">
+          <div class="stage-dist-row ${count === 0 ? 'is-zero' : ''}">
+            <div class="stage-dist-head">
               <span><strong>${name}</strong></span>
-              <span class="text-muted">${count} 位 · ${pct.toFixed(0)}%</span>
+              <span class="stage-dist-count">${count} 位 · ${pct.toFixed(0)}%</span>
             </div>
-            <div style="height: 10px; background: var(--paper-shadow); border-radius: 5px; overflow: hidden;">
-              <div style="height: 100%; width: ${pct}%; background: ${color}; transition: width 0.6s;"></div>
+            <div class="stage-dist-track">
+              <div class="stage-dist-fill" style="width: ${pct}%; background: ${color};"></div>
             </div>
           </div>
         `;

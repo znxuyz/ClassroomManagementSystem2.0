@@ -819,3 +819,91 @@
   line-height: 1.8;
   max-width: 22em;
 }
+
+/* ---------- 這禮拜拿到幾分 ----------
+   累積經驗與可用積分都是「總量」,看不出最近有沒有在進步。
+   七根小柱子是這一週每天的淨得分,今天那一根標起來。 */
+.week-card {
+  margin-top: 16px;
+  background: var(--paper);
+  border: 1px solid var(--paper-shadow);
+  border-radius: var(--r-card);
+  padding: var(--pad);
+}
+
+.week-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.week-card-label {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.week-card-num {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--forest-light);
+  line-height: 1;
+}
+
+.week-card-num.neg { color: var(--sick-ink); }
+
+.week-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.week-bar-col {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+/* 柱子的容器固定高度,七根才會在同一條基線上 */
+.week-bar-slot {
+  width: 100%;
+  height: 44px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.week-bar {
+  width: 100%;
+  max-width: 22px;
+  border-radius: 3px;
+  background: var(--paper-shadow);
+  transition: height .5s var(--ease-out);
+}
+
+.week-bar.pos { background: var(--forest-light); }
+.week-bar.neg { background: var(--sick-deep); }
+
+.week-bar-day {
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+/* 還沒到的日子淡一點,今天的那一根標出來 */
+.week-bar-col.future { opacity: .45; }
+
+.week-bar-col.today .week-bar-day {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.week-card-trend {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
