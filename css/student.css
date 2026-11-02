@@ -695,3 +695,95 @@
   padding: 2px 10px;
   height: auto;
 }
+
+/* ---------- 守護獸的四階階梯 ----------
+   本來只寫一行「成獸」,看不出那是第幾階、後面還有沒有。
+   四個點排出整條路,走過的填實、現在那一階放大。 */
+.pet-ladder {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  margin-top: 16px;
+}
+
+.pet-ladder-step {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 連接線。畫在點的高度上,最後一個不畫。 */
+.pet-ladder-step::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background: var(--paper-shadow);
+}
+
+.pet-ladder-step:last-child::after { display: none; }
+.pet-ladder-step.done::after { background: var(--gold); }
+
+.pet-ladder-dot {
+  position: relative;
+  z-index: 1;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--paper-shadow);
+  transition: background .2s var(--ease-out), box-shadow .2s var(--ease-out);
+}
+
+.pet-ladder-step.done .pet-ladder-dot { background: var(--gold); }
+
+.pet-ladder-step.now .pet-ladder-dot {
+  background: var(--gold);
+  box-shadow: 0 0 0 4px rgba(212, 164, 70, .25);
+}
+
+.pet-ladder-name {
+  font-size: 11px;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.pet-ladder-step.now .pet-ladder-name {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+/* ---------- 積分紀錄的日期抬頭 ----------
+   同一天的八筆本來各自寫一次「11/2」,像一張報表。
+   抬頭右邊寫那一天的淨得分 —— 那是小朋友真正想知道的數字。 */
+.student-history-day {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 16px 2px 6px;
+}
+
+.student-history-day:first-child { margin-top: 4px; }
+
+.student-history-date {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-muted);
+  letter-spacing: .04em;
+}
+
+.student-history-sum {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.student-history-sum.pos { color: var(--forest-light); }
+.student-history-sum.neg { color: var(--sick-ink); }

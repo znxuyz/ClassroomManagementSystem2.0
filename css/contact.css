@@ -231,10 +231,33 @@
 
 .hw-card-meta {
   display: flex;
-  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;      /* 多了到期標籤,窄螢幕要能折行 */
+  gap: 6px 16px;
   font-size: 12px;
   color: var(--ink-muted);
   margin-top: 8px;
+}
+
+/* 到期狀態。日期本身老師要自己算是後天還是昨天,這一顆直接講。 */
+.hw-due-chip {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: var(--r-pill);
+  background: var(--paper-warm);
+  color: var(--ink-soft);
+  margin-left: -10px;   /* 貼著它說明的那個日期 */
+}
+
+.hw-due-chip.today {
+  background: color-mix(in srgb, var(--mild-deep) 16%, transparent);
+  color: var(--mild-deep);
+}
+
+.hw-due-chip.over {
+  background: color-mix(in srgb, var(--sick-ink) 12%, transparent);
+  color: var(--sick-ink);
 }
 
 .hw-card-stats {

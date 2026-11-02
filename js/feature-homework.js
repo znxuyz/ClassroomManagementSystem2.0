@@ -61,6 +61,22 @@ function renderHomeworkList() {
   list.innerHTML = html;
 }
 
+/* 期限那一欄本來只寫日期,老師得自己算「2026-11-05 是後天還是昨天」。
+   寫成「今天到期」「逾期 2 天」才看得懂 —— 而且只有還有人沒批改時
+   才標逾期,全部批完的舊作業不該一直紅著。 */
+function dueChip(due, notMarked) {
+  const d = new Date(due + 'T00:00:00');
+  if (isNaN(d)) return '';
+  const today = new Date();
+  const midnight = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((midnight(d) - midnight(today)) / 86400000);
+  if (days === 0) return '<span class="hw-due-chip today">今天到期</span>';
+  if (days === 1) return '<span class="hw-due-chip">明天到期</span>';
+  if (days > 1) return `<span class="hw-due-chip">還有 ${days} 天</span>`;
+  if (notMarked > 0) return `<span class="hw-due-chip over">逾期 ${-days} 天 · ${notMarked} 位未批</span>`;
+  return `<span class="hw-due-chip">${-days} 天前到期</span>`;
+}
+
 function renderHomeworkCard(hw, isArchived) {
   const subs = hw.submissions || {};
   let submitted = 0, late = 0, missing = 0;
@@ -79,8 +95,9 @@ function renderHomeworkCard(hw, isArchived) {
           <div class="hw-card-title">${hw.name}</div>
           ${hw.description ? `<div class="hw-card-desc">${hw.description}</div>` : ''}
           <div class="hw-card-meta">
-            <span>指定:${hw.assignedDate}</span>
-            <span>繳交期限:${hw.dueDate}</span>
+            ${hw.assignedDate ? `<span>指定:${escapeHtml(hw.assignedDate)}</span>` : ''}
+            ${hw.dueDate ? `<span>繳交期限:${escapeHtml(hw.dueDate)}</span>
+              ${dueChip(hw.dueDate, notMarked)}` : ''}
             <span>繳交可得 ${hw.submissionPoints} 分</span>
           </div>
         </div>

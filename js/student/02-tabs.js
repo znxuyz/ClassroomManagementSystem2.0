@@ -317,6 +317,7 @@ Object.assign(StudentApp, {
         ? `<div class="rank-groupset-name">依「${escapeHtml(this.groupsName)}」分組</div>` : ''}
       ${Leaderboard.renderPodium(rows, { highlightId: myId, animate })}
       ${Leaderboard.renderMyRank(rows, myId, showGroup ? '我這組的名次' : '我的名次')}
+      ${Leaderboard.renderRest(rows, myId)}
     `;
   },
 
@@ -352,6 +353,13 @@ Object.assign(StudentApp, {
                     title="用掉一張改名卡">✎ 改名(剩 ${s.renameLeft})</button>` : ''}
         </div>
         <div class="student-pet-stage">${STAGE_NAMES[stage]}</div>
+        <div class="pet-ladder" aria-hidden="true">
+          ${STAGE_NAMES.map((n, i) => `
+            <span class="pet-ladder-step ${i < stage ? 'done' : ''} ${i === stage ? 'now' : ''}">
+              <span class="pet-ladder-dot"></span>
+              <span class="pet-ladder-name">${escapeHtml(n)}</span>
+            </span>`).join('')}
+        </div>
         <div class="student-points">
           <div><span class="student-points-num">${s.totalPoints}</span><span>累積經驗</span></div>
           <div><span class="student-points-num">${s.currentPoints}</span><span>可用積分</span></div>
@@ -448,20 +456,47 @@ Object.assign(StudentApp, {
       </div>`;
   },
 
+  /* 「11/2」在同一天的八筆上重複八次,看起來像一張報表。
+     改成按日分組:今天 / 昨天 / 11月1日,每一天的抬頭右邊寫那一天的
+     淨得分 —— 小朋友最想知道的就是「我今天拿了幾分」。 */
+  historyDayLabel(t) {
+    const d = new Date(t);
+    const midnight = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const diff = Math.round((midnight(new Date()) - midnight(d)) / 86400000);
+    if (diff === 0) return '今天';
+    if (diff === 1) return '昨天';
+    return (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日';
+  },
+
   renderHistory() {
     const h = (this.student && this.student.history) || [];
     if (h.length === 0) return '<div class="student-empty">還沒有積分紀錄</div>';
-    return `<div class="student-history">` +
-      h.slice(-10).reverse().map(r => `
-        <div class="student-history-row">
-          <span class="student-history-when">${r.time
-            ? new Date(r.time).toLocaleDateString('zh-TW',
-                { month: 'numeric', day: 'numeric' })
-            : ''}</span>
-          <span class="student-history-reason">${escapeHtml(r.reason)}</span>
-          <span class="student-history-points ${r.points >= 0 ? 'pos' : 'neg'}">
-            ${r.points >= 0 ? '+' : ''}${r.points}
-          </span>
-        </div>`).join('') + `</div>`;
+
+    // 分組要保持「新的在上面」,所以先反轉再依序堆進去
+    const days = [];
+    h.slice(-20).reverse().forEach(r => {
+      const key = r.time ? this.historyDayLabel(r.time) : '更早以前';
+      const last = days[days.length - 1];
+      if (last && last.key === key) last.rows.push(r);
+      else days.push({ key, rows: [r] });
+    });
+
+    return days.map(d => {
+      const net = d.rows.reduce((a, r) => a + (r.points || 0), 0);
+      return `
+        <div class="student-history-day">
+          <span class="student-history-date">${escapeHtml(d.key)}</span>
+          <span class="student-history-sum ${net >= 0 ? 'pos' : 'neg'}">${
+            net >= 0 ? '+' : ''}${net}</span>
+        </div>
+        <div class="student-history">` +
+        d.rows.map(r => `
+          <div class="student-history-row">
+            <span class="student-history-reason">${escapeHtml(r.reason)}</span>
+            <span class="student-history-points ${r.points >= 0 ? 'pos' : 'neg'}">
+              ${r.points >= 0 ? '+' : ''}${r.points}
+            </span>
+          </div>`).join('') + `</div>`;
+    }).join('');
   },
 });

@@ -348,3 +348,89 @@
   color: var(--ink-muted);
   margin-top: 2px;
 }
+
+/* ---------- 第 4 名之後的榜單 ----------
+   頒獎台只有三個位子,下面本來空一大片。
+   這一段列到第 10 名,自己在那之外就補一列(虛線斷開)。 */
+.rank-list {
+  margin-top: 18px;
+  background: var(--paper);
+  border: 1px solid var(--paper-shadow);
+  border-radius: var(--r-card);
+  overflow: hidden;
+}
+
+.rank-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  font-size: 14px;
+  border-bottom: 1px solid var(--paper-warm);
+}
+
+.rank-row:last-child { border-bottom: none; }
+
+.rank-row-no {
+  flex: 0 0 auto;
+  min-width: 22px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.rank-row-icon {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.rank-row-icon img { width: 26px; height: 26px; object-fit: contain; }
+
+.rank-row-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-soft);
+}
+
+/* 「差 3」比分數本身更有用 —— 追得上追不上,一眼看得出來 */
+.rank-row-gap {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--ink-muted);
+  background: var(--paper-warm);
+  border-radius: var(--r-pill);
+  padding: 1px 7px;
+}
+
+.rank-row-score {
+  flex: 0 0 auto;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.rank-row.is-me {
+  background: color-mix(in srgb, var(--gold) 14%, transparent);
+}
+
+.rank-row.is-me .rank-row-name,
+.rank-row.is-me .rank-row-no,
+.rank-row.is-me .rank-row-score { color: var(--forest-deep); font-weight: 700; }
+
+.rank-row-break {
+  height: 0;
+  border-top: 1px dashed var(--paper-shadow);
+  margin: 2px 14px;
+}

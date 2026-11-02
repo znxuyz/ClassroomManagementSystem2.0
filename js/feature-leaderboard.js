@@ -129,6 +129,38 @@ const Leaderboard = {
     return `<div class="podium ${o.animate === false ? 'no-anim' : ''}">${columns}</div>`;
   },
 
+  /* 第 4 名之後的榜單。
+     本來整頁只有頒獎台和自己的名次卡,下面空一大片 ——
+     而「我前面那幾個是誰、差幾分」正是孩子最想看的。
+     最多列到第 10 名;自己若在那之外,補一列自己(中間用虛線斷開),
+     這樣永遠看得到「追上前一位還差幾分」。 */
+  renderRest(rows, myId, limit) {
+    const max = limit || 10;
+    const rest = rows.slice(3, max);
+    const me = rows.find(r => r.id === myId);
+    const meOutside = me && me.rank > max;
+    if (rest.length === 0 && !meOutside) return '';
+
+    const line = (r, extra) => {
+      const prev = rows[rows.indexOf(r) - 1];
+      const gap = prev ? prev.score - r.score : 0;
+      return `
+        <div class="rank-row ${r.id === myId ? 'is-me' : ''} ${extra || ''}">
+          <span class="rank-row-no">${r.rank}</span>
+          ${r.icon ? `<span class="rank-row-icon">${r.icon}</span>` : ''}
+          <span class="rank-row-name">${escapeHtml(r.name)}</span>
+          ${gap > 0 ? `<span class="rank-row-gap">差 ${gap}</span>` : ''}
+          <span class="rank-row-score">${r.score}</span>
+        </div>`;
+    };
+
+    return `
+      <div class="rank-list">
+        ${rest.map(r => line(r)).join('')}
+        ${meOutside ? `<div class="rank-row-break"></div>` + line(me) : ''}
+      </div>`;
+  },
+
   /* 自己的名次卡。就算沒進前三也看得到自己在哪。 */
   renderMyRank(rows, myId, label) {
     const me = rows.find(r => r.id === myId);
