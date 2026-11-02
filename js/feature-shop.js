@@ -48,6 +48,15 @@ const STARTER_SHOP_ITEMS = [
 
 /* 單獨上架改名卡。
    給「已經載過範例獎品」的班級用 —— 他們不會想為了一張卡再載一次六項。 */
+/* 系統內建的獎品:技能果實與守護獸改名卡。
+   它們不是老師要親手交出去的東西 —— 果實買了就直接會用那個技能,
+   改名卡買了就能在守護獸頁面改名。所以不必經過「標記已發放」,
+   扣點成功就直接記成已發放,也不會佔著老師的待發放清單。
+   老師自己上架的獎品(鉛筆、免寫一次作業、和老師吃午餐)照舊要發。 */
+function isSystemShopItem(itemId) {
+  return itemId === RENAME_CARD_ID || SkillEngine.isFruit(itemId);
+}
+
 function addRenameCard() {
   if (state.shopItems.some(i => i.id === RENAME_CARD_ID)) {
     toast('改名卡已經在架上了');
@@ -402,9 +411,15 @@ const PurchaseWatch = {
     };
     state.shopHistory.push(record);
 
+    /* 系統內建的獎品直接記成已發放(見 isSystemShopItem)。
+       auto 留著,清單上才能寫「自動發放」而不是讓老師以為自己發過了。 */
+    const auto = isSystemShopItem(item.id);
     toast(`${student.name} 兌換了「${item.name}」${discountNote}`);
     return {
-      result: { status: 'paid', settledPrice: price, settledAt: Date.now() },
+      result: auto
+        ? { status: 'delivered', settledPrice: price, settledAt: Date.now(),
+            deliveredAt: Date.now(), auto: true }
+        : { status: 'paid', settledPrice: price, settledAt: Date.now() },
       revert: () => {
         student.currentPoints += price;
         if (isRename) student.renameLeft = Math.max(0, (student.renameLeft || 0) - 1);
@@ -435,6 +450,11 @@ const PurchaseWatch = {
     student.currentPoints += p.settledPrice || 0;
     const idx = student.inventory ? student.inventory.indexOf(p.itemId) : -1;
     if (idx >= 0) student.inventory.splice(idx, 1);
+    /* 改名卡退點要把改名次數一起收回 —— 不收的話學生退了點數還能改名字。
+       技能果實不必特別處理:會不會用那個技能看的就是背包。 */
+    if (p.itemId === RENAME_CARD_ID) {
+      student.renameLeft = Math.max(0, (student.renameLeft || 0) - 1);
+    }
 
     const item = findShopItem(p.itemId);
     if (item && item.stock !== null) item.stock += 1;
@@ -479,13 +499,14 @@ function renderPurchaseList() {
         <span class="purchase-meta">
           ${p.settledPrice != null ? p.settledPrice + ' 點' : ''}
           ${p.status === 'rejected' ? ' · 未成立:' + escapeHtml(p.reason || '') : ''}
-          ${p.status === 'delivered' ? ' · 已發放' : ''}
+          ${p.status === 'delivered' ? (p.auto ? ' · 自動發放' : ' · 已發放') : ''}
           ${p.status === 'refunded' ? ' · 已退點' : ''}
         </span>
       </span>
       ${isWaiting ? `
         <button class="btn btn-primary btn-small"
-                onclick="PurchaseWatch.markDelivered('${p.id}')">標記已發放</button>
+                onclick="PurchaseWatch.markDelivered('${p.id}')">標記已發放</button>` : ''}
+      ${isWaiting || p.status === 'delivered' ? `
         <button class="btn btn-ghost btn-small"
                 onclick="PurchaseWatch.refund('${p.id}')">退點</button>` : ''}
     </div>`;

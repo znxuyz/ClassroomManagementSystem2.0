@@ -223,7 +223,11 @@ Object.assign(StudentApp, {
 
   /* ---------- 分頁:兌換商店 ----------
      學生按下兌換只是送出一張申請單,實際扣點在老師端執行。
-     所以這裡顯示的餘額純粹是給孩子參考,不是判斷的依據。 */
+     所以這裡顯示的餘額純粹是給孩子參考,不是判斷的依據。
+
+     技能果實與改名卡是系統內建的,老師不必親手交什麼東西給學生,
+     所以扣完點就直接記成已發放(見 isSystemShopItem),
+     紀錄上寫「可以使用了」而不是「等老師發放」。 */
 
   renderShopTab() {
     const items = (this.shopItems || []).filter(i => i.active);
@@ -301,7 +305,9 @@ Object.assign(StudentApp, {
             <div class="student-history-row">
               <span class="student-history-reason">
                 ${escapeHtml(p.itemIcon || '🎁')} ${escapeHtml(p.itemName)}
-                <span class="prize-status ${p.status}">${label[p.status] || p.status}</span>
+                <span class="prize-status ${p.status}">${
+                  p.status === 'delivered' && p.auto ? '可以使用了' : (label[p.status] || p.status)
+                }</span>
                 ${p.status === 'rejected' && p.reason
                   ? `<span class="prize-reason">${escapeHtml(p.reason)}</span>` : ''}
               </span>

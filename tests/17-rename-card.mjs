@@ -22,7 +22,7 @@ await prepare(page);
 const lines = [];
 const ok = (n, c, e) => lines.push((c ? '✓ ' : '✗ ') + n + (e ? ' — ' + e : ''));
 
-const r = await page.evaluate(() => {
+const r = await page.evaluate(async () => {
   const out = {};
   __apply(__fixture({ students: 3, historyPer: 2, questions: 4 }));
 
@@ -45,6 +45,7 @@ const r = await page.evaluate(() => {
   });
   const first = buy();
   out.paid = first.result.status;
+  out.auto = !!first.result.auto;
   out.leftAfterBuy = s.renameLeft;
 
   // 退費(寫回失敗的還原路徑)要把次數收回去
@@ -78,6 +79,33 @@ const r = await page.evaluate(() => {
   out.tooLongName = s.petName;
   out.leftAfterTooLong = s.renameLeft;
 
+  /* 老師自己上架的獎品照舊要經過「標記已發放」——
+     那是真的要交到學生手上的東西(鉛筆、免寫一次作業)。 */
+  state.shopItems.push({ id: 'i_teacher', name: '免寫一次作業', icon: '📝',
+                         price: 5, stock: null, active: true });
+  s.currentPoints = 1000;
+  const teacherItem = PurchaseWatch.settle({
+    id: 'pt', studentId: s.id, itemId: 'i_teacher'
+  });
+  out.teacherItem = [teacherItem.result.status, !!teacherItem.result.auto];
+
+  // 技能果實也是系統內建的
+  out.fruitIsSystem = isSystemShopItem(SkillEngine.fruitId(PET_SKILLS[0].id));
+  out.teacherNotSystem = isSystemShopItem('i_teacher');
+
+  // 退點要把改名次數一起收回(不然退了點還能改名)
+  s.renameLeft = 0;
+  s.inventory = [];
+  buy();
+  out.beforeRefund = s.renameLeft;
+  PurchaseWatch.all = [{ id: 'pr', studentId: s.id, itemId: RENAME_CARD_ID,
+                         itemName: RENAME_CARD.name, settledPrice: RENAME_CARD.price,
+                         status: 'delivered', auto: true }];
+  window.confirm = () => true;
+  Cloud.updatePurchase = async () => {};
+  await PurchaseWatch.refund('pr');
+  out.afterRefund = [s.renameLeft, (s.inventory || []).includes(RENAME_CARD_ID)];
+
   // 學生那一邊看得到還剩幾次(放在私有名冊,不是公開名冊)
   out.inPrivate = 'renameLeft' in Roster.privateEntry(s);
   out.notInPublic = !('renameLeft' in Roster.publicEntry(s));
@@ -87,7 +115,7 @@ const r = await page.evaluate(() => {
 
 ok('改名卡在預設商品清單裡', r.inStarter);
 ok('重複上架只會有一張', r.onShelf === 1, '架上 ' + r.onShelf + ' 張');
-ok('兌換成功', r.paid === 'paid', r.paid);
+ok('兌換成功,而且不必等老師發放', r.paid === 'delivered' && r.auto, r.paid);
 ok('兌換後多一次改名機會', r.leftAfterBuy === 1, '剩 ' + r.leftAfterBuy);
 ok('退費會把改名機會收回去', r.leftAfterRevert === 1, '剩 ' + r.leftAfterRevert);
 ok('學生送的改名請求會被套用', r.renamed === 1 && r.name === '小火龍', r.name);
@@ -97,6 +125,15 @@ ok('沒有改名卡就改不了名字', r.blocked === 0 && r.nameAfterBlocked ==
    r.nameAfterBlocked);
 ok(`名字超過上限字數會被擋掉`,
    r.tooLongName === '小火龍' && r.leftAfterTooLong === 1, r.tooLongName);
+ok('老師自己上架的獎品照舊要等老師發放',
+   r.teacherItem[0] === 'paid' && r.teacherItem[1] === false, JSON.stringify(r.teacherItem));
+ok('技能果實算系統內建、老師上架的不算',
+   r.fruitIsSystem === true && r.teacherNotSystem === false,
+   `${r.fruitIsSystem} / ${r.teacherNotSystem}`);
+ok('退點會把改名次數一起收回',
+   r.beforeRefund === 1 && r.afterRefund[0] === 0 && r.afterRefund[1] === false,
+   JSON.stringify(r.afterRefund));
+
 ok('剩餘次數只給本人看得到(在私有名冊、不在公開名冊)', r.inPrivate && r.notInPublic);
 
 await close();
