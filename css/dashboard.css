@@ -44,7 +44,10 @@
   padding: 10px 12px;
   border-radius: var(--r-tile);
   cursor: pointer;
-  transition: all 0.15s var(--ease-out);
+  transition: background var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out);
   border: 1.5px solid transparent;
 }
 
@@ -192,7 +195,9 @@
   background: var(--paper-warm);
   border-radius: var(--r-card);
   padding: var(--pad);
-  box-shadow: var(--shadow-sm);
+  /* 亮線在前、陰影在後:上緣亮一點點、下緣壓一點點,
+     紙感才出得來(--edge-hi 在極光主題是 none) */
+  box-shadow: var(--edge-hi), var(--shadow-sm);
 }
 
 .panel-title {
@@ -636,8 +641,10 @@
 .student-item:hover {
   background: var(--paper-warm);
   border-color: color-mix(in srgb, var(--forest) 40%, var(--paper-shadow));
+  /* 抬起來 2px 並換上一層更明顯的影子 —— 位移與陰影要一起動,
+     只動其中一個會像「圖片在滑動」而不是「卡片被拿起來」 */
   transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--edge-hi), var(--shadow-md);
 }
 
 .student-item:active { transform: translateY(0); }

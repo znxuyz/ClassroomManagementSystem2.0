@@ -60,9 +60,16 @@ html[data-theme="aurora"] {
   --sick-deep: #b1301f; /* 當底色配白字用 */
 
   /* 陰影收乾淨,層次靠細線不靠糊影 */
-  --shadow-sm: 0 1px 2px rgba(11, 18, 32, 0.05);
-  --shadow-md: 0 2px 6px rgba(11, 18, 32, 0.07);
-  --shadow-lg: 0 14px 40px rgba(11, 18, 32, 0.12);
+  /* 這個主題的層次靠髮絲線,不靠陰影堆疊 —— 所以兩層都壓得很淡,
+     只留「黏在紙上」的接觸影,環境影幾乎看不見。
+     亮線也收掉:白底上再加白邊只會變糊。 */
+  --shadow-sm: 0 1px 1px rgba(11, 18, 32, 0.03),
+               0 1px 3px -1px rgba(11, 18, 32, 0.05);
+  --shadow-md: 0 1px 2px rgba(11, 18, 32, 0.04),
+               0 4px 10px -3px rgba(11, 18, 32, 0.07);
+  --shadow-lg: 0 2px 4px rgba(11, 18, 32, 0.04),
+               0 16px 36px -10px rgba(11, 18, 32, 0.14);
+  --edge-hi: none;
 
   /* 這個主題自己的補充變數 */
   --hairline:  rgba(11, 18, 32, 0.09);

@@ -226,6 +226,35 @@ const lines = await page.evaluate(async () => {
   t.ok('同一排最多一顆主要按鈕', tooMany.length === 0,
     [...new Set(tooMany)].slice(0, 4).join(' | '));
 
+  /* ── 圖示是一套系統 ──
+     導覽本來混了幾何符號與彩色 emoji。混在同一排裡粗細與重心對不起來,
+     而且 emoji 在不同系統長得不一樣、字型裡沒有的會變方框(⚔ 出過這件事)。
+     所以:介面的圖示一律是自己畫的線性圖示,同一個格子、同一個線寬。 */
+  const navIcons = [...document.querySelectorAll('.nav-tab-icon svg')];
+  t.ok('每一個分類都有畫出來的圖示',
+    navIcons.length === NAV_GROUPS.length, `${navIcons.length} / ${NAV_GROUPS.length}`);
+  t.ok('全部用同一個格子與同一個線寬',
+    navIcons.every(i => i.getAttribute('viewBox') === '0 0 24 24'
+                     && i.getAttribute('stroke-width') === '1.6'
+                     && i.getAttribute('stroke') === 'currentColor'));
+  /* 顏色跟著文字走,選中那一顆才會自動變白 —— 不然要各寫一次 */
+  const activeIcon = document.querySelector('.nav-tab.active .nav-tab-icon svg');
+  t.ok('圖示的顏色跟著文字走',
+    activeIcon && getComputedStyle(activeIcon).stroke
+      === getComputedStyle(activeIcon.closest('.nav-tab')).color);
+
+  // 介面的框架上不應該再出現彩色 emoji
+  const EMOJI = /\p{Extended_Pictographic}/u;
+  const chromeEmoji = [...document.querySelectorAll('.nav-tab, .nav-sub')]
+    .filter(b => EMOJI.test(b.textContent))
+    .map(b => b.textContent.trim().slice(0, 10));
+  t.ok('導覽上沒有彩色 emoji(那是內容用的,不是介面用的)',
+    chromeEmoji.length === 0, chromeEmoji.join(' · '));
+
+  t.ok('每一個分類的圖示都真的有畫',
+    NAV_GROUPS.every(g => !!ICON_PATHS[g.icon]),
+    NAV_GROUPS.filter(g => !ICON_PATHS[g.icon]).map(g => g.name).join('、'));
+
   return t.out;
 });
 

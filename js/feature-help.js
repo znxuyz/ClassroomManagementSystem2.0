@@ -579,7 +579,7 @@ function renderHelpFull(which, rules) {
         <button class="help-nav-btn ${i === 0 ? 'active' : ''}"
                 role="tab" data-help-nav="${g.key}"
                 onclick="setHelpGroup('${g.key}')">
-          <span class="help-nav-icon">${g.icon}</span>${escapeHtml(g.name)}
+          ${escapeHtml(g.name)}
         </button>`).join('')}
     </nav>
     <div class="help-panels">

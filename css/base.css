@@ -124,10 +124,36 @@
   --t-sub:     13px;
   --control-fs:   14px;   /* 字級 */
 
-  /* 陰影與動態 */
-  --shadow-sm: 0 1px 3px rgba(42, 39, 35, 0.08);
-  --shadow-md: 0 3px 10px rgba(42, 39, 35, 0.12);
-  --shadow-lg: 0 8px 28px rgba(42, 39, 35, 0.18);
+  /* ── 高度(陰影)──
+     真實的陰影是兩層疊出來的:一層很短很淡的「接觸影」把東西黏在紙上,
+     一層大而散的「環境影」表示它離紙多遠。只用一層的話,
+     淡了像沒有、濃了像貼紙。
+
+     三個高度對應三種東西:
+       --shadow-sm  貼在紙上的(卡片、列)
+       --shadow-md  浮起來的(頁首、下拉)
+       --shadow-lg  蓋在全部之上的(對話框、手機的加分浮層)
+     顏色帶著 --ink 的暖褐,不是純黑 —— 紙色底上的純黑影子會發灰。 */
+  --shadow-sm: 0 1px 1px rgba(42, 39, 35, 0.04),
+               0 2px 5px -1px rgba(42, 39, 35, 0.06);
+  --shadow-md: 0 1px 2px rgba(42, 39, 35, 0.05),
+               0 5px 14px -3px rgba(42, 39, 35, 0.11);
+  --shadow-lg: 0 2px 4px rgba(42, 39, 35, 0.05),
+               0 14px 34px -8px rgba(42, 39, 35, 0.18);
+
+  /* 浮起來的表面,上緣補一道極淡的亮線 —— 光從上面來,
+     邊緣會比面亮一點點。這一筆是「看不出來、但拿掉就扁掉」的那種。 */
+  --edge-hi: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+
+  /* ── 動態 ──
+     時間分三階,不要每個地方各寫一個數字:
+       --dur-fast  120ms 指下去就要有反應的(hover、按下去)
+       --dur       200ms 介面自己的變化(展開、切換、滑動高亮)
+       --dur-slow  500ms 資料的變化(長條成長、進度條)
+     一樣的動作用一樣的時間,整個介面才像同一個東西做的。 */
+  --dur-fast: 120ms;
+  --dur:      200ms;
+  --dur-slow: 500ms;
   --ease-out:  cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -224,6 +250,9 @@ body {
   background: transparent;
   border: none;
   color: var(--moss);
+  /* 圖示與文字同一條基線上,所以整顆按鈕自己是 flex */
+  display: inline-flex;
+  align-items: center;
   padding: 8px 18px;
   font-family: var(--font-body);
   font-size: 14px;
@@ -557,11 +586,18 @@ select.setup-input {
    原本 13 個分頁擠在一排,標題一長就會把後面的擠掉(踩過)。
    改成 7 個分類 + 第二排項目,兩排都放得下,也不必再靠縮小字級硬塞。
 ============================================ */
+/* 線性圖示。顏色跟著文字走(currentColor),所以選中、hover、
+   深色面板都不必各寫一次;對齊靠 flex,不靠 line-height 硬喬。 */
+.icon {
+  display: block;
+  flex: 0 0 auto;
+}
+
 .nav-tab-icon {
-  font-size: 13px;
-  line-height: 1;
-  margin-right: 5px;
-  opacity: .85;
+  display: inline-flex;
+  align-items: center;
+  margin-right: 6px;
+  opacity: .9;
 }
 
 .nav-subtabs {

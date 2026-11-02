@@ -16,7 +16,7 @@
 
 const NAV_GROUPS = [
   {
-    key: 'contact', icon: '✉', name: '聯絡簿',
+    key: 'contact', icon: 'contact', name: '聯絡簿',
     items: [
       { name: '今日聯絡簿', view: 'contact', sub: 'diary' },
       { name: '作業繳交',   view: 'contact', sub: 'homework' },
@@ -24,7 +24,7 @@ const NAV_GROUPS = [
     ]
   },
   {
-    key: 'class', icon: '☰', name: '班級管理',
+    key: 'class', icon: 'class', name: '班級管理',
     items: [
       // 照使用頻率排:前兩個天天用,積分規則設好了就很少動
       { name: '學生加分',   view: 'dashboard' },
@@ -37,7 +37,7 @@ const NAV_GROUPS = [
     ]
   },
   {
-    key: 'shop', icon: '🎁', name: '兌換商店',
+    key: 'shop', icon: 'shop', name: '兌換商店',
     items: [
       { name: '獎品管理',     view: 'shop', sub: 'shopItems' },
       { name: '兌換申請',     view: 'shop', sub: 'purchases' },
@@ -45,7 +45,7 @@ const NAV_GROUPS = [
     ]
   },
   {
-    key: 'challenge', icon: '⬡', name: '學習挑戰',
+    key: 'challenge', icon: 'challenge', name: '學習挑戰',
     items: [
       { name: '學生測驗', view: 'quiz' },
       { name: '戰況地圖', view: 'territory', sub: 'tgBoard' },
@@ -53,7 +53,7 @@ const NAV_GROUPS = [
     ]
   },
   {
-    key: 'data', icon: '◫', name: '數據成果',
+    key: 'data', icon: 'data', name: '數據成果',
     items: [
       { name: '班級概況',     view: 'overview',  sub: 'general' },
       { name: '排行榜',       view: 'overview',  sub: 'rank' },
@@ -64,14 +64,14 @@ const NAV_GROUPS = [
     ]
   },
   {
-    key: 'help', icon: '?', name: '使用說明',
+    key: 'help', icon: 'help', name: '使用說明',
     items: [
       { name: '教師端', view: 'help', sub: 'helpTeacher' },
       { name: '學生端', view: 'help', sub: 'helpStudent' }
     ]
   },
   {
-    key: 'settings', icon: '⚙', name: '系統設定',
+    key: 'settings', icon: 'settings', name: '系統設定',
     items: [
       { name: '班級與學生', view: 'settings', sub: 'setClass' },
       { name: '遊戲設定',   view: 'settings', sub: 'setGame' },
@@ -128,7 +128,7 @@ function renderNavTabs() {
   if (!top.dataset.built) {
     top.innerHTML = navIndicatorHtml() + NAV_GROUPS.map(g => `
       <button class="nav-tab" data-nav-group="${g.key}" onclick="navGoGroup('${g.key}')">
-        <span class="nav-tab-icon">${g.icon}</span>${escapeHtml(g.name)}
+        <span class="nav-tab-icon">${icon(g.icon)}</span>${escapeHtml(g.name)}
       </button>`).join('');
     top.dataset.built = '1';
   }
