@@ -85,8 +85,19 @@ function buildStudentReport(s) {
   const topReasons = Object.entries(reasonGroups).sort((a,b) => b[1] - a[1]).slice(0, 5);
   
   // 週累積積分(取最近 8 週)
+  /* 週累積積分。扣分的那一週要往**下**長,不能只靠顏色 ——
+     綠配紅在紅綠色弱的眼睛裡幾乎是同一個顏色,而這份是要印出來給家長看的。
+     零線的位置依「最多往下幾分」決定,八根柱子共用同一條線。 */
   const weeklyPoints = computeWeeklyPoints(s);
-  const maxWeek = Math.max(...weeklyPoints.map(w => Math.abs(w.points)), 1);
+  /* 一律用百分比,不碰像素 —— 寫死高度的話,CSS 那邊的上下內距
+     一改(數字要掛在柱子外面)柱子就會超出框外。 */
+  const maxUp = Math.max(0, ...weeklyPoints.map(w => w.points));
+  const maxDown = Math.max(0, ...weeklyPoints.map(w => -w.points));
+  const zeroPct = maxDown === 0 ? 0 : (maxDown / (maxUp + maxDown)) * 100;
+  // 最小 2%:那一週真的有加減分就要看得到,不然和「沒紀錄」分不出來
+  const barPct = v => v > 0 ? Math.max(2, (100 - zeroPct) * v / (maxUp || 1))
+                    : v < 0 ? Math.max(2, zeroPct * -v / (maxDown || 1))
+                    : 0;
   
   // 商店購買
   const purchases = state.shopHistory.filter(h => h.studentId === s.id);
@@ -120,12 +131,18 @@ function buildStudentReport(s) {
       <h2>成長軌跡(週累積積分)</h2>
       <div class="report-chart-wrap">
         <div class="report-bar-chart">
+          <div class="report-plot" style="--zero:${zeroPct.toFixed(2)}%">
+          <div class="report-zero"></div>
           ${weeklyPoints.map(w => `
-            <div class="report-bar" 
-              style="height: ${Math.max(3, (Math.abs(w.points) / maxWeek * 100))}%; ${w.points < 0 ? 'background: linear-gradient(180deg, #B5563D, #8B3A4E);' : ''}"
-              data-value="${w.label}: ${w.points > 0 ? '+' : ''}${w.points} 分"><span
-              class="report-bar-num">${w.points > 0 ? '+' : ''}${w.points}</span></div>
+            <div class="report-bar-col">
+              ${w.points === 0 ? '' : `
+                <div class="report-bar ${w.points < 0 ? 'neg' : 'pos'}"
+                     style="height:${barPct(w.points).toFixed(2)}%"
+                     data-value="${w.label}: ${w.points > 0 ? '+' : ''}${w.points} 分"><span
+                     class="report-bar-num">${w.points > 0 ? '+' : ''}${w.points}</span></div>`}
+            </div>
           `).join('')}
+          </div>
         </div>
         <div class="report-chart-labels">
           ${weeklyPoints.map(w => `<span>${w.label}</span>`).join('')}

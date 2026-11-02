@@ -53,6 +53,9 @@ html[data-theme="aurora"] {
   --mild-deep:   #9a6809;
   --sunset-deep: #c9471f;
   --sick:    #c4392e;   /* 白底 5.29、面板底 4.67,危險區的字才讀得清楚 */
+  /* 圖表兩極:這一組紅藍在檢查器裡六項全過(色弱分離度 30.5) */
+  --data-pos:  #4f6bf0;
+  --data-neg:  #b1301f;
   --sick-ink:  #b1301f; /* 當文字用(白 6.34、暖灰 5.60) */
   --sick-deep: #b1301f; /* 當底色配白字用 */
 

@@ -72,18 +72,32 @@ Object.assign(StudentApp, {
     // 每天的淨得分,星期一到星期日
     const days = Array.from({ length: 7 }, (_, i) =>
       sum(start + i * 86400000, start + (i + 1) * 86400000));
-    const peak = Math.max(1, ...days.map(Math.abs));
+
+    /* 被扣分的那天要往**下**長,不能只靠顏色區分 ——
+       綠配紅在紅綠色弱的眼睛裡幾乎是同一個顏色(實測 ΔE 6.6,
+       安全線是 8),所以方向才是真正可靠的那個訊號。
+       零線的位置依「最多往下幾分」決定,七根柱子共用同一條線。 */
+    const SLOT = 52;                       // 柱子區的高度(px),和 CSS 一致
+    const maxUp = Math.max(0, ...days);
+    const maxDown = Math.max(0, ...days.map(v => -v));
+    const zero = maxDown === 0 ? 0
+      : Math.round(SLOT * maxDown / (maxUp + maxDown));
     const todayIdx = Math.floor((Date.now() - start) / 86400000);
     const names = ['一', '二', '三', '四', '五', '六', '日'];
 
     const bars = days.map((v, i) => {
-      const h = Math.round(Math.abs(v) / peak * 100);
+      // 最小 3px:那天真的有加減分就要看得到,不然和「沒紀錄」分不出來
+      const px = v > 0 ? Math.max(3, Math.round((SLOT - zero) * v / (maxUp || 1)))
+               : v < 0 ? Math.max(3, Math.round(zero * -v / (maxDown || 1)))
+               : 0;
       const cls = v > 0 ? 'pos' : v < 0 ? 'neg' : 'zero';
       return `
-        <div class="week-bar-col ${i === todayIdx ? 'today' : ''} ${i > todayIdx ? 'future' : ''}">
+        <div class="week-bar-col ${i === todayIdx ? 'today' : ''} ${
+          i > todayIdx && v === 0 ? 'future' : ''}">
           <div class="week-bar-slot">
-            <div class="week-bar ${cls}" style="height:${v === 0 ? 2 : Math.max(6, h)}%"
-                 title="${v > 0 ? '+' : ''}${v} 分"></div>
+            <div class="week-zero"></div>
+            ${v === 0 ? '' : `<div class="week-bar ${cls}" style="height:${px}px"
+                 title="${v > 0 ? '+' : ''}${v} 分"></div>`}
           </div>
           <div class="week-bar-day">${names[i]}</div>
         </div>`;
@@ -100,7 +114,7 @@ Object.assign(StudentApp, {
           <span class="week-card-label">這禮拜拿到</span>
           <span class="week-card-num ${now < 0 ? 'neg' : ''}">${now > 0 ? '+' : ''}${now}</span>
         </div>
-        <div class="week-bars">${bars}</div>
+        <div class="week-bars" style="--zero:${zero}px">${bars}</div>
         <div class="week-card-trend">${escapeHtml(trend)}</div>
       </section>`;
   },

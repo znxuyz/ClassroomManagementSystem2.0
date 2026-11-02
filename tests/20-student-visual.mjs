@@ -83,6 +83,38 @@ const r = await page.evaluate(async () => {
   // 星期一那一根是這週唯一有分的日子
   const cols = [...document.querySelectorAll('.week-bar-col')];
   out.weekMonBar = cols[0].querySelector('.week-bar').className.includes('pos');
+
+  /* 被扣分的那天要往**下**長。只靠顏色不行 —— 綠配紅在紅綠色弱的
+     眼睛裡幾乎是同一個顏色(實測分離度 6.6,安全線 8)。 */
+  StudentApp.student.history = [
+    { time: start + 3600000, points: 4, reason: '週一' },
+    { time: start + 86400000 + 3600000, points: -3, reason: '週二扣分' }
+  ];
+  StudentApp.render();
+  const slot = document.querySelectorAll('.week-bar-slot')[1];
+  const zr = slot.querySelector('.week-zero').getBoundingClientRect();
+  const nb = slot.querySelector('.week-bar');
+  const pb = document.querySelectorAll('.week-bar-slot')[0].querySelector('.week-bar');
+  out.weekSigned = [
+    nb.className.includes('neg'),
+    nb.getBoundingClientRect().top >= zr.top - 1,          // 扣分的在零線下
+    pb.getBoundingClientRect().bottom <= zr.bottom + 1,    // 加分的在零線上
+    [...document.querySelectorAll('.week-bar')].every(b => {
+      const r = b.getBoundingClientRect();
+      const s2 = b.parentElement.getBoundingClientRect();
+      return r.top >= s2.top - 1 && r.bottom <= s2.bottom + 1;   // 沒有超出框
+    })
+  ];
+
+  // 全部都是加分時,零線就在底部,不該有往下長的柱子
+  StudentApp.student.history = [{ time: start + 3600000, points: 4, reason: '週一' }];
+  StudentApp.render();
+  const s0 = document.querySelectorAll('.week-bar-slot')[0];
+  out.weekAllPos = [
+    document.querySelectorAll('.week-bar.neg').length,
+    Math.abs(s0.querySelector('.week-zero').getBoundingClientRect().bottom
+             - s0.getBoundingClientRect().bottom) < 2
+  ];
   // 一週從星期一算起
   out.weekStartsMonday = new Date(start).getDay() === 1;
   // 完全沒有紀錄也不會壞
@@ -157,6 +189,11 @@ ok('七天各一根柱子,今天標起來',
    r.week && r.week[2] === 7 && r.week[3] === 1, JSON.stringify(r.week && r.week.slice(2)));
 ok('一週從星期一算起', r.weekStartsMonday);
 ok('有得分的那一天柱子是正的顏色', r.weekMonBar);
+ok('被扣分的那天往下長(不是只有顏色不一樣)',
+   r.weekSigned && r.weekSigned.every(Boolean), JSON.stringify(r.weekSigned));
+ok('全部都是加分時,零線在底部、沒有往下的柱子',
+   r.weekAllPos && r.weekAllPos[0] === 0 && r.weekAllPos[1] === true,
+   JSON.stringify(r.weekAllPos));
 ok('完全沒有紀錄時不會壞',
    r.weekEmpty && r.weekEmpty[0] === '0' && r.weekEmpty[1] === '這禮拜還沒有紀錄',
    JSON.stringify(r.weekEmpty));

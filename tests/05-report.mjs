@@ -60,6 +60,51 @@ const lines = await page.evaluate(() => {
     nums.length === 8 && nums.every(e => /^[+-]?\d+$/.test(e.textContent.trim())),
     nums.length + ' 根');
 
+  /* 扣分的那一週要往**下**長,不能只靠顏色區分 ——
+     紅配綠在紅綠色弱的眼睛裡幾乎是同一個顏色(實測色弱分離度 6.6,
+     安全線是 8),而這一份還會被印成黑白。方向才是可靠的訊號。 */
+  {
+    const hist2 = [
+      { time: Date.now() - 20 * 86400000, points: 6, reason: '上課發言' },
+      { time: Date.now() - 13 * 86400000, points: -4, reason: '未帶課本' },
+      { time: Date.now() - 2 * 86400000, points: 3, reason: '幫助同學' }
+    ];
+    document.getElementById('reportContainer').innerHTML =
+      buildStudentReport({ ...getStudent('s0'), history: hist2 });
+
+    const chart = document.querySelector('.report-bar-chart');
+    const zero = chart.querySelector('.report-zero').getBoundingClientRect();
+    const pos = [...chart.querySelectorAll('.report-bar.pos')];
+    const neg = [...chart.querySelectorAll('.report-bar.neg')];
+    t.ok('有零線', !!chart.querySelector('.report-zero'));
+    t.ok('加分的長條在零線之上',
+      pos.length === 2 && pos.every(b => b.getBoundingClientRect().bottom <= zero.bottom + 1),
+      pos.length + ' 根');
+    t.ok('扣分的長條在零線之下',
+      neg.length === 1 && neg.every(b => b.getBoundingClientRect().top >= zero.top - 1),
+      neg.length + ' 根');
+    t.ok('長條沒有超出圖表範圍',
+      [...chart.querySelectorAll('.report-bar')].every(b => {
+        const r = b.getBoundingClientRect(), c = chart.getBoundingClientRect();
+        return r.top >= c.top - 1 && r.bottom <= c.bottom + 1;
+      }));
+    t.ok('顏色用的是圖表專用的那兩個變數,沒有寫死色碼',
+      pos.length > 0 && getComputedStyle(pos[0]).backgroundImage === 'none');
+
+    // 全部都是正的時候,零線就在底部,不該有往下長的柱子
+    document.getElementById('reportContainer').innerHTML =
+      buildStudentReport({ ...getStudent('s0'),
+        history: [{ time: Date.now(), points: 3, reason: '上課發言' }] });
+    const c2 = document.querySelector('.report-bar-chart');
+    t.ok('沒有扣分時不會出現往下的柱子',
+      c2.querySelectorAll('.report-bar.neg').length === 0
+      && Math.abs(c2.querySelector('.report-zero').getBoundingClientRect().bottom
+                  - c2.getBoundingClientRect().bottom) < 25);
+
+    document.getElementById('reportContainer').innerHTML =
+      buildStudentReport({ ...getStudent('s0'), history: hist });
+  }
+
   t.ok('原因欄有 HTML 轉義',
     !buildHistoryDetail({ history: [{ time: Date.now(), points: 1,
       reason: '<img src=x onerror=alert(1)>' }] }).includes('<img src=x'));

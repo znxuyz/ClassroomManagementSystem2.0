@@ -165,22 +165,65 @@
   margin: 16px 0;
 }
 
+/* 零線由 --zero 決定(JS 依「最多往下幾分」算出來),
+   加分的往上長、扣分的往下長。本來兩種都往上長、只用顏色區分 ——
+   紅綠在色弱的眼睛裡幾乎是同一個顏色,而這一份是要印給家長看的,
+   印成灰階就更分不出來了。方向才是可靠的訊號。 */
+/* 柱子與零線都放在 .report-plot 裡面 ——
+   百分比高度要對著**同一個**容器算,放在外層的話零線會對著含內距的
+   那個框算,和柱子差了一個內距的距離。 */
 .report-bar-chart {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
+  position: relative;
   height: 160px;
-  padding: 10px 0;
-  border-bottom: 1px solid #ddd;
+  /* 上下都留 22px:數字掛在柱子外面,往下長的那幾根也要放得下
+     (不留的話 -5 會壓到下面那一排日期) */
+  padding: 22px 0;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--paper-shadow);
+}
+
+.report-plot {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  height: 100%;
+}
+
+.report-zero {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--zero, 0%);
+  height: 1px;
+  background: var(--paper-shadow);
+}
+
+.report-bar-col {
+  position: relative;
+  flex: 1;
+  min-width: 0;
 }
 
 .report-bar {
-  flex: 1;
-  background: linear-gradient(180deg, var(--gold), var(--sunset));
-  border-radius: 3px 3px 0 0;
-  position: relative;
+  position: absolute;
+  left: 0;
+  right: 0;
   min-height: 3px;
   transition: height 0.6s var(--ease-out);
+}
+
+/* 圓角只給資料的那一端,貼著零線的那一端是平的 */
+.report-bar.pos {
+  bottom: var(--zero, 0%);
+  background: var(--data-pos);
+  border-radius: 4px 4px 0 0;
+}
+
+.report-bar.neg {
+  top: calc(100% - var(--zero, 0%));
+  background: var(--data-neg);
+  border-radius: 0 0 4px 4px;
 }
 
 .report-bar:hover::after {
@@ -424,5 +467,12 @@
   white-space: nowrap;
 }
 
-/* 長條本身很矮的時候,數字壓在格線上會看不清楚 */
-.report-bar-chart { padding-top: 22px; }
+
+
+/* 往下長的那幾根,數字要掛在柱子下面(不然會壓在零線上) */
+.report-bar.neg .report-bar-num {
+  bottom: auto;
+  top: 100%;
+  margin-bottom: 0;
+  margin-top: 3px;
+}

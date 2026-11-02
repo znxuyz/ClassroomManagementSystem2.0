@@ -869,25 +869,46 @@
   gap: 5px;
 }
 
-/* 柱子的容器固定高度,七根才會在同一條基線上 */
+/* 柱子區固定高度,七根才會在同一條基線上。
+   零線的位置由 --zero 決定(JS 依「最多往下幾分」算出來),
+   加分的往上長、扣分的往下長 —— 方向才是可靠的訊號,
+   綠配紅在紅綠色弱的眼睛裡幾乎分不出來(實測 ΔE 6.6,安全線是 8)。 */
 .week-bar-slot {
+  position: relative;
   width: 100%;
-  height: 44px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  height: 52px;
+}
+
+.week-zero {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--zero, 0px);
+  height: 1px;
+  background: var(--paper-shadow);
 }
 
 .week-bar {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   width: 100%;
   max-width: 22px;
-  border-radius: 3px;
-  background: var(--paper-shadow);
   transition: height .5s var(--ease-out);
 }
 
-.week-bar.pos { background: var(--forest-light); }
-.week-bar.neg { background: var(--sick-deep); }
+/* 圓角只給資料的那一端,貼著零線的那一端是平的 */
+.week-bar.pos {
+  bottom: var(--zero, 0px);
+  background: var(--data-pos);
+  border-radius: 4px 4px 0 0;
+}
+
+.week-bar.neg {
+  top: calc(100% - var(--zero, 0px));
+  background: var(--data-neg);
+  border-radius: 0 0 4px 4px;
+}
 
 .week-bar-day {
   font-size: 11px;
