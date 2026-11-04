@@ -132,11 +132,11 @@ function renderHomeworkCard(hw, isArchived) {
                 <span class="hw-student-name">${s.name}</span>
                 <div class="hw-student-buttons">
                   <button class="hw-mini-btn sub-yes ${status === 'submitted' ? 'active' : ''}" 
-                    onclick="markHomework('${hw.id}', '${s.id}', 'submitted')" title="已繳交">✓</button>
+                    onclick="markHomework('${hw.id}', '${s.id}', 'submitted')" title="已繳交">${svgIcon('check', 15)}</button>
                   <button class="hw-mini-btn sub-late ${status === 'late' ? 'active' : ''}" 
-                    onclick="markHomework('${hw.id}', '${s.id}', 'late')" title="遲交">⏰</button>
+                    onclick="markHomework('${hw.id}', '${s.id}', 'late')" title="遲交">${svgIcon('clock', 15)}</button>
                   <button class="hw-mini-btn sub-no ${status === 'missing' ? 'active' : ''}" 
-                    onclick="markHomework('${hw.id}', '${s.id}', 'missing')" title="未繳">✕</button>
+                    onclick="markHomework('${hw.id}', '${s.id}', 'missing')" title="未繳">${svgIcon('cross', 15)}</button>
                 </div>
               </div>
             `;

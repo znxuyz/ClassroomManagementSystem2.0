@@ -175,9 +175,13 @@
 /* ============================================
    作業繳交
 ============================================ */
+/* 日期欄給固定寬度,不要用 1fr —— 日期輸入框有自己的最小寬度
+   (月/日/年三格 + 日曆圖示,實測 151px),1fr 在 1024 的螢幕上
+   只分到 115px,輸入框就從格子裡溢出 35px。
+   分數欄同理給固定寬度,兩個數字不需要跟著畫面長大。 */
 .hw-create-form {
   display: grid;
-  grid-template-columns: 2fr 3fr 1fr 1fr auto;
+  grid-template-columns: 2fr 3fr 164px 104px auto;
   gap: 10px;
   padding: var(--pad-sm);
   background: var(--paper-warm);
@@ -325,9 +329,11 @@
   gap: 3px;
 }
 
+/* 一位學生三顆,一班 28 位 = 84 顆,老師每天要按很多次 ——
+   22px 在平板上按不準(手指的目標至少要 24px)。 */
 .hw-mini-btn {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   border-radius: 4px;
   border: 1px solid var(--paper-shadow);
   background: var(--paper-warm);
@@ -352,5 +358,8 @@
 
   .hw-create-form > * { min-width: 0; }
 
+  /* 日期欄佔滿一整列。360px 的手機上,兩欄各只分到 145px,
+     而日期輸入框最少要 151px(月/日/年 + 日曆圖示),就會溢出 5px。 */
+  .hw-create-form > .field.mid,
   .hw-create-form > button { grid-column: 1 / -1; }
 }

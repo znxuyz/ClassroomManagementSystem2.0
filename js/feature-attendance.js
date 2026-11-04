@@ -69,11 +69,11 @@ function renderAttendance() {
         </div>
         <div class="status-btns">
           <button class="status-btn btn-present ${status === 'present' ? 'active' : ''}" 
-            onclick="setAttendance('${s.id}', 'present')" title="出席">✓</button>
+            onclick="setAttendance('${s.id}', 'present')" title="出席">${svgIcon('check', 16)}</button>
           <button class="status-btn btn-late ${status === 'late' ? 'active' : ''}" 
-            onclick="setAttendance('${s.id}', 'late')" title="遲到">↻</button>
+            onclick="setAttendance('${s.id}', 'late')" title="遲到">${svgIcon('clock', 16)}</button>
           <button class="status-btn btn-absent ${status === 'absent' ? 'active' : ''}" 
-            onclick="setAttendance('${s.id}', 'absent')" title="缺席">✕</button>
+            onclick="setAttendance('${s.id}', 'absent')" title="缺席">${svgIcon('cross', 16)}</button>
         </div>
       </div>
     `;

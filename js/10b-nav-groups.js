@@ -128,7 +128,7 @@ function renderNavTabs() {
   if (!top.dataset.built) {
     top.innerHTML = navIndicatorHtml() + NAV_GROUPS.map(g => `
       <button class="nav-tab" data-nav-group="${g.key}" onclick="navGoGroup('${g.key}')">
-        <span class="nav-tab-icon">${icon(g.icon)}</span>${escapeHtml(g.name)}
+        <span class="nav-tab-icon">${svgIcon(g.icon)}</span>${escapeHtml(g.name)}
       </button>`).join('');
     top.dataset.built = '1';
   }

@@ -24,6 +24,7 @@
 const ENTER_ROWS = [
   '[data-enter-row]',      // 給程式產生的列用(例如獎品卡的編輯狀態)
   '.field-row',
+  '.hw-create-form',       // 新增作業(它的版面是 grid,不是 .field-row 那一套)
   '.quiz-create-form',
   '.tq-form',
   '.custom-points-row',

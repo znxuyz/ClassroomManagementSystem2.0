@@ -822,6 +822,28 @@ a:focus-visible {
   transition: background .15s var(--ease-out), color .15s var(--ease-out);
 }
 
+/* 這幾個是「打勾 + 一行字」的切換。整行都可以點,但它只有 19~21px 高 ——
+   比手指的目標下限(24px)還矮,而且和旁邊的按鈕不等高。
+   連打勾的方框一起放大:13px 的原生方框在投影或平板上太小。 */
+.rank-full-toggle,
+.tg-live-check,
+.quiz-auto-toggle {
+  min-height: 28px;
+  padding: 0 6px;
+}
+
+/* 題庫的「哪一個是正確答案」用的是 radio,大小和上面那幾顆一致 */
+.tq-opt input[type="radio"],
+.rank-full-toggle input[type="checkbox"],
+.tg-live-check input[type="checkbox"],
+.quiz-auto-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--forest);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 /* 文字連結本來完全沒有 hover。
    加底線沒有用 —— 它們本來就有底線了,所以改成變色。 */
 a { transition: color .15s var(--ease-out); }

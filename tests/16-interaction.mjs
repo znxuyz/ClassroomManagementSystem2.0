@@ -122,5 +122,58 @@ const cardHover = await cardEl.evaluate(e => getComputedStyle(e).backgroundColor
 lines.push((card !== cardHover ? '✓ ' : '✗ ')
   + '學生加分的卡片滑過去會變色' + ` — ${card} → ${cardHover}`);
 
+/* ============================================
+   手指按得到嗎
+   ────────────────────────────────────────────
+   可點的東西至少要 24×24 —— 那是手指的目標下限(平板、觸控筆電)。
+   只看「真正的目標」:被更大的可點父層包住的子元素不算
+   (學生卡裡的姓名、報表列裡的頭像…),它們的點擊是父層接的。
+
+   抓到過:作業繳交那三顆 ✓⏰✕ 只有 22px(一班 84 顆,老師每天按很多次)、
+   「打勾 + 一行字」的幾個切換只有 19~21px 高。
+============================================ */
+const small = await page.evaluate(() => {
+  const out = [];
+  NAV_GROUPS.forEach(g => g.items.forEach(it => {
+    navGoItem(g.key, it.view, it.sub || '');
+    const v = document.querySelector('.view.active');
+    if (!v) return;
+    v.querySelectorAll('*').forEach(el => {
+      if (el.offsetParent === null || el.disabled) return;
+      const cs = getComputedStyle(el);
+      const clickable = el.onclick || cs.cursor === 'pointer'
+        || /^(BUTTON|INPUT|SELECT)$/.test(el.tagName);
+      if (!clickable) return;
+      if (el.closest('.hex-map')) return;          // SVG 地圖的格子另有規則
+      /* 圖示的筆畫(<path> <circle>)會繼承按鈕的 cursor:pointer,
+         但它們從來不是點擊目標 —— 目標是外面那顆按鈕。 */
+      if (el.closest('svg')) return;
+      if (el.tagName === 'A') return;              // 文字連結不是按鈕
+      /* 父層已經是可點的、而且夠大 → 真正的目標是父層 */
+      let anc = el.parentElement, covered = false;
+      while (anc && anc !== document.body) {
+        const acs = getComputedStyle(anc);
+        if (anc.onclick || acs.cursor === 'pointer'
+            || /^(BUTTON|A|LABEL)$/.test(anc.tagName)) {
+          const ar = anc.getBoundingClientRect();
+          if (ar.width >= 24 && ar.height >= 24) { covered = true; }
+          break;
+        }
+        anc = anc.parentElement;
+      }
+      if (covered) return;
+      const r = el.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) return;
+      if (r.width < 24 || r.height < 24) {
+        out.push(`${g.name}/${it.name} · ${(el.className || '').toString().split(' ')[0]
+          || el.tagName} ${Math.round(r.width)}×${Math.round(r.height)}`);
+      }
+    });
+  }));
+  return [...new Set(out)];
+});
+lines.push((small.length === 0 ? '✓ ' : '✗ ')
+  + '可點的東西都有 24px 以上' + (small.length ? ' — ' + small.join(' · ') : ''));
+
 await close();
-process.exit(report('滑過去有沒有反應', lines, errors) ? 0 : 1);
+process.exit(report('滑過去有沒有反應 / 按不按得到', lines, errors) ? 0 : 1);
