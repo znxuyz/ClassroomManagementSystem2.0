@@ -306,16 +306,30 @@
   border: 1px solid rgba(139, 58, 78, 0.15);
 }
 
+/* 手機上這一排塞不下「輸入框 + 三顆按鈕」,硬擠的話輸入框只剩 118px,
+   貼進去的 Key 看不到幾個字。讓它換行,輸入框至少佔住一整行。 */
 .api-key-input-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
 }
+
+.api-key-input-row .field.grow { flex: 1 1 220px; }
 
 .api-key-input-row input {
   flex: 1;
   font-family: 'Courier New', monospace;
   font-size: 13px;
+}
+
+/* 說明文字裡混著下拉與按鈕,換行之後上下會貼在一起(框碰框)。
+   給它們一點垂直間距,並且和文字對齊在同一條中線上。 */
+.api-key-hint select,
+.api-key-hint .btn {
+  vertical-align: middle;
+  margin-top: 6px;
+  margin-bottom: 2px;
 }
 
 .api-key-hint {

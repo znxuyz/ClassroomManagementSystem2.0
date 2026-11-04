@@ -1,5 +1,5 @@
 /* ============================================
-   同一排的格子要一樣高
+   格子的幾何:同一排要等高、上下兩個框不能貼在一起
    ────────────────────────────────────────────
    學生加分那一頁出過這個問題:「5 天沒加分」的標籤只掛在部分學生身上,
    有標籤的那張卡片就比較高,整排格子被它撐開 —— 於是第一排比第二排高,
@@ -11,6 +11,11 @@
 
    修法的原則是「永遠留著那一行的高度」,不是「把標籤拿掉」——
    資訊要留著,版面也要穩。
+
+   第二件事是「框碰框」:上下相鄰的兩個**都有外框**的區塊,如果中間
+   沒有留空隙,兩條 1px 的邊會並成一條 2px 的線,看起來就像兩個框疊住了。
+   「自動發分」那兩列出過這個問題 —— 原因是少包了一層負責間距的容器
+   (`.rules-editor`),旁邊的積分規則有包、它沒有。
 
    ── 例外 ──
    有幾個容器本來就不是「一排格子」,而是「一排控制項」或「一張卡片的內部」,
@@ -29,6 +34,44 @@ let allErrors = [];
 const SKIP = ['tg-setup', 'bulk-actions', 'theme-choice'];
 
 const scanSrc = skip => `
+/* 上下相鄰、而且兩個都有完整外框的區塊,中間至少要留一點空隙 ——
+   不留的話兩條 1px 的邊並成一條 2px 的線,看起來像兩個框疊住了。
+   只看「四邊都有框」的,像積分明細那種只有 border-bottom 的列不算
+   (那種本來就是設計成連在一起的)。 */
+window.__scanTouching = function () {
+  const out = [];
+  const bordered = el => {
+    const c = getComputedStyle(el);
+    return ['Top', 'Right', 'Bottom', 'Left'].every(side =>
+      parseFloat(c['border' + side + 'Width']) > 0 && c['border' + side + 'Style'] !== 'none')
+      && c.borderTopColor !== 'rgba(0, 0, 0, 0)';
+  };
+  const check = (where, root) => {
+    root.querySelectorAll('*').forEach(box => {
+      const kids = [...box.children].filter(k => k.offsetParent !== null);
+      for (let i = 1; i < kids.length; i++) {
+        const a = kids[i - 1], b = kids[i];
+        if (!bordered(a) || !bordered(b)) continue;
+        const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+        if (Math.abs(ra.left - rb.left) > 2) continue;       // 不是上下關係
+        if (rb.top - ra.bottom < 1) {
+          out.push(where + ' · ' + ((a.className || '').toString().split(' ')[0] || a.tagName));
+        }
+      }
+    });
+  };
+  if (window.__scanWhere === 'student') {
+    check('學生端/' + StudentApp.tab, document.getElementById('studentView'));
+  } else {
+    NAV_GROUPS.forEach(g => g.items.forEach(it => {
+      navGoItem(g.key, it.view, it.sub || '');
+      const v = document.querySelector('.view.active');
+      if (v) check(g.name + '/' + it.name, v);
+    }));
+  }
+  return [...new Set(out)];
+};
+
 window.__scanRows = function () {
   const skip = ${JSON.stringify(skip)};
   const out = [];
@@ -111,6 +154,11 @@ for (const [w, h, tag] of [[1440, 950, '1440'], [1024, 800, '1024'], [390, 844, 
     + `${tag} 老師端每一排格子都等高`
     + (bad.length ? ' — ' + bad.join(' · ') : ''));
 
+  const touching = await page.evaluate(() => window.__scanTouching());
+  lines.push((touching.length === 0 ? '✓ ' : '✗ ')
+    + `${tag} 沒有上下貼在一起的框`
+    + (touching.length ? ' — ' + touching.join(' · ') : ''));
+
   allErrors = allErrors.concat(errors.map(e => `${tag} ${e}`));
   await close();
 }
@@ -144,8 +192,17 @@ for (const [w, h, tag] of [[1440, 950, '1440'], [1024, 800, '1024'], [390, 844, 
   }
   lines.push((stuBad.length === 0 ? '✓ ' : '✗ ')
     + '學生端每一排格子都等高' + (stuBad.length ? ' — ' + stuBad.join(' · ') : ''));
+
+  const stuTouch = [];
+  for (const t of ['pet', 'rank', 'quiz', 'shop', 'help']) {
+    await page.evaluate(x => StudentApp.setTab(x), t);
+    await page.waitForTimeout(300);
+    (await page.evaluate(() => window.__scanTouching())).forEach(b => stuTouch.push(b));
+  }
+  lines.push((stuTouch.length === 0 ? '✓ ' : '✗ ')
+    + '學生端沒有上下貼在一起的框' + (stuTouch.length ? ' — ' + stuTouch.join(' · ') : ''));
   allErrors = allErrors.concat(errors);
   await close();
 }
 
-process.exit(report('同一排的格子要一樣高', lines, allErrors) ? 0 : 1);
+process.exit(report('格子的幾何(等高、框不相貼)', lines, allErrors) ? 0 : 1);
