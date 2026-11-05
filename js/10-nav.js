@@ -21,6 +21,7 @@ function switchView(name) {
   if (name === 'quiz') renderQuizList();
   if (name === 'territory') renderTerritoryView();
   if (name === 'help') renderHelpView();
+  if (name === 'blocks') renderBlocksView();
   if (name === 'settings') renderSettings();
   if (name === 'rules') { renderRulesEditor(); renderAttendanceAward(); }
 }

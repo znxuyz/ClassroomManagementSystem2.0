@@ -49,7 +49,8 @@ const NAV_GROUPS = [
     items: [
       { name: '學生測驗', view: 'quiz' },
       { name: '戰況地圖', view: 'territory', sub: 'tgBoard' },
-      { name: '蜂巢題庫', view: 'territory', sub: 'tgQuestions' }
+      { name: '蜂巢題庫', view: 'territory', sub: 'tgQuestions' },
+      { name: '積木挑戰', view: 'blocks' }
     ]
   },
   {

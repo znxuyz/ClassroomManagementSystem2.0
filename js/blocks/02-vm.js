@@ -237,40 +237,45 @@ const BlockVM = {
        { do: 'gesture', g: '朝上' }
        { do: 'wait' }                    什麼都不做,只是讓它繼續跑
      回傳每一步之後「畫面變成什麼樣子」。 */
+  /* 跑一步。學生按下模擬器上的按鈕時用的也是這一支 ——
+     「自己玩」和「判對錯」走同一條路,才不會出現
+     「我自己試明明是對的,按檢查卻說錯」。 */
+  fire(ctx, stepDef) {
+    ctx.frames = [];
+    switch (stepDef.do) {
+      case 'start':
+        ctx.vars = {};
+        ctx.screen = this.blankScreen();
+        ctx.handlers.start.forEach(body => this.exec(body, ctx));
+        break;
+      case 'press': {
+        const btn = stepDef.btn || 'A';
+        if (btn === 'A+B') { ctx.buttons.A = true; ctx.buttons.B = true; }
+        else ctx.buttons[btn] = true;
+        (ctx.handlers.button[btn] || []).forEach(body => this.exec(body, ctx));
+        ctx.buttons.A = false; ctx.buttons.B = false;
+        break;
+      }
+      case 'shake':
+        (ctx.handlers.gesture['搖動'] || []).forEach(body => this.exec(body, ctx));
+        break;
+      case 'gesture':
+        (ctx.handlers.gesture[stepDef.g] || []).forEach(body => this.exec(body, ctx));
+        break;
+      default:
+        break;
+    }
+    this.settle(ctx);
+    return { frames: ctx.frames.slice(), screen: ctx.screen };
+  },
+
   runScript(program, script) {
     const ctx = this.newCtx(program);
     const trace = [];
     let error = null;
 
     try {
-      (script || []).forEach(stepDef => {
-        ctx.frames = [];
-        switch (stepDef.do) {
-          case 'start':
-            ctx.vars = {};
-            ctx.screen = this.blankScreen();
-            ctx.handlers.start.forEach(body => this.exec(body, ctx));
-            break;
-          case 'press': {
-            const btn = stepDef.btn || 'A';
-            if (btn === 'A+B') { ctx.buttons.A = true; ctx.buttons.B = true; }
-            else ctx.buttons[btn] = true;
-            (ctx.handlers.button[btn] || []).forEach(body => this.exec(body, ctx));
-            ctx.buttons.A = false; ctx.buttons.B = false;
-            break;
-          }
-          case 'shake':
-            (ctx.handlers.gesture['搖動'] || []).forEach(body => this.exec(body, ctx));
-            break;
-          case 'gesture':
-            (ctx.handlers.gesture[stepDef.g] || []).forEach(body => this.exec(body, ctx));
-            break;
-          default:
-            break;
-        }
-        this.settle(ctx);
-        trace.push({ frames: ctx.frames.slice(), screen: ctx.screen });
-      });
+      (script || []).forEach(stepDef => { trace.push(this.fire(ctx, stepDef)); });
     } catch (e) {
       error = { code: e.vmCode || 'error', message: e.message };
     }

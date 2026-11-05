@@ -1,0 +1,551 @@
+/* ============================================
+   積木挑戰
+   ────────────────────────────────────────────
+   積木的顏色沿用 MakeCode 的分類色,由 JS 以 --c 傳進來(那是資料,
+   不是主題色)。其餘一律走設計代幣。
+
+   版面的目標:
+   · 電腦(教室常見 1366/1920):左邊面板、中間工作區、右邊模擬器,
+     三欄一眼看得完,不必捲
+   · 平板直式與手機:上下堆疊,面板收在工作區下面
+============================================ */
+
+.bk-editor {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: var(--pad-sm);
+  align-items: start;
+}
+
+/* ---------- 左邊:積木面板 ---------- */
+.bk-palette {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 62vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.bk-cat { display: flex; flex-direction: column; gap: 5px; }
+
+.bk-cat-name {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: var(--ink-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+/* 分類前面那一點,就是那一類積木的顏色 */
+.bk-cat-name::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--c);
+}
+
+.bk-chip {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  color: #fff;
+  background: var(--c);
+  border: none;
+  border-radius: 6px;
+  padding: 7px 10px;
+  min-height: 30px;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur) var(--ease-out),
+              filter var(--dur-fast) var(--ease-out);
+}
+
+.bk-chip:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); filter: brightness(1.06); }
+.bk-chip:active { transform: translateY(0); }
+
+.bk-chip-new {
+  background: transparent;
+  color: var(--c);
+  border: 1px dashed var(--c);
+  box-shadow: none;
+}
+
+/* ---------- 中間:工作區 ---------- */
+.bk-work {
+  min-height: 220px;
+  max-height: 62vh;
+  overflow: auto;
+  background: var(--paper);
+  border: 1px solid var(--paper-shadow);
+  border-radius: var(--r-card);
+  padding: var(--pad-sm);
+  /* 淡淡的方格底 —— 一看就知道「這裡是可以放東西的工作區」 */
+  background-image:
+    linear-gradient(var(--paper-warm) 1px, transparent 1px),
+    linear-gradient(90deg, var(--paper-warm) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* ---------- 一塊積木 ---------- */
+.bk-blk {
+  border-left: 5px solid var(--c);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--c) 10%, var(--paper));
+  margin: 0;
+}
+
+.bk-blk.is-event {
+  background: color-mix(in srgb, var(--c) 16%, var(--paper));
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 10px;
+}
+
+.bk-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 7px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  min-height: 34px;
+}
+
+/* 包在裡面的那一疊往右縮排 —— 縮排就是「誰包著誰」,
+   那正是這個練習要教會的事,所以要看得很清楚 */
+.bk-body {
+  margin-left: 16px;
+  padding-left: 10px;
+  border-left: 2px dashed color-mix(in srgb, var(--c) 45%, transparent);
+  display: flex;
+  flex-direction: column;
+}
+
+.bk-else {
+  padding: 4px 8px 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.bk-foot { height: 6px; }
+
+/* 積木上的小工具(上移/下移/刪掉)。平常淡,滑過去才明顯 ——
+   不然滿畫面都是按鈕,看不到程式本身 */
+.bk-tools {
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+  opacity: .35;
+  transition: opacity var(--dur) var(--ease-out);
+}
+
+.bk-blk:hover > .bk-head > .bk-tools { opacity: 1; }
+
+.bk-tool {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  border-radius: 5px;
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.bk-tool:hover { background: var(--paper); }
+.bk-tool.danger:hover { color: var(--sick-ink); }
+
+/* ---------- 插入點 ---------- */
+.bk-cursor {
+  display: block;
+  width: 100%;
+  min-height: 10px;
+  margin: 1px 0;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--forest);
+  text-align: left;
+  padding: 0 6px;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.bk-cursor:hover { background: color-mix(in srgb, var(--forest) 12%, transparent); }
+
+.bk-cursor.on {
+  min-height: 26px;
+  background: color-mix(in srgb, var(--forest) 16%, transparent);
+  box-shadow: inset 0 0 0 2px var(--forest);
+}
+
+/* 空的身體裡要看得到「可以放這裡」,不然孩子不知道能點 */
+.bk-body > .bk-cursor.is-last:only-child {
+  min-height: 26px;
+  border: 1px dashed var(--paper-shadow);
+}
+
+.bk-body > .bk-cursor.is-last:only-child::after {
+  content: "把積木放這裡";
+  color: var(--ink-muted);
+  font-weight: 400;
+}
+
+.bk-body > .bk-cursor.is-last.on:only-child::after { content: ""; }
+
+/* ---------- 參數格 ---------- */
+.bk-field {
+  font-family: var(--font-body);
+  font-size: 12px;
+  height: 26px;
+  border: 1px solid var(--paper-shadow);
+  border-radius: 5px;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 0 6px;
+  max-width: 100%;
+}
+
+.bk-num { width: 64px; }
+.bk-text { width: 120px; }
+.bk-var { font-weight: 700; color: var(--sunset-deep); }
+
+.bk-numwrap {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 5px;
+}
+
+.bk-numwrap.on { box-shadow: 0 0 0 2px var(--forest); }
+
+/* 「改成放積木」的小箭頭 —— 平常不搶眼,要用的時候找得到 */
+.bk-slot-mini {
+  width: 18px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.bk-slot-mini:hover { color: var(--forest); }
+
+.bk-slot {
+  min-width: 56px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px dashed var(--moss);
+  border-radius: 5px;
+  background: var(--paper);
+  color: var(--ink-muted);
+  font-family: var(--font-body);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.bk-slot.on {
+  border-style: solid;
+  border-color: var(--forest);
+  color: var(--forest);
+  font-weight: 700;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--forest) 30%, transparent);
+}
+
+.bk-sub { display: inline-flex; }
+.bk-sub .bk-blk { border-left-width: 4px; }
+.bk-sub .bk-head { padding: 3px 6px; min-height: 26px; font-size: 12px; }
+
+/* ---------- 5×5 的圖案格 ---------- */
+.bk-leds {
+  display: inline-grid;
+  grid-template-columns: repeat(5, 14px);
+  gap: 2px;
+  padding: 3px;
+  background: #1a1a1a;
+  border-radius: 4px;
+}
+
+.bk-led {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 2px;
+  background: #3a3a3a;
+  cursor: pointer;
+  padding: 0;
+}
+
+.bk-led.on { background: #ff5566; box-shadow: 0 0 5px rgba(255, 85, 102, .8); }
+
+/* ---------- 唯讀(老師看學生的答案、看參考解答)---------- */
+.bk-editor.is-readonly { grid-template-columns: minmax(0, 1fr); }
+.bk-editor.is-readonly .bk-work { background-image: none; }
+
+/* ---------- 窄螢幕 ---------- */
+@media (max-width: 900px) {
+  .bk-editor { grid-template-columns: minmax(0, 1fr); }
+
+  /* 面板改成橫向捲動的一條,工作區才有高度可用 */
+  .bk-palette {
+    flex-direction: row;
+    max-height: none;
+    overflow-x: auto;
+    gap: 14px;
+    padding-bottom: 6px;
+  }
+
+  .bk-cat { flex: 0 0 auto; }
+  .bk-chip { white-space: nowrap; }
+  .bk-work { max-height: none; min-height: 260px; }
+}
+
+/* ============================================
+   模擬器(那一台假的 micro:bit)
+============================================ */
+.sim {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+/* 板子本身。刻意做得像一塊板子而不是一個方框 ——
+   孩子手上就有一塊,看到同樣的形狀會自己對起來。 */
+.sim-board {
+  position: relative;
+  width: 100%;
+  max-width: 260px;
+  aspect-ratio: 5 / 4;
+  background: linear-gradient(160deg, #1f2a24, #0d130f);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-md);
+}
+
+.sim-leds {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  width: 52%;
+}
+
+.sim-led {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, .07);
+  transition: background var(--dur) var(--ease-out),
+              box-shadow var(--dur) var(--ease-out);
+}
+
+.sim-led.on {
+  background: #ff5566;
+  box-shadow: 0 0 8px rgba(255, 85, 102, .85);
+}
+
+/* 數字與文字不做跑馬燈,直接顯示在中間 —— 看得清楚比擬真重要 */
+.sim-text {
+  font-family: var(--font-display);
+  font-size: 56px;
+  font-weight: 700;
+  color: #ff5566;
+  text-shadow: 0 0 14px rgba(255, 85, 102, .6);
+  line-height: 1;
+}
+
+.sim-text.is-long { font-size: 26px; }
+
+.sim-btn {
+  position: absolute;
+  bottom: 14%;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .25);
+  background: #2b3a33;
+  color: rgba(255, 255, 255, .8);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out);
+}
+
+.sim-btn:hover { background: #3c5248; }
+.sim-btn:active { transform: scale(.92); }
+.sim-btn-a { left: 8%; }
+.sim-btn-b { right: 8%; }
+
+.sim-acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+
+.sim-error {
+  font-size: 12px;
+  color: var(--sick-ink);
+  background: color-mix(in srgb, var(--sick-ink) 10%, transparent);
+  border-radius: var(--r-tile);
+  padding: 8px 10px;
+  line-height: 1.7;
+}
+
+/* 變數現在是多少 —— 這是最有用的除錯線索,所以一直放著 */
+.sim-vars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.sim-var {
+  font-size: 12px;
+  background: var(--paper-warm);
+  border-radius: var(--r-pill);
+  padding: 2px 10px;
+  color: var(--ink-soft);
+}
+
+.sim-var b { color: var(--sunset-deep); margin-right: 4px; }
+
+/* ============================================
+   老師端:題目清單與出題
+============================================ */
+.bk-create { margin-bottom: 18px; }
+
+.bk-list { display: flex; flex-direction: column; gap: 10px; }
+
+.bk-task {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: var(--pad-sm);
+  background: var(--paper);
+  border: 1px solid var(--paper-shadow);
+  border-left: 4px solid var(--paper-shadow);
+  border-radius: var(--r-card);
+  box-shadow: var(--edge-hi), var(--shadow-sm);
+}
+
+.bk-task.is-open { border-left-color: var(--forest); }
+
+.bk-task-main { flex: 1 1 auto; min-width: 0; }
+
+.bk-task-name {
+  font-size: var(--t-item);
+  font-weight: 700;
+  color: var(--forest-deep);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bk-task-state {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: var(--r-pill);
+  background: var(--paper-warm);
+  color: var(--ink-muted);
+}
+
+.bk-task-state.on { background: var(--forest); color: #fff; }
+
+.bk-task-spec {
+  font-size: var(--t-sub);
+  color: var(--ink-soft);
+  margin-top: 3px;
+  line-height: 1.6;
+}
+
+.bk-task-meta { font-size: 12px; color: var(--ink-muted); margin-top: 4px; }
+
+.bk-task-acts { display: flex; gap: 6px; flex-shrink: 0; }
+.bk-task-acts .danger { color: var(--sick-ink); }
+
+.bk-edit-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.bk-edit-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--forest-deep);
+}
+
+.bk-edit-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: var(--pad);
+  align-items: start;
+}
+
+.bk-side { display: flex; flex-direction: column; gap: 12px; }
+
+.bk-judge-hint,
+.bk-judge-note {
+  font-size: 12px;
+  color: var(--ink-muted);
+  line-height: 1.8;
+}
+
+.bk-judge {
+  border-radius: var(--r-card);
+  padding: var(--pad-sm);
+  font-size: var(--t-sub);
+}
+
+.bk-judge.good {
+  background: color-mix(in srgb, var(--healthy) 12%, transparent);
+  color: var(--forest-deep);
+}
+
+.bk-judge.bad {
+  background: color-mix(in srgb, var(--mild-deep) 12%, transparent);
+  color: var(--ink);
+}
+
+.bk-steps { display: flex; flex-direction: column; gap: 2px; margin: 8px 0; }
+
+.bk-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 3px 6px;
+  border-radius: var(--r-tile);
+  background: var(--paper);
+}
+
+.bk-step-label { flex: 1 1 auto; min-width: 0; color: var(--ink-soft); }
+
+.bk-step-val {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--forest-deep);
+  flex-shrink: 0;
+}
+
+.bk-step.no .bk-step-val { color: var(--sick-ink); }
+
+@media (max-width: 900px) {
+  .bk-edit-grid { grid-template-columns: minmax(0, 1fr); }
+  .bk-side { order: -1; }       /* 手機上模擬器放上面,工作區在下面 */
+}

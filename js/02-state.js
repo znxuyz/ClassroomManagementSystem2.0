@@ -57,5 +57,7 @@ let state = {
   // 蜂巢戰紀每週結算 { enabled, prizes, lastWeek, log }
   territoryWeekly: { ...TERRITORY_WEEKLY_DEFAULTS },
   // 出席分 { present, late } —— 老師自己設,0 = 不發
-  attendanceAward: { ...ATTENDANCE_AWARD_DEFAULTS }
+  attendanceAward: { ...ATTENDANCE_AWARD_DEFAULTS },
+  // 積木挑戰的題目 [{ id, name, spec, solution, palette, points, status }]
+  blockTasks: []
 };

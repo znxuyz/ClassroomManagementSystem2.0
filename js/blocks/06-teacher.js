@@ -1,0 +1,262 @@
+/* ============================================
+   積木挑戰 — 老師端(出題)
+   ────────────────────────────────────────────
+   出一題只要三件事:
+
+     1. 寫下功能敘述(「做一個計步器:開機歸零、搖一下加一、A+B 歸零」)
+     2. 用和學生一模一樣的編輯器,把答案拼一次
+     3. 按「試跑」看一下,沒問題就開放
+
+   測試案例不必自己想 —— 系統看你的答案用到哪些事件,自動排一齣劇本
+   (開機 → 搖三下 → 按 A+B → 歸零後再搖一次),再把你的答案在那齣劇本下
+   的行為錄起來當標準答案。學生只要做出**一樣的行為**就算對,
+   不必和你拼得一樣(見 03-judge.js)。
+
+   ── 答案不會送到學生那邊 ──
+   發給學生的是「考卷」:劇本 + 預期的畫面,不含你的積木。
+   不然打開開發者工具就看得到答案。
+   而學生拿著考卷可以在自己的裝置上立刻知道對不對,不必等你批改。
+============================================ */
+
+const BlockTasks = {
+  editing: null,      // 正在編輯的題目 id
+  _judge: null,       // 試跑的結果
+
+  all() {
+    if (!state.blockTasks) state.blockTasks = [];
+    return state.blockTasks;
+  },
+
+  byId(id) { return this.all().find(t => t.id === id) || null; },
+
+  create() {
+    const nameEl = document.getElementById('bkName');
+    const name = (nameEl.value || '').trim();
+    if (!name) { toast('先給這一題一個名字'); return; }
+    const task = {
+      id: 'bt_' + Date.now(),
+      name,
+      spec: (document.getElementById('bkSpec').value || '').trim(),
+      points: Math.max(0, parseInt(document.getElementById('bkPoints').value, 10) || 5),
+      solution: [],
+      palette: null,          // null = 全部積木都給
+      status: 'draft',
+      createdAt: Date.now()
+    };
+    this.all().push(task);
+    nameEl.value = '';
+    document.getElementById('bkSpec').value = '';
+    save();
+    this.edit(task.id);
+  },
+
+  edit(id) {
+    this.editing = id;
+    this._judge = null;
+    this.render();
+  },
+
+  closeEdit() {
+    this.editing = null;
+    this.render();
+  },
+
+  remove(id) {
+    const t = this.byId(id);
+    if (!t) return;
+    if (!confirm(`確定刪除「${t.name}」?學生已經交的作品也會看不到。`)) return;
+    state.blockTasks = this.all().filter(x => x.id !== id);
+    if (this.editing === id) this.editing = null;
+    save();
+    this.render();
+  },
+
+  setField(id, field, value) {
+    const t = this.byId(id);
+    if (!t) return;
+    t[field] = value;
+    save();
+  },
+
+  /* 開放 / 收起來。開放之前一定要先試跑過,
+     不然學生會拿到一題「連老師的答案都跑不動」的題目。 */
+  toggleOpen(id) {
+    const t = this.byId(id);
+    if (!t) return;
+    if (t.status !== 'open') {
+      const paper = BlockJudge.compile(t);
+      if (paper.error) {
+        toast('這一題的參考解答自己跑不動:' + paper.error.message, 6000);
+        return;
+      }
+      if (!(t.solution || []).length) { toast('先把參考解答拼出來'); return; }
+      t.status = 'open';
+      toast(`✦ 「${t.name}」已開放,學生端就看得到了`);
+    } else {
+      t.status = 'closed';
+      toast(`「${t.name}」已收起來`);
+    }
+    save();
+    this.render();
+  },
+
+  /* 試跑:把自己的答案當成學生的作品判一次,應該要全過。
+     這一步在抓「敘述和答案對不上」—— 老師改了敘述卻忘了改答案時。 */
+  tryRun() {
+    const t = this.byId(this.editing);
+    if (!t) return;
+    t.solution = BlockEditor.value();
+    save();
+    const paper = BlockJudge.compile(t);
+    this._judge = paper.error
+      ? { pass: false, error: paper.error, steps: [] }
+      : BlockJudge.runCompiled(paper, t.solution);
+    this._paper = paper;
+    this.render();
+  },
+
+  onEditorChange(program) {
+    const t = this.byId(this.editing);
+    if (!t) return;
+    t.solution = program;
+    BlockSim.setProgram(program);
+    // 改了答案,剛才那次試跑就不算數了
+    this._judge = null;
+    save();
+  },
+
+  /* ---------- 畫面 ---------- */
+  render() {
+    const el = document.getElementById('blocksBody');
+    if (!el) return;
+
+    if (this.editing) { this.renderEditor(el); return; }
+
+    const list = this.all();
+    el.innerHTML = `
+      <div class="field-row bk-create">
+        <label class="field grow">
+          <span class="field-label">題目名稱<span class="req">*</span></span>
+          <input type="text" id="bkName" class="rule-editor-input" placeholder="例:計步器" />
+        </label>
+        <label class="field grow">
+          <span class="field-label">功能敘述</span>
+          <input type="text" id="bkSpec" class="rule-editor-input"
+                 placeholder="例:開機時步數歸零並顯示,搖一下加一,A+B 歸零" />
+        </label>
+        <label class="field narrow">
+          <span class="field-label">完成得分</span>
+          <input type="number" id="bkPoints" class="rule-editor-input" value="5" min="0" max="20" />
+        </label>
+        <button class="btn btn-primary btn-small" onclick="BlockTasks.create()">＋ 新增題目</button>
+      </div>
+
+      ${list.length === 0 ? `
+        <div class="empty-state">
+          <div class="empty-state-icon">⬚</div>
+          <div>還沒有題目,從上方新增一題</div>
+          <div class="empty-state-action">
+            出題只要寫下功能敘述、把答案拼一次 —— 測試案例系統自己產生。
+          </div>
+        </div>` : `
+        <div class="bk-list">
+          ${list.map(t => this.renderCard(t)).join('')}
+        </div>`}`;
+  },
+
+  renderCard(t) {
+    const n = blockCount(t.solution);
+    const open = t.status === 'open';
+    return `
+      <div class="bk-task ${open ? 'is-open' : ''}">
+        <div class="bk-task-main">
+          <div class="bk-task-name">${escapeHtml(t.name)}
+            <span class="bk-task-state ${open ? 'on' : ''}">${open ? '開放中' : '未開放'}</span>
+          </div>
+          ${t.spec ? `<div class="bk-task-spec">${escapeHtml(t.spec)}</div>` : ''}
+          <div class="bk-task-meta">
+            參考解答 ${n} 塊積木 · 完成得 ${t.points} 分
+          </div>
+        </div>
+        <div class="bk-task-acts">
+          <button class="btn btn-ghost btn-small" onclick="BlockTasks.edit('${t.id}')">編輯</button>
+          <button class="btn ${open ? 'btn-ghost' : 'btn-primary'} btn-small"
+                  onclick="BlockTasks.toggleOpen('${t.id}')">${open ? '收起來' : '開放'}</button>
+          <button class="btn btn-ghost btn-small danger"
+                  onclick="BlockTasks.remove('${t.id}')">刪除</button>
+        </div>
+      </div>`;
+  },
+
+  renderEditor(el) {
+    const t = this.byId(this.editing);
+    if (!t) { this.editing = null; this.render(); return; }
+
+    el.innerHTML = `
+      <div class="bk-edit-head">
+        <button class="btn btn-ghost btn-small" onclick="BlockTasks.closeEdit()">← 回題目清單</button>
+        <div class="bk-edit-title">${escapeHtml(t.name)}</div>
+        <div style="flex:1"></div>
+        <button class="btn btn-primary btn-small" onclick="BlockTasks.tryRun()">▶ 試跑並檢查</button>
+      </div>
+
+      <label class="field" style="margin-bottom:14px;">
+        <span class="field-label">功能敘述(學生會看到這一段)</span>
+        <textarea id="bkSpecEdit" class="setup-textarea" rows="2"
+          oninput="BlockTasks.setField('${t.id}', 'spec', this.value)"
+          placeholder="做一個計步器:開機時步數歸零並顯示,搖一下步數加一並顯示,按 A+B 歸零。"
+          >${escapeHtml(t.spec || '')}</textarea>
+      </label>
+
+      <div class="bk-edit-grid">
+        <div>
+          <div class="panel-title">參考解答</div>
+          <div id="bkEditorHost"></div>
+        </div>
+        <div class="bk-side">
+          <div class="panel-title">試試看</div>
+          <div id="bkSimHost"></div>
+          ${this.renderJudge()}
+        </div>
+      </div>`;
+
+    BlockEditor.mount('bkEditorHost', {
+      program: t.solution,
+      onChange: p => this.onEditorChange(p)
+    });
+    BlockSim.mount('bkSimHost', t.solution);
+  },
+
+  renderJudge() {
+    const r = this._judge;
+    if (!r) {
+      return `<div class="bk-judge-hint">
+        拼好之後按「試跑並檢查」—— 系統會自動排一齣劇本,
+        把你的答案跑一遍,那就是學生要做出來的行為。
+      </div>`;
+    }
+    if (r.error) {
+      return `<div class="bk-judge bad"><b>這一題跑不動</b><br>${escapeHtml(r.error.message)}</div>`;
+    }
+    return `
+      <div class="bk-judge ${r.pass ? 'good' : 'bad'}">
+        <b>${r.pass ? '可以開放了' : '答案和敘述對不上?'}</b>
+        <div class="bk-steps">
+          ${r.steps.map(s => `
+            <div class="bk-step ${s.ok ? 'ok' : 'no'}">
+              <span class="bk-step-label">${escapeHtml(s.label)}</span>
+              <span class="bk-step-val">${escapeHtml(BlockVM.describeScreen(s.expect))}</span>
+            </div>`).join('')}
+        </div>
+        <div class="bk-judge-note">
+          上面這一串就是學生要做出來的行為。<br>
+          積木怎麼拼不限,只要畫面的變化一樣就算對。
+        </div>
+      </div>`;
+  }
+};
+
+/* 切到這一頁時才畫(和其他頁一樣的規矩) */
+function renderBlocksView() {
+  BlockTasks.render();
+}

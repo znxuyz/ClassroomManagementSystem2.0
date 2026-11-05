@@ -98,26 +98,32 @@ const BlockJudge = {
     return null;
   },
 
-  /* ---------- 判 ----------
-     task = { solution, script }
-     回傳 { pass, steps:[{label, ok, expect, got}], firstFail, error, note } */
-  run(task, program) {
+  /* ---------- 把題目「編譯」成一份考卷 ----------
+     考卷 = 劇本 + 參考解答在那齣劇本下的行為。
+
+     這一步在**老師端**做,然後只把考卷發給學生 ——
+     參考解答本身不會送到學生那邊(送了就等於把答案附在題目裡,
+     打開開發者工具就看得到)。
+     而學生拿著考卷就能在自己的裝置上立刻知道對不對,
+     不必等老師按什麼 —— 即時回饋是這種練習最重要的一件事。 */
+  compile(task) {
     const script = (task.script && task.script.length)
       ? task.script : this.scriptFor(task.solution);
+    const run = BlockVM.runScript(task.solution || [], script);
+    if (run.error) return { script, expect: null, error: run.error };
+    return { script, expect: run.trace, error: null };
+  },
 
-    const want = BlockVM.runScript(task.solution || [], script);
-    if (want.error) {
-      // 參考解答自己就跑不動 —— 這是老師的題目有問題,要讓老師看到
-      return { pass: false, steps: [], error: want.error, badTask: true };
+  /* 用考卷判一份作品 */
+  runCompiled(paper, program) {
+    if (!paper || paper.error || !paper.expect) {
+      return { pass: false, steps: [], error: (paper && paper.error) || null, badTask: true };
     }
+    const got = BlockVM.runScript(program || [], paper.script);
+    if (got.error) return { pass: false, steps: [], error: got.error };
 
-    const got = BlockVM.runScript(program || [], script);
-    if (got.error) {
-      return { pass: false, steps: [], error: got.error };
-    }
-
-    const steps = script.map((s, i) => {
-      const a = want.trace[i] || {}, b = got.trace[i] || {};
+    const steps = paper.script.map((s, i) => {
+      const a = paper.expect[i] || {}, b = got.trace[i] || {};
       return {
         label: s.label || ('第 ' + (i + 1) + ' 步'),
         ok: this.sameStep(a, b),
@@ -125,9 +131,13 @@ const BlockJudge = {
         expectFrames: a.frames || [], gotFrames: b.frames || []
       };
     });
-
     const firstFail = steps.findIndex(s => !s.ok);
     return { pass: firstFail < 0, steps, firstFail, error: null };
+  },
+
+  /* 老師端的捷徑:直接用題目判(會先編譯一次) */
+  run(task, program) {
+    return this.runCompiled(this.compile(task), program);
   },
 
   /* 一個步驟算不算一樣。
