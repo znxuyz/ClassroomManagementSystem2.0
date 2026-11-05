@@ -198,6 +198,21 @@ ok('學生改不了同學的守護獸名字', s === DENY, 'HTTP ' + s);
 ok('導師讀得到改名申請',
    await req('GET', '/classes/C1/petChoices/KID0_UID', 'teacher') === ALLOW);
 
+// ── 積木挑戰:學生交出來的作品 ──
+// 同學之間不能互相看 —— 看得到就會互相抄程式,而抄來的那一份照樣會判對,
+// 練習就失去意義了。
+ok('學生交得出自己的作品',
+   await req('PATCH', '/classes/C1/blockWork/KID0_UID', 'kid0',
+             doc({ uid: 'KID0_UID', studentId: 's0', work: {} })) === ALLOW);
+s = await req('PATCH', '/classes/C1/blockWork/KID1_UID', 'kid0',
+              doc({ uid: 'KID1_UID', studentId: 's1', work: {} }));
+ok('學生改不了同學的作品', s === DENY, 'HTTP ' + s);
+await seed('/classes/C1/blockWork/KID1_UID', { uid: 'KID1_UID', studentId: 's1', work: {} });
+s = await req('GET', '/classes/C1/blockWork/KID1_UID', 'kid0');
+ok('學生看不到同學的程式(不然會互相抄)', s === DENY, 'HTTP ' + s);
+ok('導師讀得到全班的作品',
+   await req('GET', '/classes/C1/blockWork/KID0_UID', 'teacher') === ALLOW);
+
 // ── 歷程:誰都不能改 ──
 await seed('/classes/C1/history/s0_1_0', { studentId: 's0', entries: [] });
 ok('學生改不了加分歷程',

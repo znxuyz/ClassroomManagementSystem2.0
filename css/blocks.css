@@ -549,3 +549,166 @@
   .bk-edit-grid { grid-template-columns: minmax(0, 1fr); }
   .bk-side { order: -1; }       /* 手機上模擬器放上面,工作區在下面 */
 }
+
+/* ============================================
+   學生端
+============================================ */
+.bk-stu-list { display: flex; flex-direction: column; gap: 10px; }
+
+.bk-stu-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-family: var(--font-body);
+  background: var(--paper);
+  border: 1px solid var(--paper-shadow);
+  border-left: 4px solid var(--forest);
+  border-radius: var(--r-card);
+  padding: var(--pad-sm);
+  cursor: pointer;
+  box-shadow: var(--edge-hi), var(--shadow-sm);
+  transition: transform var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur) var(--ease-out);
+}
+
+.bk-stu-card:hover { transform: translateY(-2px); box-shadow: var(--edge-hi), var(--shadow-md); }
+.bk-stu-card.is-done { border-left-color: var(--moss); }
+
+.bk-stu-name {
+  font-size: var(--t-item);
+  font-weight: 700;
+  color: var(--forest-deep);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bk-stu-done {
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--forest);
+  color: #fff;
+  border-radius: var(--r-pill);
+  padding: 1px 7px;
+}
+
+.bk-stu-spec {
+  font-size: var(--t-sub);
+  color: var(--ink-soft);
+  line-height: 1.7;
+  margin-top: 4px;
+}
+
+.bk-stu-meta { font-size: 12px; color: var(--ink-muted); margin-top: 4px; }
+
+.bk-stu-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+
+.bk-stu-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--forest-deep);
+}
+
+/* 題目敘述要一直看得到 —— 拼到一半忘記要做什麼是最常見的狀況 */
+.bk-stu-spec-box {
+  background: var(--paper-warm);
+  border-radius: var(--r-card);
+  padding: var(--pad-sm);
+  font-size: var(--t-sub);
+  line-height: 1.8;
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+
+.bk-stu-grid {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: var(--pad);
+  align-items: start;
+}
+
+.bk-stu-sim { display: flex; flex-direction: column; gap: 12px; }
+
+.bk-stu-acts { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+
+.bk-stu-hint,
+.bk-stu-msg {
+  font-size: var(--t-sub);
+  line-height: 1.8;
+  border-radius: var(--r-card);
+  padding: var(--pad-sm);
+}
+
+.bk-stu-hint { color: var(--ink-muted); background: var(--paper-warm); }
+.bk-stu-msg.hint { background: color-mix(in srgb, var(--mild-deep) 14%, transparent); color: var(--ink); }
+.bk-stu-msg.pass { background: color-mix(in srgb, var(--healthy) 16%, transparent); color: var(--forest-deep); font-weight: 700; }
+.bk-stu-msg.fail { background: var(--paper-warm); color: var(--ink); }
+
+/* 對了幾成 —— 「全錯」和「只差最後一步」感覺差很多 */
+.bk-stu-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--paper-shadow);
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.bk-stu-bar span {
+  display: block;
+  height: 100%;
+  background: var(--data-pos);
+  transition: width var(--dur-slow) var(--ease-out);
+}
+
+.bk-stu-bar-label { font-size: 12px; color: var(--ink-muted); margin-bottom: 6px; }
+
+@media (max-width: 900px) {
+  .bk-stu-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* 老師看學生交了什麼 */
+.bk-works {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.bk-works-label { font-size: 12px; color: var(--ink-muted); margin-right: 4px; }
+
+.bk-work-chip {
+  font-family: var(--font-body);
+  font-size: 12px;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--paper-shadow);
+  background: var(--paper);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.bk-work-chip:hover { border-color: var(--forest); color: var(--forest-deep); }
+.bk-work-chip.ok { border-color: var(--forest); color: var(--forest-deep); font-weight: 700; }
+
+.bk-work-view {
+  background: var(--paper-warm);
+  border-radius: var(--r-card);
+  padding: var(--pad-sm);
+  margin-bottom: 14px;
+}
+
+.bk-work-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--t-sub);
+  font-weight: 700;
+  color: var(--forest-deep);
+  margin-bottom: 8px;
+}
+
+.bk-work-head .ok { color: var(--forest); font-weight: 700; }
+.bk-work-head .no { color: var(--sick-ink); font-weight: 400; }

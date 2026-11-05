@@ -113,13 +113,15 @@ window.__db = {
 
   // 其餘用不到但會被呼叫到的,一律安靜地什麼都不做
   const nop = () => () => {};
-  ['watchMyPurchases','watchPurchases','watchSkillGrants','watchSkillUses',
+  ['watchMyPurchases','watchPurchases','watchSkillGrants','watchSkillUses','watchBlockTasks',
+   'watchBlockWork',
    'watchTerritoryConfig','watchTerritoryQuestions','watchTerritoryEvents',
    'watchTerritoryAttempts','watchTerritoryFails','watchQuizAnswers','watchSubmissions']
     .forEach(k => { Cloud[k] = nop; });
   const nil = async () => null;
   ['getMyPetChoice','getMySubmission','saveDailyBackup','pruneBackups',
-   'syncRosterIndex','saveBackup','saveArchive'].forEach(k => { Cloud[k] = nil; });
+   'syncRosterIndex','saveBackup','saveArchive',
+   'getMyBlockWork','saveBlockWork','publishBlockTasks'].forEach(k => { Cloud[k] = nil; });
   Cloud.listQuizzesForStudent = async () => [];
   Cloud.listMyQuizAnswers = async () => ({});
   Cloud.listMySkillUses = async () => [];

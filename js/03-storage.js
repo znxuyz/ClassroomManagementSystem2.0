@@ -354,6 +354,11 @@ async function flushCloudSave(isRetry) {
        名冊是衍生資料,寫失敗只是學生晚一點看到(而且會退回讀主文件);
        主文件才是本體,所以順序不能反。不等它完成,免得卡住存檔的回饋。 */
     Roster.flush().catch(e => console.warn('[名冊] 更新失敗:', e.message));
+    /* 積木挑戰的題目也是衍生資料(考卷由參考解答編譯出來),
+       所以和名冊一樣放在主文件寫成功之後。沒變的話它自己會跳過。 */
+    if (typeof BlockTasks !== 'undefined') {
+      BlockTasks.publish().catch(e => console.warn('[積木] 發布失敗:', e.message));
+    }
   } catch (e) {
     console.error('[Cloud] 儲存失敗:', e.code || '', e.message, e);
     updateSyncStatus('error');

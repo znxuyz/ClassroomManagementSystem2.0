@@ -167,6 +167,8 @@ const BlockTasks = {
   renderCard(t) {
     const n = blockCount(t.solution);
     const open = t.status === 'open';
+    const st = (typeof BlockWork !== 'undefined') ? BlockWork.statusOf(t.id)
+                                                  : { submitted: 0, passed: 0 };
     return `
       <div class="bk-task ${open ? 'is-open' : ''}">
         <div class="bk-task-main">
@@ -176,6 +178,7 @@ const BlockTasks = {
           ${t.spec ? `<div class="bk-task-spec">${escapeHtml(t.spec)}</div>` : ''}
           <div class="bk-task-meta">
             參考解答 ${n} 塊積木 · 完成得 ${t.points} 分
+            ${open ? ` · 交出 ${st.submitted} 位 · 完成 ${st.passed} 位` : ''}
           </div>
         </div>
         <div class="bk-task-acts">
@@ -208,6 +211,8 @@ const BlockTasks = {
           >${escapeHtml(t.spec || '')}</textarea>
       </label>
 
+      ${this.renderWorks(t)}
+
       <div class="bk-edit-grid">
         <div>
           <div class="panel-title">參考解答</div>
@@ -226,6 +231,48 @@ const BlockTasks = {
     });
     BlockSim.mount('bkSimHost', t.solution);
   },
+
+  /* ---------- 學生交了什麼 ----------
+     看別人怎麼拼,是老師講評時最有用的材料 ——
+     「這三位用的是完全不同的做法,都對」比講十分鐘還有效。 */
+  renderWorks(t) {
+    if (typeof BlockWork === 'undefined' || !BlockWork.all.length) return '';
+    const rows = BlockWork.all
+      .filter(d => d.work && d.work[t.id])
+      .map(d => {
+        const paid = (t.paid || {})[d.studentId];
+        return `<button class="bk-work-chip ${paid ? 'ok' : ''}"
+          onclick="BlockTasks.viewWork('${t.id}', '${d.studentId}')"
+          >${escapeHtml(d.name || d.studentId)}${paid ? ' ✓' : ''}</button>`;
+      }).join('');
+    if (!rows) return '';
+    return `
+      <div class="bk-works">
+        <span class="bk-works-label">交出來的作品</span>${rows}
+        ${this._viewing ? `<button class="btn btn-ghost btn-small"
+            onclick="BlockTasks.closeWork()">收起來</button>` : ''}
+      </div>
+      ${this._viewing ? `<div class="bk-work-view" id="bkWorkView"></div>` : ''}`;
+  },
+
+  viewWork(taskId, studentId) {
+    this._viewing = { taskId, studentId };
+    this.render();
+    const w = BlockWork.workOf(taskId, studentId);
+    const host = document.getElementById('bkWorkView');
+    if (!host || !w) return;
+    const t = this.byId(taskId);
+    const r = BlockJudge.run(t, w.program);
+    const who = (state.students.find(s => s.id === studentId) || {}).name || '';
+    host.innerHTML = `
+      <div class="bk-work-head">${escapeHtml(who)} 的做法
+        <span class="${r.pass ? 'ok' : 'no'}">${r.pass ? '通過' : BlockJudge.explain(r)}</span>
+      </div>
+      <div id="bkWorkEditor"></div>`;
+    BlockEditor.mount('bkWorkEditor', { program: w.program, readonly: true });
+  },
+
+  closeWork() { this._viewing = null; this.render(); },
 
   renderJudge() {
     const r = this._judge;
@@ -255,6 +302,39 @@ const BlockTasks = {
       </div>`;
   }
 };
+
+/* ---------- 發題目給學生 ----------
+   發出去的是考卷,不是答案。改了題目就重發一次;
+   沒變的話不寫 —— 每一次存檔都重寫一遍沒有意義,而且會洗掉學生的流量。 */
+Object.assign(BlockTasks, {
+  _lastPublished: null,
+
+  papers() {
+    return this.all().filter(t => t.status === 'open').map(t => {
+      const paper = BlockJudge.compile(t);
+      return {
+        id: t.id, name: t.name, spec: t.spec || '', points: t.points || 0,
+        palette: t.palette || null,
+        script: paper.script, expect: paper.expect
+      };
+    }).filter(p => p.expect);
+  },
+
+  async publish() {
+    if (!isCloudMode()) return;
+    const payload = { tasks: this.papers(), at: Date.now() };
+    const sig = JSON.stringify(payload.tasks);
+    if (sig === this._lastPublished) return;
+    try {
+      await Cloud.publishBlockTasks(state.classId, payload);
+      this._lastPublished = sig;
+    } catch (e) {
+      console.warn('[積木] 題目發布失敗:', e.code || e.message);
+    }
+  },
+
+  reset() { this._lastPublished = null; this.editing = null; this._judge = null; }
+});
 
 /* 切到這一頁時才畫(和其他頁一樣的規矩) */
 function renderBlocksView() {

@@ -89,6 +89,8 @@ const Session = {
     if (typeof TerritoryGame !== 'undefined') TerritoryGame.stop();
     if (typeof SkillAdmin !== 'undefined') SkillAdmin.stop();
     if (typeof TerritoryWeekly !== 'undefined') TerritoryWeekly.stop();
+    if (typeof BlockWork !== 'undefined') BlockWork.stop();
+    if (StudentApp.unsubBlocks) StudentApp.unsubBlocks();
     if (StudentApp.unsubPurchases) StudentApp.unsubPurchases();
     if (StudentApp.unsub) StudentApp.unsub();
     if (StudentApp.unsubTQuestions) StudentApp.unsubTQuestions();
@@ -165,6 +167,9 @@ const Session = {
     TerritoryGame.start();
     SkillAdmin.start();
     TerritoryWeekly.start();
+    BlockWork.start();           // 積木挑戰:收作品、判一次、發分
+    BlockTasks.reset();
+    BlockTasks.publish().catch(e => console.warn('[積木] 題目發布失敗:', e.message));
     watchPetChoices();
     // 到了統一結算時間的測驗,老師一開系統就算完,不必先切到測驗分頁
     QuizWatch.startDueTimer();
@@ -206,6 +211,7 @@ const Session = {
       TerritoryGame.stop();
       SkillAdmin.stop();
       TerritoryWeekly.stop();
+      BlockWork.stop();
 
       await this.openClass(classId);
       await SwitchHUD.finish(state.className);

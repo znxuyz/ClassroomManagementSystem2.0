@@ -590,6 +590,44 @@ const Cloud = {
       .collection('public').doc('roster').set(roster);
   },
 
+  /* ---------- 積木挑戰 ----------
+     發出去的是「考卷」(題目敘述 + 劇本 + 預期畫面),
+     **不含參考解答** —— 送了就等於把答案附在題目裡(見 js/blocks/03-judge.js)。
+     放在 public/ 底下,所以學生讀得到、只有導師寫得進去。 */
+  async publishBlockTasks(classId, payload) {
+    await this.db.collection('classes').doc(classId)
+      .collection('public').doc('blockTasks').set(payload);
+  },
+
+  watchBlockTasks(classId, cb) {
+    return this.db.collection('classes').doc(classId)
+      .collection('public').doc('blockTasks')
+      .onSnapshot(snap => cb(snap.exists ? snap.data() : null),
+        err => console.warn('[積木] 題目監聽中斷:', err.message));
+  },
+
+  /* 學生交出來的作品。一位學生一份文件(id 就是他的 uid),
+     裡面是 { 題號: 程式 } —— 和守護獸選擇同一個做法,
+     所以他只寫得了自己那一份。 */
+  async saveBlockWork(classId, uid, data) {
+    await this.db.collection('classes').doc(classId)
+      .collection('blockWork').doc(uid)
+      .set(data, { merge: true });
+  },
+
+  async getMyBlockWork(classId, uid) {
+    const d = await this.db.collection('classes').doc(classId)
+      .collection('blockWork').doc(uid).get();
+    return d.exists ? d.data() : null;
+  },
+
+  watchBlockWork(classId, cb) {
+    return this.db.collection('classes').doc(classId)
+      .collection('blockWork')
+      .onSnapshot(snap => cb(snap.docs.map(d => ({ uid: d.id, ...d.data() }))),
+        err => console.warn('[積木] 作品監聽中斷:', err.message));
+  },
+
   watchPublicRoster(classId, cb, onErr) {
     return this.db.collection('classes').doc(classId)
       .collection('public').doc('roster')

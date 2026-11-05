@@ -61,6 +61,8 @@ const StudentApp = {
 
     this.watch();
     this.watchPurchases();
+    this.watchBlockTasks();
+    this.loadMyBlockWork();
     this.watchTerritory();
     this.watchSkills();
     // 自己的蜂巢戰紀紀錄等「真的有一局在跑」再讀,沒開局就不必花那些讀取
@@ -366,6 +368,13 @@ const StudentApp = {
         ${TerritoryGame.config && TerritoryGame.config.status === 'running' ? `
         <button class="student-tab war ${this.tab === 'war' ? 'active' : ''}"
                 onclick="StudentApp.setTab('war')">蜂巢戰紀</button>` : ''}
+        ${(this.blockTasks || []).length ? `
+        <button class="student-tab ${this.tab === 'blocks' ? 'active' : ''}"
+                onclick="StudentApp.setTab('blocks')">積木${
+                  (this.blockTasks || []).filter(t => !this.myBlockWork[t.id]).length
+                    ? `<span class="student-tab-badge">${
+                        this.blockTasks.filter(t => !this.myBlockWork[t.id]).length}</span>` : ''
+                }</button>` : ''}
         <button class="student-tab ${this.tab === 'help' ? 'active' : ''}"
                 onclick="StudentApp.setTab('help')" title="使用說明">說明</button>
       </nav>
@@ -383,13 +392,35 @@ const StudentApp = {
           ${this.tab === 'quiz' ? this.renderQuizTab() : ''}
           ${this.tab === 'shop' ? this.renderShopTab() : ''}
           ${this.tab === 'war'  ? this.renderWarTab()  : ''}
+          ${this.tab === 'blocks' ? this.renderBlocksTab() : ''}
           ${this.tab === 'help' ? renderHelpFull('student', this.classRules) : ''}
         </div>
       </main>
     `;
+
+    if (this.tab === 'blocks' && this.bkTask) this.bkRemount();
+  },
+
+  /* 積木那一頁的編輯器是程式掛上去的,不是 HTML 字串的一部分。
+     只要整頁重畫過(老師加分、題目更新都會),它就得重新掛回去,
+     否則學生會看到一塊空白。 */
+  bkRemount() {
+    const host = document.getElementById('bkStuEditor');
+    if (!host || host.children.length) return;
+    const saved = this.myBlockWork[this.bkTask.id];
+    const keep = (BlockEditor.program && BlockEditor.program.length)
+      ? BlockEditor.value() : ((saved && saved.program) || []);
+    BlockEditor.mount('bkStuEditor', {
+      program: keep,
+      palette: this.bkTask.palette || null,
+      onChange: p => { BlockSim.setProgram(p); this.bkResult = null; this.bkSyncButtons(); }
+    });
+    BlockSim.mount('bkStuSim', keep);
   },
 
   setTab(tab) {
+    // 離開積木那一頁時把正在做的那一題收起來,回來才是乾淨的題目清單
+    if (this.tab === 'blocks' && tab !== 'blocks') { this.bkTask = null; this.bkResult = null; }
     this.tab = tab;
     /* 只有「真的切分頁」時才播滑動動畫。
        render() 在老師加分、戰況更新時也會跑,那些不該動。 */
