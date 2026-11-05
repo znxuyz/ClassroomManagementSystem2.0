@@ -905,6 +905,13 @@
    只有在「捲過去了」的時候才黏住。
 ============================================ */
 @media (min-width: 761px) {
+  /* 黏在畫面底部,底下是學生方格,所以**面板自己**要有不透明的底。
+
+     本來這個底是畫在 ::before 上的(inset 負值,讓它比面板大一圈)。
+     那是錯的:面板是 overflow-y: auto 的捲動容器,絕對定位的 ::before
+     會跟著內容一起捲走 —— 面板一捲,下半截就沒有底了,
+     學生方格直接透出來疊在按鈕上(實際發生過,而且很難看)。
+     改成底色直接下在面板上,捲多遠都不會露出來。 */
   .dashboard.has-selection .action-panel {
     position: sticky;
     bottom: 12px;
@@ -914,18 +921,11 @@
        那就換成「看得到按鈕但勾不到人」,一樣不能用。 */
     max-height: 46vh;
     overflow-y: auto;
-  }
-
-  /* 黏住的時候底下是學生方格,要有底才看得清楚 */
-  .dashboard.has-selection .action-panel::before {
-    content: "";
-    position: absolute;
-    inset: -10px -12px;
+    padding: 10px 12px;
     background: var(--paper);
     border: 1px solid var(--paper-shadow);
     border-radius: var(--r-card);
-    box-shadow: var(--shadow-lg);
-    z-index: -1;
+    box-shadow: var(--edge-hi), var(--shadow-lg);
   }
 }
 

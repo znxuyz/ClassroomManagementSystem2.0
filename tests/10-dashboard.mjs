@@ -200,6 +200,28 @@ for (const [w, h, tag] of [[1440, 1000, '1440'], [1024, 800, '1024'], [390, 844,
       parseFloat(getComputedStyle(rows[2]).opacity) === 1);
     navGoItem('challenge', 'territory', 'tgBoard');
 
+    /* 黏在底部的加分面板:它自己要有不透明的底。
+       底色畫在 ::before 上的話,面板一捲(裡面有小組快捷 + 積分按鈕 +
+       加分紀錄,一定會捲),那層底會跟著內容捲走,下半截就露出
+       後面的學生方格疊在按鈕上 —— 真的發生過。 */
+    if (wide) {
+      navGoItem('class', 'dashboard', '');
+      BatchAward.toggle();
+      BatchAward.pick('s2');
+      const panel = document.querySelector('.action-panel');
+      const pcs = getComputedStyle(panel);
+      t.ok('黏住的加分面板是黏住的', pcs.position === 'sticky', pcs.position);
+      t.ok('黏住的加分面板自己有不透明的底(不是靠 ::before)',
+        pcs.backgroundColor !== 'rgba(0, 0, 0, 0)' && pcs.backgroundColor !== 'transparent',
+        pcs.backgroundColor);
+      /* 捲到底之後還是不透明 —— ::before 的做法就是在這裡破功 */
+      panel.scrollTop = panel.scrollHeight;
+      const after = getComputedStyle(panel).backgroundColor;
+      t.ok('捲到底之後底色還在', after !== 'rgba(0, 0, 0, 0)', after);
+      BatchAward.toggle();
+      clearStudentSelection();
+    }
+
     const over2 = [];
     document.querySelectorAll('.view.active *').forEach(el => {
       if (el.scrollWidth > el.clientWidth + 2 && getComputedStyle(el).overflowX === 'visible')
