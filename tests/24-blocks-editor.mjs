@@ -75,6 +75,38 @@ const setField = async (idx, value) => {
   await page.waitForTimeout(40);
 };
 
+/* ── 0. 面板的分類真的切得動 ──
+   這一條是修完 bug 之後補的:分類按鈕畫出來了、按下去也有焦點框,
+   但抽屜裡的積木完全沒換 —— 看起來像「其他類別的積木都不能用」。 */
+const cats = await page.evaluate(() => {
+  const out = [];
+  const n = document.querySelectorAll('.bk-cat-tab').length;
+  for (let i = 0; i < n; i++) {
+    /* 每一輪都要重新抓 —— 點下去之後面板整個重畫,
+       舊的那些按鈕已經不在畫面上了(抓著舊的點,事件根本不會發生)。 */
+    const tab = document.querySelectorAll('.bk-cat-tab')[i];
+    tab.click();
+    out.push({
+      name: tab.textContent.trim(),
+      cat: BlockEditor.cat,
+      chips: [...document.querySelectorAll('.bk-chip')].map(c => c.textContent.trim())
+    });
+  }
+  return out;
+});
+ok('每一個分類按下去都會換成那一類的積木',
+   cats.length >= 6
+   && cats.every(c => c.chips.length > 0)
+   && new Set(cats.map(c => c.chips.join('|'))).size === cats.length,
+   cats.map(c => c.name + ':' + c.chips.length).join(' / '));
+ok('分類裡真的是那一類的積木',
+   (cats.find(c => c.name === '迴圈') || {}).chips?.join().includes('重複')
+   && (cats.find(c => c.name === '變數') || {}).chips?.join().includes('設為'),
+   JSON.stringify((cats.find(c => c.name === '迴圈') || {}).chips));
+
+// 回到基本,下面的步驟才從同一個起點開始
+await page.evaluate(() => { BlockEditor.cat = 'basic'; BlockEditor.render(); });
+
 // ── 1. 當啟動時 → 新增變數 → 將 步數 設為 0 ──
 await chip('當啟動時');
 await chip('＋ 新增變數');

@@ -423,6 +423,10 @@ const BlockEditor = {
       this.slot = { id: t.dataset.id, arg: t.dataset.arg };
       this.cursor = null;
       this.render();
+    } else if (act === 'cat') {
+      // 換一類積木(面板左邊那一欄)
+      this.cat = t.dataset.cat;
+      this.render();
     } else if (act === 'addvar') { this.addVar(); }
     else if (act === 'led') {
       const hit = this.find(t.dataset.id);
