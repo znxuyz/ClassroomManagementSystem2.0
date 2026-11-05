@@ -33,16 +33,26 @@ await page.evaluate(() => {
 });
 await page.waitForTimeout(200);
 
-/* 點面板上的某一塊積木(用上面的字找) */
+/* 點面板上的某一塊積木(用上面的字找)。
+   面板和 MakeCode 一樣是分類抽屜,所以要先切到那一類 —— 這一步就是
+   孩子真的會做的動作。 */
+const openCatFor = async label => page.evaluate(t => {
+  for (const c of BLOCK_CATS) {
+    BlockEditor.cat = c.id;
+    BlockEditor.render();
+    if ([...document.querySelectorAll('.bk-chip')]
+        .some(x => x.textContent.trim().startsWith(t))) return c.id;
+  }
+  return null;
+}, label);
+
 const chip = async label => {
-  const got = await page.evaluate(t => {
-    const b = [...document.querySelectorAll('.bk-chip')]
-      .find(x => x.textContent.trim().startsWith(t));
-    if (!b) return false;
-    b.click();
-    return true;
+  const cat = await openCatFor(label);
+  if (!cat) throw new Error('面板上找不到積木:' + label);
+  await page.evaluate(t => {
+    [...document.querySelectorAll('.bk-chip')]
+      .find(x => x.textContent.trim().startsWith(t)).click();
   }, label);
-  if (!got) throw new Error('面板上找不到積木:' + label);
   await page.waitForTimeout(40);
 };
 
@@ -187,6 +197,100 @@ const open = await page.evaluate(() => {
   return blocked;
 });
 ok('參考解答跑不動時,擋住不讓開放', open);
+
+/* ============================================
+   拖曳(和真的 MakeCode 一樣)
+   ────────────────────────────────────────────
+   用 pointer 事件,所以滑鼠、觸控板、觸控螢幕走同一條路;
+   這裡用 Playwright 的滑鼠模擬,等於真的拖一次。
+============================================ */
+const chipBox = async label => {
+  await openCatFor(label);
+  return page.evaluate(t => {
+    const b = [...document.querySelectorAll('.bk-chip')]
+      .find(x => x.textContent.trim().startsWith(t));
+    if (!b) return null;
+    b.scrollIntoView({ block: 'nearest' });
+    const r = b.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }, label);
+};
+
+const dragTo = async (from, to) => {
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(from.x + 20, from.y + 10, { steps: 3 });
+  await page.mouse.move(to.x, to.y, { steps: 8 });
+  await page.waitForTimeout(60);
+  await page.mouse.up();
+  await page.waitForTimeout(80);
+};
+
+// 清空,從頭用拖的
+await page.evaluate(() => { BlockEditor.program = []; BlockEditor.changed(); });
+
+const workBox = await page.evaluate(() => {
+  const r = document.querySelector('.bk-work').getBoundingClientRect();
+  return { x: r.left + 120, y: r.top + 40 };
+});
+await dragTo(await chipBox('當啟動時'), workBox);
+ok('從面板把帽子拖進工作區',
+   await page.evaluate(() => BlockEditor.program.length === 1
+     && BlockEditor.program[0].t === 'on_start'));
+
+const bodyBox = await page.evaluate(() => {
+  const c = document.querySelector('.bk-body .bk-cursor');
+  const r = c.getBoundingClientRect();
+  return { x: r.left + 40, y: r.top + 8 };
+});
+await dragTo(await chipBox('顯示數字'), bodyBox);
+ok('拖進帽子的肚子裡就會變成它的內容',
+   await page.evaluate(() => (BlockEditor.program[0].body || []).length === 1
+     && BlockEditor.program[0].body[0].t === 'show_number'));
+
+// 變數拖進數字格
+await page.evaluate(() => { BlockEditor.vars = ['步數']; BlockEditor.render(); });
+const numSlot = await page.evaluate(() => {
+  const w = document.querySelector('.bk-numwrap');
+  const r = w.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+});
+await dragTo(await chipBox('步數'), numSlot);
+ok('把變數拖進數字格,那一格就變成變數',
+   await page.evaluate(() => {
+     const v = BlockEditor.program[0].body[0].v;
+     return v && v.t === 'var' && v.name === '步數';
+   }));
+
+// 拖回面板 = 丟掉
+const blkHead = await page.evaluate(() => {
+  const h = document.querySelectorAll('.bk-body .bk-blk > .bk-head')[0];
+  const r = h.getBoundingClientRect();
+  return { x: r.left + 30, y: r.top + r.height / 2 };
+});
+const paletteBox = await page.evaluate(() => {
+  const r = document.querySelector('.bk-palette').getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + 60 };
+});
+await dragTo(blkHead, paletteBox);
+ok('把積木拖回面板就是丟掉',
+   await page.evaluate(() => (BlockEditor.program[0].body || []).length === 0));
+
+// 不能把積木放進它自己的肚子裡(會變成一個圈,畫面直接當掉)
+const selfDrop = await page.evaluate(() => {
+  const outer = BlockEditor.program[0];
+  BlockEditor.drag = { blk: outer, from: null, ghost: document.createElement('div'),
+                       kind: 'event', offX: 0, offY: 0 };
+  const fake = document.createElement('div');
+  fake.dataset.parent = outer.id;
+  fake.dataset.list = 'body';
+  fake.dataset.index = '0';
+  BlockEditor.finishDrag(fake, false);
+  // 沒有變成自己包自己,而且還在最外層
+  return BlockEditor.program.length === 1
+    && (BlockEditor.program[0].body || []).every(b => b.id !== outer.id);
+});
+ok('不能把積木放進它自己的肚子裡', selfDrop);
 
 await close();
 process.exit(report('積木挑戰:編輯器', lines, errors) ? 0 : 1);

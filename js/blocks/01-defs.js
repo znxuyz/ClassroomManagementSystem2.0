@@ -27,16 +27,27 @@
    這份檔案只定義「有哪些積木、長什麼樣子」,怎麼跑在 02-vm.js。
 ============================================ */
 
-/* 積木的分類。顏色沿用 MakeCode 的分法,孩子在兩邊看到的是同一套顏色,
-   不必重新學一次「哪一類是什麼顏色」。 */
+/* 積木的分類。
+   **名稱、順序、顏色都照 MakeCode 的** —— 孩子在這裡練完直接回去用
+   真的 MakeCode,看到的要是同一套東西。顏色不一樣的話,他在腦袋裡
+   建立的「藍色是基本、紅色是變數」會在兩邊打架。
+
+   顏色取自 pxt-microbit 的 pxtarget.json。
+   「事件」不是 MakeCode 的分類:當啟動時與重複無限次屬於**基本**,
+   當按鈕被按下、當搖動屬於**輸入** —— 這裡也照搬。
+
+   音效 / LED / 廣播目前還沒有積木,所以不會出現在面板上
+   (列出來卻點不到更糟)。之後補上時把 cat 填進去就會自己出現。 */
 const BLOCK_CATS = [
-  { id: 'event',  name: '事件',   color: '#c9a227' },
-  { id: 'basic',  name: '基本',   color: '#4c97ff' },
-  { id: 'var',    name: '變數',   color: '#e8542f' },
-  { id: 'logic',  name: '邏輯',   color: '#2eb886' },
-  { id: 'loop',   name: '迴圈',   color: '#2e8fb8' },
-  { id: 'math',   name: '數學',   color: '#7b61c4' },
-  { id: 'input',  name: '輸入',   color: '#b86a2e' }
+  { id: 'basic', name: '基本', color: '#1E90FF' },
+  { id: 'input', name: '輸入', color: '#D400D4' },
+  { id: 'music', name: '音效', color: '#D83B01' },
+  { id: 'led',   name: 'LED',  color: '#5C2D91' },
+  { id: 'radio', name: '廣播', color: '#E3008C' },
+  { id: 'loop',  name: '迴圈', color: '#00A000' },
+  { id: 'logic', name: '邏輯', color: '#00A4A6' },
+  { id: 'var',   name: '變數', color: '#E63022' },
+  { id: 'math',  name: '數學', color: '#712672' }
 ];
 
 /* 每一塊積木:
@@ -57,29 +68,33 @@ const BLOCK_CATS = [
    刻意只做老師真的會教的那一組(大約 20 塊)。積木一多,
    小學生在面板上找不到東西,反而更難拼。 */
 const BLOCK_DEFS = [
-  /* ---------- 事件(帽子,只能放最外層) ---------- */
-  { t: 'on_start',   cat: 'event', kind: 'event', body: true, label: '當啟動時' },
-  { t: 'forever',    cat: 'event', kind: 'event', body: true, label: '重複無限次' },
-  { t: 'on_button',  cat: 'event', kind: 'event', body: true,
-    label: '當按鈕 ${btn} 被按下時',
-    args: [{ name: 'btn', type: 'pick', options: ['A', 'B', 'A+B'], def: 'A' }] },
-  { t: 'on_gesture', cat: 'event', kind: 'event', body: true,
-    label: '當${g}時',
-    args: [{ name: 'g', type: 'pick', options: ['搖動', '朝上', '朝下'], def: '搖動' }] },
-
-  /* ---------- 基本 ---------- */
+  /* ---------- 基本 ----------
+     順序照 MakeCode:顯示數字 → 顯示 LED → 顯示圖示 → 顯示文字 → 清空畫面
+     → 重複無限次 → 當啟動時 → 暫停 */
   { t: 'show_number', cat: 'basic', kind: 'stmt', label: '顯示數字 ${v}',
     args: [{ name: 'v', type: 'num', def: 0 }] },
-  { t: 'show_string', cat: 'basic', kind: 'stmt', label: '顯示文字 ${v}',
-    args: [{ name: 'v', type: 'text', def: 'Hello' }] },
+  { t: 'show_leds',   cat: 'basic', kind: 'stmt', label: '顯示 LED ${grid}',
+    args: [{ name: 'grid', type: 'leds', def: '0000000000011100000000000' }] },
   { t: 'show_icon',   cat: 'basic', kind: 'stmt', label: '顯示圖示 ${icon}',
     args: [{ name: 'icon', type: 'pick', def: '愛心',
              options: ['愛心', '笑臉', '哭臉', '打勾', '打叉', '箭頭上', '箭頭下'] }] },
-  { t: 'show_leds',   cat: 'basic', kind: 'stmt', label: '顯示 LED ${grid}',
-    args: [{ name: 'grid', type: 'leds', def: '0000000000011100000000000' }] },
+  { t: 'show_string', cat: 'basic', kind: 'stmt', label: '顯示文字 ${v}',
+    args: [{ name: 'v', type: 'text', def: 'Hello' }] },
   { t: 'clear',       cat: 'basic', kind: 'stmt', label: '清空畫面' },
+  { t: 'forever',     cat: 'basic', kind: 'event', body: true, label: '重複無限次' },
+  { t: 'on_start',    cat: 'basic', kind: 'event', body: true, label: '當啟動時' },
   { t: 'pause',       cat: 'basic', kind: 'stmt', label: '暫停 ${ms} 毫秒',
     args: [{ name: 'ms', type: 'num', def: 500 }] },
+
+  /* ---------- 輸入 ---------- */
+  { t: 'on_button',  cat: 'input', kind: 'event', body: true,
+    label: '當按鈕 ${btn} 被按下時',
+    args: [{ name: 'btn', type: 'pick', options: ['A', 'B', 'A+B'], def: 'A' }] },
+  { t: 'on_gesture', cat: 'input', kind: 'event', body: true,
+    label: '當${g}時',
+    args: [{ name: 'g', type: 'pick', options: ['搖動', '朝上', '朝下'], def: '搖動' }] },
+  { t: 'btn_down', cat: 'input', kind: 'expr', label: '按鈕 ${btn} 被按下',
+    args: [{ name: 'btn', type: 'pick', options: ['A', 'B'], def: 'A' }] },
 
   /* ---------- 變數 ---------- */
   { t: 'set_var',    cat: 'var', kind: 'stmt', label: '將 ${name} 設為 ${v}',
@@ -116,11 +131,7 @@ const BLOCK_DEFS = [
            { name: 'op', type: 'pick', options: ['+', '−', '×', '÷'], def: '+' },
            { name: 'b', type: 'num', def: 0 }] },
   { t: 'random', cat: 'math', kind: 'expr', label: '隨機數 ${from} 到 ${to}',
-    args: [{ name: 'from', type: 'num', def: 0 }, { name: 'to', type: 'num', def: 10 }] },
-
-  /* ---------- 輸入 ---------- */
-  { t: 'btn_down', cat: 'input', kind: 'expr', label: '按鈕 ${btn} 被按下',
-    args: [{ name: 'btn', type: 'pick', options: ['A', 'B'], def: 'A' }] }
+    args: [{ name: 'from', type: 'num', def: 0 }, { name: 'to', type: 'num', def: 10 }] }
 ];
 
 const BLOCK_BY_T = {};

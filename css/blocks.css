@@ -17,68 +17,113 @@
   align-items: start;
 }
 
-/* ---------- 左邊:積木面板 ---------- */
+/* ---------- 左邊:積木面板 ----------
+   照 MakeCode:左邊一欄分類,右邊展開那一類的積木。
+   分類前面那一點就是那一類的顏色。 */
 .bk-palette {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  border-radius: var(--r-tile);
+  overflow: hidden;
+  border: 1px solid var(--paper-shadow);
+  max-height: 62vh;
+}
+
+.bk-cats {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  max-height: 62vh;
+  background: var(--paper);
   overflow-y: auto;
-  padding-right: 4px;
 }
 
-.bk-cat { display: flex; flex-direction: column; gap: 5px; }
-
-.bk-cat-name {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .08em;
-  color: var(--ink-muted);
+.bk-cat-tab {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 2px;
-}
-
-/* 分類前面那一點,就是那一類積木的顏色 */
-.bk-cat-name::before {
-  content: "";
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  background: var(--c);
-}
-
-.bk-chip {
+  gap: 7px;
   font-family: var(--font-body);
   font-size: 12px;
   font-weight: 600;
+  color: var(--ink-soft);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--paper-warm);
+  padding: 0 8px;
+  min-height: 34px;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.bk-cat-tab i {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--c);
+  flex-shrink: 0;
+}
+
+.bk-cat-tab:hover { background: var(--paper-warm); }
+
+.bk-cat-tab.is-on {
+  background: var(--c);
+  color: #fff;
+  font-weight: 700;
+}
+
+.bk-cat-tab.is-on i { background: rgba(255, 255, 255, .9); }
+
+/* 積木那一欄用深色底 —— 和 MakeCode 的抽屜一樣,
+   積木的顏色在深底上才跳得出來 */
+.bk-chips {
+  background: #3f4450;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.bk-chip {
+  position: relative;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
   text-align: left;
   color: #fff;
   background: var(--c);
   border: none;
-  border-radius: 6px;
-  padding: 7px 10px;
-  min-height: 30px;
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
+  border-radius: 4px;
+  padding: 8px 10px;
+  min-height: 32px;
+  cursor: grab;
+  touch-action: none;
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .18);
   transition: transform var(--dur-fast) var(--ease-out),
-              box-shadow var(--dur) var(--ease-out),
               filter var(--dur-fast) var(--ease-out);
 }
 
-.bk-chip:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); filter: brightness(1.06); }
-.bk-chip:active { transform: translateY(0); }
+.bk-chip:hover { transform: translateX(2px); filter: brightness(1.08); }
+.bk-chip:active { cursor: grabbing; }
 
 .bk-chip-new {
   background: transparent;
-  color: var(--c);
-  border: 1px dashed var(--c);
+  color: #fff;
+  border: 1px dashed rgba(255, 255, 255, .5);
   box-shadow: none;
+  font-weight: 600;
 }
 
 /* ---------- 中間:工作區 ---------- */
+/* 工作區的底色。積木的凹凸是用這個顏色「挖」出來的,
+   所以 C 形積木的肚子、凹槽都要跟著它 —— 定成變數,一處改全部跟著改。 */
+.bk-editor {
+  --bk-canvas: var(--paper);
+}
+
 .bk-work {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   min-height: 220px;
   max-height: 62vh;
   overflow: auto;
@@ -93,84 +138,143 @@
   background-size: 22px 22px;
 }
 
-/* ---------- 一塊積木 ---------- */
+/* ---------- 一塊積木 ----------
+   和 MakeCode 對齊:實色填滿 + 白字(原本是淡底深字,那是這個專案
+   其他地方的樣子,放在這裡會讓孩子覺得「和我在 MakeCode 看到的不一樣」)。
+   上下的凹凸是用和底色同色的小方塊做出來的 —— 一塊的凸正好補上
+   下一塊的凹,疊起來就像真的接上去。 */
 .bk-blk {
-  border-left: 5px solid var(--c);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--c) 10%, var(--paper));
-  margin: 0;
+  position: relative;
+  width: fit-content;
+  min-width: 150px;
+  max-width: 100%;
+  background: var(--c);
+  color: #fff;
+  border-radius: 4px;
+  margin: 0 0 4px;
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .14);
 }
 
-.bk-blk.is-event {
-  background: color-mix(in srgb, var(--c) 16%, var(--paper));
-  box-shadow: var(--shadow-sm);
-  margin-bottom: 10px;
+/* 上緣的凹 */
+.bk-blk::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 14px;
+  width: 18px;
+  height: 4px;
+  border-radius: 0 0 4px 4px;
+  background: var(--bk-canvas, var(--paper));
 }
+
+/* 下緣的凸 */
+.bk-blk::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  left: 14px;
+  width: 18px;
+  height: 4px;
+  border-radius: 0 0 4px 4px;
+  background: var(--c);
+  z-index: 1;
+}
+
+/* 帽子:圓頂,而且上面接不了東西,所以沒有凹 */
+.bk-blk.is-hat {
+  border-radius: 16px 16px 4px 4px;
+  margin-bottom: 14px;
+}
+
+.bk-blk.is-hat::before { display: none; }
+
+/* 運算式:橢圓形,而且只有內容那麼寬(和 MakeCode 一樣) */
+.bk-blk.is-expr {
+  display: inline-flex;
+  width: auto;
+  min-width: 0;
+  border-radius: 999px;
+  margin: 0;
+  box-shadow: none;
+}
+
+.bk-blk.is-expr::before,
+.bk-blk.is-expr::after { display: none; }
 
 .bk-head {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 7px 8px;
+  padding: 7px 10px;
   font-size: 13px;
-  font-weight: 600;
-  color: var(--ink);
+  font-weight: 700;
   min-height: 34px;
+  cursor: grab;
+  touch-action: none;        /* 不然在觸控螢幕上會變成捲動頁面 */
 }
 
-/* 包在裡面的那一疊往右縮排 —— 縮排就是「誰包著誰」,
-   那正是這個練習要教會的事,所以要看得很清楚 */
+.bk-blk.is-expr .bk-head { padding: 3px 10px; min-height: 26px; font-size: 12px; }
+
+.bk-head:active { cursor: grabbing; }
+
+/* C 形積木:中間挖空,左邊留一條 —— 那一條就是「這些被我包著」。
+   縮排正是這個練習要教會的事,所以要看得很清楚。 */
 .bk-body {
+  background: var(--bk-canvas, var(--paper));
   margin-left: 16px;
-  padding-left: 10px;
-  border-left: 2px dashed color-mix(in srgb, var(--c) 45%, transparent);
+  padding: 4px 0 4px 4px;
+  border-radius: 4px 0 0 4px;
   display: flex;
   flex-direction: column;
+  /* 積木只有內容那麼寬 —— 拉成整行寬的話,看起來不像積木,像表格 */
+  align-items: flex-start;
+  min-height: 26px;
 }
 
 .bk-else {
-  padding: 4px 8px 4px 10px;
+  padding: 5px 10px 5px 14px;
   font-size: 12px;
   font-weight: 700;
-  color: var(--ink-soft);
 }
 
-.bk-foot { height: 6px; }
+/* C 形的底(封口) */
+.bk-foot { height: 12px; }
 
-/* 積木上的小工具(上移/下移/刪掉)。平常淡,滑過去才明顯 ——
-   不然滿畫面都是按鈕,看不到程式本身 */
+/* 積木上的小工具(上移/下移/刪掉)。平常淡,滑過去才明顯 */
 .bk-tools {
   margin-left: auto;
   display: flex;
   gap: 2px;
-  opacity: .35;
+  opacity: 0;
   transition: opacity var(--dur) var(--ease-out);
 }
 
-.bk-blk:hover > .bk-head > .bk-tools { opacity: 1; }
+.bk-blk:hover > .bk-head > .bk-tools { opacity: .9; }
 
 .bk-tool {
   width: 24px;
   height: 24px;
   border: none;
-  background: transparent;
+  background: rgba(0, 0, 0, .18);
   border-radius: 5px;
   cursor: pointer;
-  color: var(--ink-soft);
+  color: #fff;
   font-size: 12px;
   line-height: 1;
 }
 
-.bk-tool:hover { background: var(--paper); }
-.bk-tool.danger:hover { color: var(--sick-ink); }
+.bk-tool:hover { background: rgba(0, 0, 0, .35); }
 
-/* ---------- 插入點 ---------- */
+/* ---------- 插入點 ----------
+   平常幾乎看不見(只是一條可以點的細縫),拖的時候才整排亮出來 ——
+   「哪裡放得進去」要在手指還在半空中的時候就看得到。 */
 .bk-cursor {
   display: block;
   width: 100%;
-  min-height: 10px;
-  margin: 1px 0;
+  min-width: 150px;
+  min-height: 8px;
+  margin: 0;
   border: none;
   background: transparent;
   border-radius: 4px;
@@ -181,20 +285,41 @@
   color: var(--forest);
   text-align: left;
   padding: 0 6px;
-  transition: background var(--dur-fast) var(--ease-out);
+  transition: background var(--dur-fast) var(--ease-out),
+              min-height var(--dur-fast) var(--ease-out);
 }
 
 .bk-cursor:hover { background: color-mix(in srgb, var(--forest) 12%, transparent); }
 
 .bk-cursor.on {
-  min-height: 26px;
+  min-height: 24px;
   background: color-mix(in srgb, var(--forest) 16%, transparent);
   box-shadow: inset 0 0 0 2px var(--forest);
 }
 
-/* 空的身體裡要看得到「可以放這裡」,不然孩子不知道能點 */
+/* 拖曳中:所有放得進去的位置都亮出來,最近的那一個特別亮 */
+.bk-editor.is-dragging .bk-cursor {
+  min-height: 16px;
+  background: color-mix(in srgb, var(--forest) 10%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--forest) 55%, transparent);
+}
+
+.bk-editor.is-dragging .bk-cursor.is-drop {
+  min-height: 28px;
+  background: color-mix(in srgb, var(--forest) 28%, transparent);
+  border-style: solid;
+  box-shadow: 0 0 0 2px var(--forest);
+}
+
+.bk-editor.is-dragging .bk-slot.is-drop,
+.bk-editor.is-dragging .bk-numwrap.is-drop {
+  box-shadow: 0 0 0 3px var(--forest);
+  border-radius: 6px;
+}
+
+/* 空的身體裡要看得到「可以放這裡」,不然孩子不知道能放 */
 .bk-body > .bk-cursor.is-last:only-child {
-  min-height: 26px;
+  min-height: 24px;
   border: 1px dashed var(--paper-shadow);
 }
 
@@ -205,6 +330,16 @@
 }
 
 .bk-body > .bk-cursor.is-last.on:only-child::after { content: ""; }
+
+/* 跟著手指跑的那一塊 */
+.bk-ghost {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: .9;
+  transform: rotate(-1.5deg);
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, .3));
+}
 
 /* ---------- 參數格 ---------- */
 .bk-field {
@@ -221,7 +356,13 @@
 
 .bk-num { width: 64px; }
 .bk-text { width: 120px; }
-.bk-var { font-weight: 700; color: var(--sunset-deep); }
+/* 下拉的寬度會跟著「最長的那個選項」長,而選項裡有「＋ 新增變數…」——
+   不框住的話,一個兩個字的變數會撐成一塊很寬的積木。 */
+.bk-var {
+  width: 92px;
+  font-weight: 700;
+  color: var(--ink);
+}
 
 .bk-numwrap {
   display: inline-flex;
@@ -231,18 +372,21 @@
 
 .bk-numwrap.on { box-shadow: 0 0 0 2px var(--forest); }
 
-/* 「改成放積木」的小箭頭 —— 平常不搶眼,要用的時候找得到 */
+/* 「改成放積木」的小箭頭。在實色積木上要看得見,所以是半透明的白圓點 */
 .bk-slot-mini {
-  width: 18px;
-  height: 26px;
+  width: 20px;
+  height: 20px;
+  margin-left: 2px;
   border: none;
-  background: transparent;
-  color: var(--ink-muted);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .28);
+  color: #fff;
   cursor: pointer;
   font-size: 10px;
+  line-height: 1;
 }
 
-.bk-slot-mini:hover { color: var(--forest); }
+.bk-slot-mini:hover { background: rgba(255, 255, 255, .55); }
 
 .bk-slot {
   min-width: 56px;
@@ -299,17 +443,16 @@
 @media (max-width: 900px) {
   .bk-editor { grid-template-columns: minmax(0, 1fr); }
 
-  /* 面板改成橫向捲動的一條,工作區才有高度可用 */
+  /* 窄螢幕:分類變成上面一排,積木在下面橫著捲 */
   .bk-palette {
-    flex-direction: row;
+    grid-template-columns: minmax(0, 1fr);
     max-height: none;
-    overflow-x: auto;
-    gap: 14px;
-    padding-bottom: 6px;
   }
 
-  .bk-cat { flex: 0 0 auto; }
-  .bk-chip { white-space: nowrap; }
+  .bk-cats { flex-direction: row; overflow-x: auto; }
+  .bk-cat-tab { flex: 0 0 auto; border-bottom: none; border-right: 1px solid var(--paper-warm); }
+  .bk-chips { flex-direction: row; overflow-x: auto; }
+  .bk-chip { white-space: nowrap; flex: 0 0 auto; }
   .bk-work { max-height: none; min-height: 260px; }
 }
 
