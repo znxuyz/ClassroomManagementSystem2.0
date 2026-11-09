@@ -21,6 +21,7 @@ Object.assign(StudentApp, {
   myBlockWork: {},       // { taskId: { program, at, pass } }
   bkTask: null,          // 正在做的那一題
   bkResult: null,        // 這次檢查的結果
+  bkHints: 0,            // 這一題用掉幾條提示(換一條少一顆星)
 
   watchBlockTasks() {
     if (this.unsubBlocks) this.unsubBlocks();
@@ -42,9 +43,22 @@ Object.assign(StudentApp, {
   },
 
   /* ---------- 進出一題 ---------- */
+  /* 我這一題拿幾顆星 */
+  bkStars(id) {
+    const w = this.myBlockWork[id];
+    return (w && w.stars) || 0;
+  },
+
+  bkLocked(id) {
+    const i = this.blockTasks.findIndex(t => t.id === id);
+    return !taskUnlocked(this.blockTasks, i, x => this.bkStars(x));
+  },
+
   bkOpen(id) {
+    if (this.bkLocked(id)) { toast('先把前一關做出來,這一關就開了'); return; }
     this.bkTask = this.blockTasks.find(t => t.id === id) || null;
     this.bkResult = null;
+    this.bkHints = (this.myBlockWork[id] || {}).hintsUsed || 0;
     this.render();
     if (!this.bkTask) return;
     const saved = this.myBlockWork[id];
@@ -77,10 +91,13 @@ Object.assign(StudentApp, {
     if (bad) { this.bkResult = { kind: 'hint', text: bad }; this.bkSyncButtons(); return; }
 
     const r = BlockJudge.runCompiled({ script: t.script, expect: t.expect }, program);
+    const stars = starsFor(t, program, { pass: r.pass, hintsUsed: this.bkHints });
     this.bkResult = {
       kind: r.pass ? 'pass' : 'fail',
       text: BlockJudge.explain(r),
       score: BlockJudge.score(r),
+      stars,
+      blocks: blockCount(program),
       steps: r.steps
     };
     this.bkSyncButtons();
@@ -95,14 +112,28 @@ Object.assign(StudentApp, {
         uid: Cloud.uid,
         studentId: this.classInfo.studentId,
         name: this.classInfo.name,
-        work: { ...this.myBlockWork, [t.id]: { program, at: Date.now() } }
+        work: { ...this.myBlockWork,
+                [t.id]: { program, at: Date.now(),
+                          hintsUsed: this.bkHints,
+                          stars: (this.bkResult && this.bkResult.stars) || 1 } }
       });
-      this.myBlockWork[t.id] = { program, at: Date.now() };
+      this.myBlockWork[t.id] = { program, at: Date.now(),
+                                 hintsUsed: this.bkHints,
+                                 stars: (this.bkResult && this.bkResult.stars) || 1 };
       toast('✦ 交出去了!老師看過就會給分');
       this.bkSyncButtons();
     } catch (e) {
       toast('交不出去:' + (e.code || e.message));
     }
+  },
+
+  bkUseHint() {
+    const t = this.bkTask;
+    if (!t) return;
+    const hints = t.hints || [];
+    if (this.bkHints >= hints.length) return;
+    this.bkHints++;
+    this.bkSyncButtons();
   },
 
   /* ---------- 畫面 ---------- */
@@ -114,19 +145,48 @@ Object.assign(StudentApp, {
       return this.pageEmpty('⬚', '目前沒有積木挑戰',
         '老師開放題目時會出現在這裡。做出來的功能對了就有分數。');
     }
+
+    /* 關卡地圖:一條往下走的路,守護獸站在「現在該挑戰的那一關」。
+       鎖住的關卡還是看得到 —— 看得到才有往前走的理由,
+       只是點不開(點了會告訴他「先把前一關做出來」)。 */
+    const petIcon = this.student ? PetEngine.getIcon(this.student) : '🐣';
+    const total = list.reduce((n, t) => n + this.bkStars(t.id), 0);
+    const here = list.findIndex((t, i) =>
+      this.bkStars(t.id) === 0 && taskUnlocked(list, i, x => this.bkStars(x)));
+
     return `
-      <div class="bk-stu-list">
-        ${list.map(t => {
-          const done = this.myBlockWork[t.id];
+      <div class="bk-map-head">
+        <span class="bk-map-title">積木挑戰</span>
+        <span class="bk-map-stars">★ ${total} / ${list.length * 3}</span>
+      </div>
+      <div class="bk-map">
+        ${list.map((t, i) => {
+          const stars = this.bkStars(t.id);
+          const locked = !taskUnlocked(list, i, x => this.bkStars(x));
+          const cur = i === here;
           return `
-          <button class="bk-stu-card ${done ? 'is-done' : ''}"
-                  onclick="StudentApp.bkOpen('${t.id}')">
-            <div class="bk-stu-name">${escapeHtml(t.name)}
-              ${done ? '<span class="bk-stu-done">已交出</span>' : ''}</div>
-            ${t.spec ? `<div class="bk-stu-spec">${escapeHtml(t.spec)}</div>` : ''}
-            <div class="bk-stu-meta">完成得 ${t.points} 分</div>
-          </button>`;
+          <div class="bk-node ${locked ? 'is-locked' : ''} ${stars ? 'is-done' : ''}
+                      ${cur ? 'is-here' : ''}">
+            <button class="bk-node-dot" ${locked ? 'disabled' : ''}
+                    onclick="StudentApp.bkOpen('${t.id}')">
+              ${locked ? '🔒' : (stars ? starText(stars).slice(0, 1) : (i + 1))}
+            </button>
+            <button class="bk-node-card" ${locked ? 'disabled' : ''}
+                    onclick="StudentApp.bkOpen('${t.id}')">
+              <div class="bk-node-name">第 ${i + 1} 關 · ${escapeHtml(t.name)}</div>
+              ${t.spec ? `<div class="bk-node-spec">${escapeHtml(t.spec)}</div>` : ''}
+              <div class="bk-node-meta">
+                <span class="bk-node-stars ${stars ? 'on' : ''}">${starText(stars)}</span>
+                <span>${locked ? '過了前一關就開' : (stars ? '可以再挑戰拿更多星' : t.points + ' 分')}</span>
+              </div>
+            </button>
+            ${cur ? `<span class="bk-node-pet">${petIcon}</span>` : ''}
+          </div>`;
         }).join('')}
+      </div>
+      <div class="bk-map-legend">
+        ★ 做出來了　★★ 而且沒用提示　★★★ 而且積木夠精簡 ——
+        做完回頭整理一下,第三顆星隨時補得回來。
       </div>`;
   },
 
@@ -148,9 +208,30 @@ Object.assign(StudentApp, {
       </div>`;
   },
 
+  /* 提示。換一條少一顆星,所以要先講清楚再換;
+     但沒有任何責備的字 —— 換提示永遠比放棄好。 */
+  renderBkHints() {
+    const t = this.bkTask;
+    const hints = (t && t.hints) || [];
+    if (!hints.length) return '';
+    const used = hints.slice(0, this.bkHints);
+    const left = hints.length - this.bkHints;
+    return `
+      <div class="bk-stu-hints">
+        ${used.map((h, i) => `
+          <div class="bk-stu-hint"><b>提示 ${i + 1}</b>${escapeHtml(h)}</div>`).join('')}
+        ${left > 0 ? `
+          <button class="btn btn-ghost btn-block btn-small" onclick="StudentApp.bkUseHint()">
+            卡住了?看一條提示(還有 ${left} 條 · 會少一顆星)
+          </button>` : ''}
+      </div>`;
+  },
+
   renderBkResult() {
     const r = this.bkResult;
-    const done = this.bkTask && this.myBlockWork[this.bkTask.id];
+    const t = this.bkTask;
+    const done = t && this.myBlockWork[t.id];
+    const limit = t ? (t.starLimitPublic || 0) : 0;
     const actions = `
       <div class="bk-stu-acts">
         <button class="btn btn-primary btn-block" onclick="StudentApp.bkCheck()">檢查看看</button>
@@ -158,7 +239,8 @@ Object.assign(StudentApp, {
           ? `<button class="btn btn-accent btn-block" onclick="StudentApp.bkSubmit()">${
                done ? '再交一次' : '交出去'}</button>`
           : ''}
-      </div>`;
+      </div>
+      ${this.renderBkHints()}`;
 
     if (!r) {
       return `<div class="bk-stu-hint">
@@ -169,7 +251,20 @@ Object.assign(StudentApp, {
       return `<div class="bk-stu-msg hint">${escapeHtml(r.text)}</div>${actions}`;
     }
     if (r.kind === 'pass') {
-      return `<div class="bk-stu-msg pass">✦ ${escapeHtml(r.text)}</div>${actions}`;
+      /* 過了就告訴他離下一顆星還差什麼 —— 三顆星永遠拿得到,
+         所以每一次過關都還有下一個目標。 */
+      let next = '';
+      if (r.stars === 1) next = '用了提示,所以這一次是一顆星。下次不用提示就有兩顆。';
+      else if (r.stars === 2 && limit) {
+        next = `你用了 ${r.blocks} 塊積木 —— 減到 ${limit} 塊以內就是三顆星,`
+             + '回頭看看有沒有多做了什麼。';
+      }
+      return `
+        <div class="bk-stu-msg pass">
+          <div class="bk-stu-got">${starText(r.stars)}</div>
+          ✦ ${escapeHtml(r.text)}
+          ${next ? `<div class="bk-stu-next">${escapeHtml(next)}</div>` : ''}
+        </div>${actions}`;
     }
     /* 沒過:講清楚卡在哪一步,並且讓他看到自己已經對了幾步 ——
        「全錯」和「只差最後一步」感覺差很多。 */

@@ -855,3 +855,234 @@
 
 .bk-work-head .ok { color: var(--forest); font-weight: 700; }
 .bk-work-head .no { color: var(--sick-ink); font-weight: 400; }
+
+/* ============================================
+   關卡地圖(學生端)
+   ────────────────────────────────────────────
+   一條往下走的路,守護獸站在「現在該挑戰的那一關」。
+   鎖住的關卡還是看得到 —— 看得到才有往前走的理由。
+============================================ */
+.bk-map-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.bk-map-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--forest-deep);
+}
+
+.bk-map-stars {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.bk-map {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bk-node {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  padding-left: 4px;
+}
+
+/* 關卡之間的那一條路 */
+.bk-node::before {
+  content: "";
+  position: absolute;
+  left: 22px;
+  top: 38px;
+  bottom: -14px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--paper-shadow);
+}
+
+.bk-node:last-child::before { display: none; }
+.bk-node.is-done::before { background: var(--gold); }
+
+.bk-node-dot {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--paper-shadow);
+  background: var(--paper);
+  color: var(--ink-muted);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.bk-node.is-done .bk-node-dot {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: #fff;
+}
+
+.bk-node.is-here .bk-node-dot {
+  border-color: var(--forest);
+  color: var(--forest-deep);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--forest) 22%, transparent);
+}
+
+.bk-node-dot:disabled { cursor: not-allowed; opacity: .55; }
+.bk-node-dot:not(:disabled):hover { transform: scale(1.06); }
+
+.bk-node-card {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  font-family: var(--font-body);
+  background: var(--paper);
+  border: 1px solid var(--paper-shadow);
+  border-radius: var(--r-card);
+  padding: var(--pad-sm);
+  cursor: pointer;
+  box-shadow: var(--edge-hi), var(--shadow-sm);
+  transition: transform var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur) var(--ease-out);
+}
+
+.bk-node-card:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: var(--edge-hi), var(--shadow-md);
+}
+
+.bk-node.is-locked .bk-node-card { opacity: .55; cursor: not-allowed; }
+.bk-node.is-here .bk-node-card { border-color: var(--forest); }
+
+.bk-node-name {
+  font-size: var(--t-item);
+  font-weight: 700;
+  color: var(--forest-deep);
+}
+
+.bk-node-spec {
+  font-size: var(--t-sub);
+  color: var(--ink-soft);
+  line-height: 1.6;
+  margin-top: 2px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.bk-node-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-top: 4px;
+}
+
+.bk-node-stars {
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--paper-shadow);
+}
+
+.bk-node-stars.on { color: var(--gold); }
+
+/* 守護獸站在現在那一關旁邊 */
+.bk-node-pet {
+  position: absolute;
+  left: -6px;
+  top: -14px;
+  font-size: 22px;
+  line-height: 1;
+  pointer-events: none;
+  animation: bk-pet-bob 2.4s ease-in-out infinite;
+}
+
+.bk-node-pet img { width: 26px; height: 26px; }
+
+@keyframes bk-pet-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+
+.bk-map-legend {
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--ink-muted);
+  line-height: 1.8;
+}
+
+/* ---------- 提示 ---------- */
+.bk-stu-hints { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+
+.bk-stu-hint {
+  font-size: var(--t-sub);
+  line-height: 1.7;
+  background: color-mix(in srgb, var(--mild-deep) 12%, transparent);
+  border-radius: var(--r-tile);
+  padding: 8px 10px;
+}
+
+.bk-stu-hint b { display: block; font-size: 11px; color: var(--mild-deep); }
+
+.bk-stu-got {
+  font-size: 22px;
+  letter-spacing: 3px;
+  color: var(--gold);
+  margin-bottom: 4px;
+}
+
+.bk-stu-next { margin-top: 6px; font-weight: 400; color: var(--ink-soft); }
+
+/* ---------- 老師端:關卡序號與提示設定 ---------- */
+.bk-task-no {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--paper-warm);
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bk-task.is-open .bk-task-no { background: var(--forest); color: #fff; }
+
+.bk-hint-line {
+  font-size: 12px;
+  color: var(--ink-muted);
+  line-height: 1.8;
+  margin-bottom: 10px;
+}
+
+.bk-hints { margin-bottom: 16px; }
+
+.bk-free {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  font-size: var(--t-sub);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.bk-free input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--forest); }

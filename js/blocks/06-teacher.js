@@ -40,6 +40,9 @@ const BlockTasks = {
       points: Math.max(0, parseInt(document.getElementById('bkPoints').value, 10) || 5),
       solution: [],
       palette: null,          // null = 全部積木都給
+      hints: [],              // 最多三條,學生卡住可以換(換了少一顆星)
+      starLimit: 0,           // 第三顆星的積木數上限,0 = 用「解答 + 2」
+      free: false,            // true = 不必過前一關就能挑戰
       status: 'draft',
       createdAt: Date.now()
     };
@@ -159,18 +162,34 @@ const BlockTasks = {
             出題只要寫下功能敘述、把答案拼一次 —— 測試案例系統自己產生。
           </div>
         </div>` : `
+        <div class="bk-hint-line">
+          題目的順序就是關卡的順序:學生要**前一關拿到星星**才解得開下一關
+          (想讓某一題隨時都能挑戰,在那一題的編輯頁勾起來)。用 ↑↓ 調順序。
+        </div>
         <div class="bk-list">
-          ${list.map(t => this.renderCard(t)).join('')}
+          ${list.map((t, i) => this.renderCard(t, i)).join('')}
         </div>`}`;
   },
 
-  renderCard(t) {
+  move(id, dir) {
+    const list = this.all();
+    const i = list.findIndex(t => t.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= list.length) return;
+    const [t] = list.splice(i, 1);
+    list.splice(j, 0, t);
+    save();
+    this.render();
+  },
+
+  renderCard(t, idx) {
     const n = blockCount(t.solution);
     const open = t.status === 'open';
     const st = (typeof BlockWork !== 'undefined') ? BlockWork.statusOf(t.id)
                                                   : { submitted: 0, passed: 0 };
     return `
       <div class="bk-task ${open ? 'is-open' : ''}">
+        <span class="bk-task-no">${idx + 1}</span>
         <div class="bk-task-main">
           <div class="bk-task-name">${escapeHtml(t.name)}
             <span class="bk-task-state ${open ? 'on' : ''}">${open ? '開放中' : '未開放'}</span>
@@ -178,10 +197,17 @@ const BlockTasks = {
           ${t.spec ? `<div class="bk-task-spec">${escapeHtml(t.spec)}</div>` : ''}
           <div class="bk-task-meta">
             參考解答 ${n} 塊積木 · 完成得 ${t.points} 分
+            · 三顆星要 ${starBlockLimit(t)} 塊以內
+            ${(t.hints || []).length ? ` · ${t.hints.length} 條提示` : ' · 沒有提示'}
+            ${t.free ? ' · 隨時可挑戰' : ''}
             ${open ? ` · 交出 ${st.submitted} 位 · 完成 ${st.passed} 位` : ''}
           </div>
         </div>
         <div class="bk-task-acts">
+          <button class="btn btn-ghost btn-small" title="往前一關"
+                  onclick="BlockTasks.move('${t.id}', -1)">↑</button>
+          <button class="btn btn-ghost btn-small" title="往後一關"
+                  onclick="BlockTasks.move('${t.id}', 1)">↓</button>
           <button class="btn btn-ghost btn-small" onclick="BlockTasks.edit('${t.id}')">編輯</button>
           <button class="btn ${open ? 'btn-ghost' : 'btn-primary'} btn-small"
                   onclick="BlockTasks.toggleOpen('${t.id}')">${open ? '收起來' : '開放'}</button>
@@ -223,13 +249,70 @@ const BlockTasks = {
           <div id="bkSimHost"></div>
           ${this.renderJudge()}
         </div>
-      </div>`;
+      </div>
+
+      ${this.renderHints(t)}`;
 
     BlockEditor.mount('bkEditorHost', {
       program: t.solution,
       onChange: p => this.onEditorChange(p)
     });
     BlockSim.mount('bkSimHost', t.solution);
+  },
+
+  /* ---------- 提示與星星 ----------
+     提示是給卡住的孩子用的,換一條少一顆星 —— 但**換提示永遠比放棄好**,
+     所以文案裡不會有任何責備的意思。
+     寫提示有一個原則:**不要寫答案,寫「下一步往哪裡看」**。
+       壞:「用改變步數 1」
+       好:「搖動的時候要讓步數變多 —— 變數那一類裡有一塊是在做這件事」 */
+  renderHints(t) {
+    const hints = t.hints || [];
+    return `
+      <div class="panel-card bk-hints">
+        <div class="panel-title">提示與星星</div>
+        <div class="bk-hint-line">
+          提示不要寫答案,寫「下一步往哪裡看」。學生每換一條提示就少一顆星,
+          但換提示永遠比放棄好。
+        </div>
+        ${[0, 1, 2].map(i => `
+          <label class="field" style="margin-top:8px;">
+            <span class="field-label">提示 ${i + 1}${i ? '(選填)' : ''}</span>
+            <input type="text" class="rule-editor-input"
+              value="${escapeHtml(hints[i] || '')}"
+              placeholder="${i === 0 ? '例:搖一搖要讓步數變多 —— 變數那一類裡有一塊在做這件事'
+                                    : '留空就是沒有這一條'}"
+              onchange="BlockTasks.setHint('${t.id}', ${i}, this.value)" />
+          </label>`).join('')}
+
+        <div class="field-row" style="margin-top:12px;">
+          <label class="field narrow">
+            <span class="field-label">三顆星的積木數</span>
+            <input type="number" class="rule-editor-input" min="0" max="60"
+              value="${t.starLimit || 0}"
+              onchange="BlockTasks.setField('${t.id}', 'starLimit', Math.max(0, parseInt(this.value,10)||0))" />
+          </label>
+          <div class="bk-hint-line" style="flex:1 1 200px;">
+            0 = 用「你的解答 + 2 塊」(現在是 ${starBlockLimit(t)} 塊)。
+            第三顆星比的是精簡,不是快 —— 做完回頭整理就補得回來。
+          </div>
+          <label class="bk-free">
+            <input type="checkbox" ${t.free ? 'checked' : ''}
+              onchange="BlockTasks.setField('${t.id}', 'free', this.checked)" />
+            隨時可挑戰(不必先過前一關)
+          </label>
+        </div>
+      </div>`;
+  },
+
+  setHint(id, i, value) {
+    const t = this.byId(id);
+    if (!t) return;
+    t.hints = t.hints || [];
+    t.hints[i] = (value || '').trim();
+    // 中間空的要擠掉,不然學生會換到一條空白的提示
+    t.hints = t.hints.filter(h => h);
+    save();
   },
 
   /* ---------- 學生交了什麼 ----------
@@ -315,6 +398,11 @@ Object.assign(BlockTasks, {
       return {
         id: t.id, name: t.name, spec: t.spec || '', points: t.points || 0,
         palette: t.palette || null,
+        hints: t.hints || [],
+        /* 第三顆星的門檻要讓學生看得到(他要知道目標是幾塊),
+           但那只是一個數字,看不出答案長什麼樣子。 */
+        starLimitPublic: starBlockLimit(t),
+        free: !!t.free,
         script: paper.script, expect: paper.expect
       };
     }).filter(p => p.expect);

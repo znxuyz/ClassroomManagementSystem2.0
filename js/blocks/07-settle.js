@@ -66,6 +66,16 @@ const BlockWork = {
           const r = BlockJudge.runCompiled(paper, doc.work[taskId].program);
           if (!r.pass) return;
 
+          /* 星星在這一端重算一次 —— 學生交上來的那個數字只是他看到的,
+             真正算數的是這裡(和分數一樣,前端說的話不算數)。
+             用掉幾條提示沒辦法在這一端驗證,就採信學生那一邊,
+             因為那只影響榮譽,不影響分數。 */
+          const w = doc.work[taskId];
+          task.stars = task.stars || {};
+          const got = starsFor(task, w.program,
+            { pass: true, hintsUsed: w.hintsUsed || 0 });
+          if (got > (task.stars[student.id] || 0)) task.stars[student.id] = got;
+
           paid[student.id] = Date.now();
           if ((task.points || 0) > 0) {
             applyPointsToStudent(student.id, task.points, '積木挑戰「' + task.name + '」');
@@ -88,9 +98,20 @@ const BlockWork = {
   statusOf(taskId) {
     const task = (state.blockTasks || []).find(t => t.id === taskId);
     const paid = task ? (task.paid || {}) : {};
+    const stars = task ? (task.stars || {}) : {};
     let submitted = 0;
     this.all.forEach(d => { if (d.work && d.work[taskId]) submitted++; });
-    return { submitted, passed: Object.keys(paid).length };
+    return {
+      submitted,
+      passed: Object.keys(paid).length,
+      three: Object.values(stars).filter(n => n >= 3).length
+    };
+  },
+
+  /* 某一位學生總共拿了幾顆星(技能解鎖與投影牆都要用) */
+  starsOf(studentId) {
+    return (state.blockTasks || []).reduce(
+      (n, t) => n + (((t.stars || {})[studentId]) || 0), 0);
   },
 
   /* 某一位學生在某一題交了什麼(老師想看學生怎麼拼的) */

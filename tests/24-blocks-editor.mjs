@@ -238,6 +238,11 @@ ok('參考解答跑不動時,擋住不讓開放', open);
 ============================================ */
 const chipBox = async label => {
   await openCatFor(label);
+  /* 先把編輯器捲進畫面 —— 面板在畫面外的話,滑鼠事件根本落不到它身上
+     (而那不是產品的問題,是測試沒把它捲進來) */
+  await page.evaluate(() => {
+    document.querySelector('.bk-editor').scrollIntoView({ block: 'center' });
+  });
   return page.evaluate(t => {
     const b = [...document.querySelectorAll('.bk-chip')]
       .find(x => x.textContent.trim().startsWith(t));
@@ -262,6 +267,7 @@ const dragTo = async (from, to) => {
 await page.evaluate(() => { BlockEditor.program = []; BlockEditor.changed(); });
 
 const workBox = await page.evaluate(() => {
+  document.querySelector('.bk-editor').scrollIntoView({ block: 'center' });
   const r = document.querySelector('.bk-work').getBoundingClientRect();
   return { x: r.left + 120, y: r.top + 40 };
 });
@@ -271,7 +277,10 @@ ok('從面板把帽子拖進工作區',
      && BlockEditor.program[0].t === 'on_start'));
 
 const bodyBox = await page.evaluate(() => {
+  document.querySelector('.bk-editor').scrollIntoView({ block: 'center' });
   const c = document.querySelector('.bk-body .bk-cursor');
+  if (!c) throw new Error('沒有可以放的位置,目前的程式是:'
+    + JSON.stringify(BlockEditor.value()));
   const r = c.getBoundingClientRect();
   return { x: r.left + 40, y: r.top + 8 };
 });
@@ -283,6 +292,7 @@ ok('拖進帽子的肚子裡就會變成它的內容',
 // 變數拖進數字格
 await page.evaluate(() => { BlockEditor.vars = ['步數']; BlockEditor.render(); });
 const numSlot = await page.evaluate(() => {
+  document.querySelector('.bk-editor').scrollIntoView({ block: 'center' });
   const w = document.querySelector('.bk-numwrap');
   const r = w.getBoundingClientRect();
   return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
@@ -296,6 +306,7 @@ ok('把變數拖進數字格,那一格就變成變數',
 
 // 拖回面板 = 丟掉
 const blkHead = await page.evaluate(() => {
+  document.querySelector('.bk-editor').scrollIntoView({ block: 'center' });
   const h = document.querySelectorAll('.bk-body .bk-blk > .bk-head')[0];
   const r = h.getBoundingClientRect();
   return { x: r.left + 30, y: r.top + r.height / 2 };
