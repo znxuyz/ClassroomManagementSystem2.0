@@ -21,7 +21,8 @@ const BlockWork = {
     this.unsub = Cloud.watchBlockWork(state.classId, list => {
       this.all = list;
       this.settle();
-      if (document.querySelector('#blocksView.view.active')) BlockTasks.render();
+      if (typeof BlockWall !== 'undefined' && BlockWall.on) BlockWall.render();
+      else if (document.querySelector('#blocksView.view.active')) BlockTasks.render();
       this.updateBadge();
     });
   },

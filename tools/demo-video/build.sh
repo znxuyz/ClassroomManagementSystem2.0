@@ -20,8 +20,9 @@ T_RAW=$(ls "$OUT"/raw-teacher/*.webm | head -1)
 S_RAW=$(ls "$OUT"/raw-student/*.webm | head -1)
 
 echo "── 1/5 老師端 ──"
+# 開頭淡入:錄影的頭幾格是瀏覽器還在載入的畫面
 ffmpeg -v error -y -i "$T_RAW" \
-  -vf "fps=25,scale=1280:720:flags=lanczos,format=yuv420p" \
+  -vf "fps=25,scale=1280:720:flags=lanczos,fade=t=in:st=0:d=0.6,format=yuv420p" \
   -c:v libx264 -preset slow -crf 20 -an "$OUT/a.mp4"
 
 echo "── 2/5 學生端(放進手機外框)──"

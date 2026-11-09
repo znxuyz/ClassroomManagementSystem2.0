@@ -20,6 +20,7 @@ await prepare(page);
 const lines = [];
 const ok = (n, c, e) => lines.push((c ? '✓ ' : '✗ ') + n + (e ? ' — ' + e : ''));
 
+const state0 = '學生0';   // fixture 裡座號 1 的名字
 const r = await page.evaluate(async () => {
   const out = {};
   const N = v => v;
@@ -125,6 +126,25 @@ const r = await page.evaluate(async () => {
   out.recorded = (state.blockTasks[0].stars || {})['s0'];
   out.totalStars = BlockWork.starsOf('s0');
 
+  // ── 全班進度牆 ──
+  state.blockTasks[0].stars = { s0: 3, s1: 2, s2: 1 };
+  state.blockTasks[1].stars = { s0: 2 };
+  BlockWall.open();
+  const wall = document.getElementById('blockWall');
+  out.wall = {
+    rows: wall.querySelectorAll('.wall-row').length,
+    cols: wall.querySelectorAll('.wall-cols .wall-col').length,
+    done: wall.querySelectorAll('.wall-cell.done').length,
+    here: wall.querySelectorAll('.wall-cell.here').length,
+    stuck: !!wall.querySelector('.wall-col.is-stuck'),
+    /* 照座號排,不照進度排 —— 照進度排就是一張公開的排名表 */
+    firstName: wall.querySelector('.wall-name').textContent.trim(),
+    rowsFit: wall.querySelector('.wall-grid').scrollHeight
+             <= wall.querySelector('.wall-grid').clientHeight + 2
+  };
+  BlockWall.close();
+  out.wallClosed = !document.getElementById('blockWall');
+
   return out;
 });
 
@@ -157,6 +177,18 @@ ok('老師端照常發分', r.awarded === 5, r.awarded + ' 分');
 ok('星星由老師端重算 —— 學生謊報三顆也只記一顆',
    r.recorded === 1, r.recorded + ' 顆');
 ok('算得出一位學生總共幾顆星', r.totalStars === 1, r.totalStars + ' 顆');
+
+ok('進度牆:每一位一列、每一關一欄',
+   r.wall.rows === 6 && r.wall.cols === 3,
+   `${r.wall.rows} 列 × ${r.wall.cols} 欄`);
+ok('進度牆:過了的格子有星星,現在停的那一格標出來',
+   r.wall.done === 4 && r.wall.here > 0,
+   `完成 ${r.wall.done} 格,目前位置 ${r.wall.here} 格`);
+ok('進度牆:一關擋住一群人時會標出來(那是題目的問題)', r.wall.stuck);
+ok('進度牆照座號排,不照進度排 —— 這是練習,不是比賽',
+   r.wall.firstName === state0, r.wall.firstName);
+ok('進度牆:全班一個畫面放得下,不必捲動', r.wall.rowsFit);
+ok('離開進度牆之後乾淨收掉', r.wallClosed);
 
 await close();
 process.exit(report('積木挑戰:關卡與星星', lines, errors) ? 0 : 1);

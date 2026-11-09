@@ -154,6 +154,17 @@ const BlockTasks = {
         <button class="btn btn-primary btn-small" onclick="BlockTasks.create()">＋ 新增題目</button>
       </div>
 
+      ${this.all().some(t => t.status === 'open') ? `
+        <div class="bk-wall-bar">
+          <button class="btn btn-accent btn-small" onclick="BlockWall.open()">
+            ▣ 投影全班進度牆
+          </button>
+          <span class="bk-hint-line" style="margin:0;">
+            每一位的守護獸停在他走到的那一關。全班卡在同一關的話,
+            那通常是題目的問題,不是孩子的問題。
+          </span>
+        </div>` : ''}
+
       ${list.length === 0 ? `
         <div class="empty-state">
           <div class="empty-state-icon">⬚</div>

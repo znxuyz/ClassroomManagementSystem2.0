@@ -36,6 +36,10 @@ const context = await browser.newContext({
 const page = await context.newPage();
 page.on('pageerror', e => console.log('  ⚠ 頁面錯誤:', e.message));
 
+/* 錄影從開啟分頁的那一刻就開始,而空白分頁是白的 ——
+   不先塗深色的話,影片的第一秒是一片白,那是觀眾看到的第一個東西。 */
+await page.setContent('<body style="margin:0;background:#080c14"></body>');
+
 const INDEX = 'file://' + new URL('../../index.html', import.meta.url).pathname;
 await page.goto(INDEX);
 await page.waitForFunction(() => typeof serializeState === 'function');
