@@ -152,6 +152,8 @@ const BlockTasks = {
           <input type="number" id="bkPoints" class="rule-editor-input" value="5" min="0" max="20" />
         </label>
         <button class="btn btn-primary btn-small" onclick="BlockTasks.create()">＋ 新增題目</button>
+        <button class="btn btn-ghost btn-small" onclick="BlockImportUI.open()"
+                title="在 MakeCode 裡把答案做好,整段帶過來">⤓ 從 MakeCode 匯入</button>
       </div>
 
       ${this.all().some(t => t.status === 'open') ? `

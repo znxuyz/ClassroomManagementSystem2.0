@@ -1402,3 +1402,91 @@ body.is-preview-frame .student-header-actions { display: none; }
 .bk-trace-step { flex: 0 0 auto; }
 .bk-trace-got { flex: 1; min-width: 0; }
 .bk-trace-want { flex: 0 0 auto; color: var(--ink-muted); font-weight: 500; }
+
+/* ---------- 從 MakeCode 匯入 ---------- */
+.modal.bk-import { max-width: 760px; text-align: left; }
+
+.bk-import-drop {
+  border: 2px dashed var(--paper-shadow);
+  border-radius: var(--r-tile);
+  padding: 18px;
+  text-align: center;
+  color: var(--ink-muted);
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.bk-import-file {
+  color: var(--forest);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.bk-import-file input { display: none; }
+
+.bk-import-src {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  width: 100%;
+  resize: vertical;
+}
+
+.bk-import-acts { display: flex; justify-content: flex-end; margin: 6px 0 12px; }
+
+/* 試跑結果:過了是安靜的綠,沒過是明顯的紅 ——
+   這一行是老師按下「建立」之前唯一會看的東西 */
+.bk-import-result {
+  padding: 10px 14px;
+  border-radius: var(--r-tile);
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.bk-import-result.ok {
+  background: color-mix(in srgb, var(--data-pos) 12%, transparent);
+  color: var(--data-pos);
+}
+
+.bk-import-result.bad {
+  background: color-mix(in srgb, var(--sick) 14%, transparent);
+  color: var(--sick-ink);
+}
+
+.bk-import-warn {
+  margin: 0 0 6px;
+  padding-left: 20px;
+  font-size: 12px;
+  color: var(--sick-ink);
+  line-height: 1.8;
+}
+
+.bk-import-note {
+  font-size: 12px;
+  color: var(--ink-muted);
+  line-height: 1.7;
+  margin-bottom: 14px;
+}
+
+.bk-import-classes {
+  border-top: 1px solid var(--paper-shadow);
+  margin-top: 14px;
+  padding-top: 12px;
+}
+
+.bk-import-cls {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 6px 14px 8px 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
