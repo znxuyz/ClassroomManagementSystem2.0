@@ -48,10 +48,10 @@ export default [
   await sleep(3800);
 } },
 
-{ chapter: '積木挑戰', async run({ page, cap, click, point, sleep }) {
+{ chapter: '積木冒險', async run({ page, cap, click, point, sleep }) {
   await page.evaluate(() => StudentApp.setTab('blocks'));
   await sleep(1400);
-  await cap('積木挑戰排成一條路,守護獸站在現在該挑戰的那一關');
+  await cap('積木冒險排成一條路,守護獸站在現在該挑戰的那一關');
   await sleep(3800);
   await cap('過了一關才解開下一關;每一關最多三顆星');
   await point('.bk-node.is-locked');

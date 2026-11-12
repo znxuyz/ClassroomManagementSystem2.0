@@ -1,5 +1,5 @@
 /* ============================================
-   學生端 — 積木挑戰
+   學生端 — 積木冒險
    ────────────────────────────────────────────
    孩子在這裡做的事:讀題目 → 拼積木 → 自己按按鈕試 → 按「檢查」
    → 對了就交出去。
@@ -142,7 +142,7 @@ Object.assign(StudentApp, {
 
     const list = this.blockTasks;
     if (!list.length) {
-      return this.pageEmpty('⬚', '目前沒有積木挑戰',
+      return this.pageEmpty('⬚', '目前沒有積木冒險',
         '老師開放題目時會出現在這裡。做出來的功能對了就有分數。');
     }
 
@@ -156,7 +156,7 @@ Object.assign(StudentApp, {
 
     return `
       <div class="bk-map-head">
-        <span class="bk-map-title">積木挑戰</span>
+        <span class="bk-map-title">積木冒險</span>
         <span class="bk-map-stars">★ ${total} / ${list.length * 3}</span>
       </div>
       <div class="bk-map">

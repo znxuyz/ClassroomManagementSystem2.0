@@ -132,10 +132,10 @@ export default [
   await sleep(3400);
 } },
 
-/* ---------- 積木挑戰 ---------- */
-{ chapter: '積木挑戰', async run({ cap, click, point, go, sleep, page }) {
+/* ---------- 積木冒險 ---------- */
+{ chapter: '積木冒險', async run({ cap, click, point, go, sleep, page }) {
   await go('challenge', 'blocks', '');
-  await cap('積木挑戰:給「認得積木但拼不起來」的孩子練的 micro:bit 題目');
+  await cap('積木冒險:給「認得積木但拼不起來」的孩子練的 micro:bit 題目');
   await sleep(3800);
 
   await page.evaluate(() => BlockTasks.edit('bt2'));

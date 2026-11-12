@@ -58,6 +58,6 @@ let state = {
   territoryWeekly: { ...TERRITORY_WEEKLY_DEFAULTS },
   // 出席分 { present, late } —— 老師自己設,0 = 不發
   attendanceAward: { ...ATTENDANCE_AWARD_DEFAULTS },
-  // 積木挑戰的題目 [{ id, name, spec, solution, palette, points, status }]
+  // 積木冒險的題目 [{ id, name, spec, solution, palette, points, status }]
   blockTasks: []
 };

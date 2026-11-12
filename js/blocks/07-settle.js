@@ -1,5 +1,5 @@
 /* ============================================
-   積木挑戰 — 收作品與給分(老師端)
+   積木冒險 — 收作品與給分(老師端)
    ────────────────────────────────────────────
    學生交出來的是**程式本身**,不是「我過了」。分數在這一端重判一次
    才發 —— 和測驗、兌換一樣,前端說的話不算數。
@@ -79,7 +79,7 @@ const BlockWork = {
 
           paid[student.id] = Date.now();
           if ((task.points || 0) > 0) {
-            applyPointsToStudent(student.id, task.points, '積木挑戰「' + task.name + '」');
+            applyPointsToStudent(student.id, task.points, '積木冒險「' + task.name + '」');
           }
           awarded++;
         });
@@ -88,7 +88,7 @@ const BlockWork = {
       if (awarded > 0) {
         save();
         renderAll();
-        toast(`✦ 積木挑戰:${awarded} 位同學完成,已發分`);
+        toast(`✦ 積木冒險:${awarded} 位同學完成,已發分`);
       }
     } finally {
       this.processing = false;

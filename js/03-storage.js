@@ -150,7 +150,7 @@ function serializeState() {
     skillConsumed: state.skillConsumed,   // 已經結算吃掉的技能使用,避免重複套用
     territoryWeekly: state.territoryWeekly, // 蜂巢戰紀每週結算:開關、分數、已結算到第幾週
     attendanceAward: state.attendanceAward,  // 出席分:出席幾分、遲到幾分
-    blockTasks: state.blockTasks             // 積木挑戰的題目(參考解答只留在老師這邊)
+    blockTasks: state.blockTasks             // 積木冒險的題目(參考解答只留在老師這邊)
   };
 }
 
@@ -354,7 +354,7 @@ async function flushCloudSave(isRetry) {
        名冊是衍生資料,寫失敗只是學生晚一點看到(而且會退回讀主文件);
        主文件才是本體,所以順序不能反。不等它完成,免得卡住存檔的回饋。 */
     Roster.flush().catch(e => console.warn('[名冊] 更新失敗:', e.message));
-    /* 積木挑戰的題目也是衍生資料(考卷由參考解答編譯出來),
+    /* 積木冒險的題目也是衍生資料(考卷由參考解答編譯出來),
        所以和名冊一樣放在主文件寫成功之後。沒變的話它自己會跳過。 */
     if (typeof BlockTasks !== 'undefined') {
       BlockTasks.publish().catch(e => console.warn('[積木] 發布失敗:', e.message));

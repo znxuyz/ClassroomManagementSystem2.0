@@ -99,7 +99,7 @@ const bk = await frame().evaluate(() => ({
   nodes: document.querySelectorAll('.bk-node').length,
   locked: document.querySelectorAll('.bk-node.is-locked').length
 }));
-ok('換到積木挑戰,看得到關卡地圖', bk.nodes === 2, bk.nodes + ' 關');
+ok('換到積木冒險,看得到關卡地圖', bk.nodes === 2, bk.nodes + ' 關');
 
 await page.evaluate(() => { StudentPreview.pick('s0'); });
 await page.waitForTimeout(500);

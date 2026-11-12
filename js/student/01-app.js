@@ -354,30 +354,7 @@ const StudentApp = {
         </div>
       </header>
 
-      <nav class="student-tabs">
-        <button class="student-tab ${this.tab === 'pet' ? 'active' : ''}"
-                onclick="StudentApp.setTab('pet')">守護獸</button>
-        <button class="student-tab ${this.tab === 'rank' ? 'active' : ''}"
-                onclick="StudentApp.setTab('rank')">排行榜</button>
-        <button class="student-tab ${this.tab === 'quiz' ? 'active' : ''}"
-                onclick="StudentApp.setTab('quiz')">
-          測驗${pending > 0 ? `<span class="student-tab-badge">${pending}</span>` : ''}
-        </button>
-        <button class="student-tab ${this.tab === 'shop' ? 'active' : ''}"
-                onclick="StudentApp.setTab('shop')">兌換</button>
-        ${TerritoryGame.config && TerritoryGame.config.status === 'running' ? `
-        <button class="student-tab war ${this.tab === 'war' ? 'active' : ''}"
-                onclick="StudentApp.setTab('war')">蜂巢戰紀</button>` : ''}
-        ${(this.blockTasks || []).length ? `
-        <button class="student-tab ${this.tab === 'blocks' ? 'active' : ''}"
-                onclick="StudentApp.setTab('blocks')">積木${
-                  (this.blockTasks || []).filter(t => !this.myBlockWork[t.id]).length
-                    ? `<span class="student-tab-badge">${
-                        this.blockTasks.filter(t => !this.myBlockWork[t.id]).length}</span>` : ''
-                }</button>` : ''}
-        <button class="student-tab ${this.tab === 'help' ? 'active' : ''}"
-                onclick="StudentApp.setTab('help')" title="使用說明">說明</button>
-      </nav>
+      ${this.renderTabs(pending)}
 
       <main class="student-main ${this.tab === 'war' ? 'is-war' : ''}">
         ${(this.degraded || []).length ? `

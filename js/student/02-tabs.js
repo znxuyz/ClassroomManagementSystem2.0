@@ -6,6 +6,100 @@
 ============================================ */
 
 Object.assign(StudentApp, {
+  /* ---------- 分頁列 ----------
+     本來是七個平鋪的分頁,在 390px 的手機上每格只剩五十幾像素,
+     字快要疊在一起了。改成兩排(和老師端同一套做法):
+     上排是五個大分類,點到「挑戰」才長出第二排。
+
+     為什麼挑戰要包在一起:測驗、蜂巢戰紀、積木冒險**是同一件事的三種形式**
+     —— 都是「老師出題、孩子去闖」。分開平鋪的時候孩子看不出這層關係,
+     而且這三個是來來去去的(測驗考完就收、戰紀打完就關),
+     平鋪會讓整排分頁一直在變位置,孩子每次都要重新找。
+
+     收起來之後怎麼不漏事情:大分類上的數字是**底下三項未完成的總和**,
+     所以即使收著,「我還有兩件事沒做」這件事仍然看得到。 */
+  NAV: [
+    { key: 'pet',  name: '守護獸' },
+    { key: 'rank', name: '排行榜' },
+    { key: 'challenge', name: '挑戰', items: [
+      { key: 'quiz',   name: '測驗' },
+      { key: 'war',    name: '蜂巢戰紀' },
+      { key: 'blocks', name: '積木冒險' }
+    ] },
+    { key: 'shop', name: '兌換' },
+    { key: 'help', name: '說明' }
+  ],
+
+  /* 每一個葉分頁「現在看不看得到」與「上面要掛幾」。
+     看不到的直接不畫 —— 學生端和老師端不一樣,
+     孩子看到一個點不開的分頁只會覺得被擋住。 */
+  tabState(key, pending) {
+    /* 測驗是常設的 —— 沒有考卷的時候仍然進得去,裡面是一塊
+       「目前沒有待作答的測驗」的空狀態。把分頁整個收掉的話,
+       孩子會以為功能不見了。戰紀和積木不一樣:那兩個本來就是
+       老師開了才有的活動。 */
+    if (key === 'quiz') return { live: true, badge: pending || 0 };
+    if (key === 'war') {
+      return { live: !!(typeof TerritoryGame !== 'undefined' && TerritoryGame.config
+                        && TerritoryGame.config.status === 'running'), badge: 0 };
+    }
+    if (key === 'blocks') {
+      const list = this.blockTasks || [];
+      return { live: list.length > 0,
+               badge: list.filter(t => !(this.myBlockWork || {})[t.id]).length };
+    }
+    return { live: true, badge: 0 };
+  },
+
+  /* 這個葉分頁屬於哪一個大分類 */
+  groupOf(tab) {
+    const g = this.NAV.find(x => x.key === tab
+      || (x.items || []).some(i => i.key === tab));
+    return g ? g.key : 'pet';
+  },
+
+  renderTabs(pending) {
+    /* 正在看的那一頁被收走了(測驗結算、戰紀打完),就退回守護獸 ——
+       不退的話孩子會停在一片空白上,而且分頁列上沒有任何一個是亮的。 */
+    if (!this.tabState(this.tab, pending).live) this.tab = 'pet';
+    const cur = this.groupOf(this.tab);
+    const badge = n => n > 0 ? `<span class="student-tab-badge">${n}</span>` : '';
+
+    const top = this.NAV.map(g => {
+      if (!g.items) {
+        const st = this.tabState(g.key, pending);
+        if (!st.live) return '';
+        return `<button class="student-tab ${cur === g.key ? 'active' : ''}"
+                   onclick="StudentApp.setTab('${g.key}')">${g.name}${badge(st.badge)}</button>`;
+      }
+      const live = g.items.map(i => ({ ...i, ...this.tabState(i.key, pending) }))
+                          .filter(i => i.live);
+      if (!live.length) return '';
+      const sum = live.reduce((a, i) => a + i.badge, 0);
+      /* 只有一項的時候不必多一排,直接跳過去 */
+      const go = live.length === 1 ? live[0].key : live[0].key;
+      return `<button class="student-tab is-group ${cur === g.key ? 'active' : ''}"
+                 onclick="StudentApp.setTab('${this.tab && cur === g.key ? this.tab : go}')"
+                 >${g.name}${badge(sum)}</button>`;
+    }).join('');
+
+    // 第二排:只有停在「挑戰」而且底下不只一項時才長出來
+    const grp = this.NAV.find(g => g.key === cur && g.items);
+    let sub = '';
+    if (grp) {
+      const live = grp.items.map(i => ({ ...i, ...this.tabState(i.key, pending) }))
+                            .filter(i => i.live);
+      if (live.length > 1) {
+        sub = `<nav class="student-subtabs">${live.map(i => `
+          <button class="student-subtab ${this.tab === i.key ? 'active' : ''}"
+                  onclick="StudentApp.setTab('${i.key}')">${i.name}${badge(i.badge)}</button>`
+        ).join('')}</nav>`;
+      }
+    }
+
+    return `<nav class="student-tabs">${top}</nav>${sub}`;
+  },
+
   /* 整頁空白的提示。
      本來這幾頁只有一行灰字(「目前沒有待作答的測驗」)飄在整片空白上,
      看起來像壞掉。給它一個圖示和一句「什麼時候會出現」,

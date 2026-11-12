@@ -108,7 +108,7 @@ const StudentPreviewFrame = {
     StudentApp.myPurchases = [];
     StudentApp.skillUses = [];
 
-    // 積木挑戰:發出去的考卷 + 這位學生目前的星星
+    // 積木冒險:發出去的考卷 + 這位學生目前的星星
     StudentApp.blockTasks = (typeof BlockTasks !== 'undefined') ? BlockTasks.papers() : [];
     StudentApp.myBlockWork = {};
     (state.blockTasks || []).forEach(t => {
@@ -170,7 +170,7 @@ const StudentPreview = {
     { id: 'shop',   name: '兌換',     need: () => (state.shopItems || []).some(i => i.active) },
     { id: 'war',    name: '蜂巢戰紀', need: () => !!(TerritoryGame.config
                                                      && TerritoryGame.config.status === 'running') },
-    { id: 'blocks', name: '積木挑戰', need: () => (state.blockTasks || [])
+    { id: 'blocks', name: '積木冒險', need: () => (state.blockTasks || [])
                                                    .some(t => t.status === 'open') },
     { id: 'help',   name: '說明' }
   ],

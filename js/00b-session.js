@@ -167,7 +167,7 @@ const Session = {
     TerritoryGame.start();
     SkillAdmin.start();
     TerritoryWeekly.start();
-    BlockWork.start();           // 積木挑戰:收作品、判一次、發分
+    BlockWork.start();           // 積木冒險:收作品、判一次、發分
     BlockTasks.reset();
     BlockTasks.publish().catch(e => console.warn('[積木] 題目發布失敗:', e.message));
     watchPetChoices();

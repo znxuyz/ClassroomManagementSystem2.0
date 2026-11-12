@@ -1,5 +1,5 @@
 /* ============================================
-   積木挑戰 — 全班進度牆(投影用)
+   積木冒險 — 全班進度牆(投影用)
    ────────────────────────────────────────────
    投到教室前面那面牆:每一位的守護獸停在他現在走到的那一關,
    後面跟著一排星星。老師一眼看得出
@@ -71,7 +71,7 @@ const BlockWall = {
     el.innerHTML = `
       <div class="wall" style="--cols:${tasks.length}; --rows:${Math.max(1, rows.length)}">
         <div class="wall-head">
-          <div class="wall-title">積木挑戰 · 全班進度</div>
+          <div class="wall-title">積木冒險 · 全班進度</div>
           <div class="wall-stats">
             <span><b>${totalStars}</b> / ${maxStars} 顆星</span>
             <span><b>${allDone}</b> 位全部過關</span>

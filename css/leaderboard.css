@@ -434,3 +434,47 @@
   border-top: 1px dashed var(--paper-shadow);
   margin: 2px 14px;
 }
+
+/* ---------- 第二排分頁(挑戰底下的測驗 / 蜂巢戰紀 / 積木冒險) ----------
+   和上排用的是**不同的形狀**:上排是底線,這一排是膠囊。
+   兩排長得一樣的話,孩子分不出哪一排是大分類、哪一排是現在這一頁。 */
+.student-subtabs {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--forest-deep, rgba(0, 0, 0, 0.22));
+  position: sticky;
+  top: 45px;   /* 上排分頁的高度:13px 字 + 13px 上下內距 + 3px 底線 */
+  z-index: 39;
+}
+
+.student-subtab {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 6px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(250, 247, 240, 0.7);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+}
+
+.student-subtab:hover { background: rgba(255, 255, 255, 0.14); }
+
+.student-subtab.active {
+  background: var(--gold);
+  color: #2b2113;
+  font-weight: 600;
+}
+
+/* 大分類(底下還有第二排)在上排要看得出來是「一個夾子」 */
+.student-tab.is-group.active { border-bottom-color: var(--gold); }
+
+@media (max-width: 400px) {
+  .student-subtab { font-size: 12px; padding: 7px 4px; }
+}
