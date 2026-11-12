@@ -58,7 +58,8 @@ const BlockVM = {
   /* ---------- 執行環境 ---------- */
 
   newCtx(program) {
-    const handlers = { start: [], forever: [], button: {}, gesture: {} };
+    const handlers = { start: [], forever: [], button: {}, gesture: {}, pin: {} };
+    migrateProgram(program || []);
     (program || []).forEach(b => {
       if (!b || !isEventBlock(b.t)) return;
       if (b.t === 'on_start') handlers.start.push(b.body || []);
@@ -67,8 +68,11 @@ const BlockVM = {
         const k = b.btn || 'A';
         (handlers.button[k] = handlers.button[k] || []).push(b.body || []);
       } else if (b.t === 'on_gesture') {
-        const k = b.g || '搖動';
+        const k = b.g || '晃動';
         (handlers.gesture[k] = handlers.gesture[k] || []).push(b.body || []);
+      } else if (b.t === 'on_pin') {
+        const k = b.pin || 'P0';
+        (handlers.pin[k] = handlers.pin[k] || []).push(b.body || []);
       }
     });
 
@@ -78,6 +82,8 @@ const BlockVM = {
       time: 0,
       steps: 0,
       buttons: { A: false, B: false },
+      pins: { P0: false, P1: false, P2: false },
+      gesture: '',          // 這一步正在發生的姿勢(給「姿勢為 ⬚ ?」用)
       frames: [],        // 畫面變過的樣子(連續重複的只記一次)
       handlers,
       /* 隨機數要可以重現,不然同一支程式判兩次會得到不同結果。
@@ -124,9 +130,11 @@ const BlockVM = {
       case 'op': {
         const a = Number(this.evalExpr(e.a, ctx)) || 0;
         const b = Number(this.evalExpr(e.b, ctx)) || 0;
-        if (e.op === '−') return a - b;
+        /* 兩種寫法都認得:新的照 MakeCode 用 - 和 /,
+           舊題目裡存的是 − 和 ÷ —— 不接受舊的,老師出好的題目會壞掉。 */
+        if (e.op === '-' || e.op === '−') return a - b;
         if (e.op === '×') return a * b;
-        if (e.op === '÷') return b === 0 ? 0 : a / b;
+        if (e.op === '/' || e.op === '÷') return b === 0 ? 0 : a / b;
         return a + b;
       }
       case 'cmp': {
@@ -145,9 +153,49 @@ const BlockVM = {
         if (e.op === '或') return a || !!this.evalExpr(e.b, ctx);
         return a && !!this.evalExpr(e.b, ctx);
       }
+      case 'bool': return String(e.v) === 'true';
+      case 'not': return !this.evalExpr(e.a, ctx);
+      case 'pin_down': return !!ctx.pins[e.pin || 'P0'];
+      case 'is_gesture':
+        return ctx.gesture === (GESTURE_ALIAS[e.g] || e.g || '晃動');
       case 'random':
         return this.rand(ctx, Number(this.evalExpr(e.from, ctx)) || 0,
                               Number(this.evalExpr(e.to, ctx)) || 0);
+      case 'rand_bool': return this.rand(ctx, 0, 1) === 1;
+      case 'pi': return Math.PI;
+      case 'mod': {
+        const a = Number(this.evalExpr(e.a, ctx)) || 0;
+        const b = Number(this.evalExpr(e.b, ctx)) || 0;
+        return b === 0 ? 0 : a % b;       // 除以 0 給 0,不要讓整支程式當掉
+      }
+      case 'minmax': {
+        const a = Number(this.evalExpr(e.a, ctx)) || 0;
+        const b = Number(this.evalExpr(e.b, ctx)) || 0;
+        return e.op === '最大值' ? Math.max(a, b) : Math.min(a, b);
+      }
+      case 'abs': return Math.abs(Number(this.evalExpr(e.a, ctx)) || 0);
+      case 'sqrt': return Math.sqrt(Math.max(0, Number(this.evalExpr(e.a, ctx)) || 0));
+      case 'round': {
+        const a = Number(this.evalExpr(e.a, ctx)) || 0;
+        if (e.op === '無條件捨去') return Math.floor(a);
+        if (e.op === '無條件進位') return Math.ceil(a);
+        return Math.round(a);
+      }
+      case 'constrain': {
+        const v = Number(this.evalExpr(e.v, ctx)) || 0;
+        const lo = Number(this.evalExpr(e.lo, ctx)) || 0;
+        const hi = Number(this.evalExpr(e.hi, ctx)) || 0;
+        return Math.min(Math.max(v, Math.min(lo, hi)), Math.max(lo, hi));
+      }
+      case 'map': {
+        const v = Number(this.evalExpr(e.v, ctx)) || 0;
+        const fl = Number(this.evalExpr(e.fl, ctx)) || 0;
+        const fh = Number(this.evalExpr(e.fh, ctx)) || 0;
+        const tl = Number(this.evalExpr(e.tl, ctx)) || 0;
+        const th = Number(this.evalExpr(e.th, ctx)) || 0;
+        if (fh === fl) return tl;
+        return ((v - fl) * (th - tl)) / (fh - fl) + tl;
+      }
       case 'btn_down':
         return !!ctx.buttons[e.btn === 'B' ? 'B' : 'A'];
       default:
@@ -157,9 +205,16 @@ const BlockVM = {
 
   /* ---------- 指令 ---------- */
 
+  /* 「跳出」與「繼續」用丟出去的方式往上傳 ——
+     用回傳值一層層接的話,每一個 case 都要記得處理,漏一個就壞掉。 */
+  _BREAK: { loop: 'break' },
+  _CONTINUE: { loop: 'continue' },
+
   exec(list, ctx) {
-    (list || []).forEach(b => {
-      if (!b || !b.t) return;
+    const items = list || [];
+    for (let k = 0; k < items.length; k++) {
+      const b = items[k];
+      if (!b || !b.t) continue;
       this.step(ctx);
       switch (b.t) {
         case 'show_number':
@@ -176,6 +231,10 @@ const BlockVM = {
           break;
         case 'show_leds':
           this.setScreen(ctx, { kind: 'leds', value: b.grid || LED_BLANK });
+          ctx.time += 400;
+          break;
+        case 'show_arrow':
+          this.setScreen(ctx, { kind: 'leds', value: LED_ARROWS[b.dir] || LED_BLANK });
           ctx.time += 400;
           break;
         case 'clear':
@@ -199,14 +258,54 @@ const BlockVM = {
           break;
         case 'repeat': {
           const n = Math.max(0, Math.min(500, Math.floor(Number(this.evalExpr(b.n, ctx)) || 0)));
-          for (let i = 0; i < n; i++) { this.step(ctx); this.exec(b.body, ctx); }
+          let out = false;
+          for (let i = 0; i < n && !out; i++) {
+            this.step(ctx);
+            try { this.exec(b.body, ctx); }
+            catch (e) {
+              if (e === this._BREAK) out = true;
+              else if (e !== this._CONTINUE) throw e;
+            }
+          }
           break;
         }
+        /* 計次:MakeCode 的「計次 index 從 0 到 4」是**含 4** 的,
+           所以跑 5 次 —— 這一點和一般程式語言的 for 不一樣,
+           照著做才不會讓孩子在兩邊數出不同的次數。 */
+        case 'for': {
+          const to = Math.max(-1, Math.min(500,
+            Math.floor(Number(this.evalExpr(b.to, ctx)) || 0)));
+          let out = false;
+          for (let i = 0; i <= to && !out; i++) {
+            this.step(ctx);
+            if (b.name) ctx.vars[b.name] = i;
+            try { this.exec(b.body, ctx); }
+            catch (e) {
+              if (e === this._BREAK) out = true;
+              else if (e !== this._CONTINUE) throw e;
+            }
+          }
+          break;
+        }
+        case 'break':    throw this._BREAK;
+        case 'continue': throw this._CONTINUE;
+        /* 暫停直到:真的 micro:bit 會停在這裡等條件成立。
+           我們這邊一個事件跑完就結束,沒有別人會把條件改掉,
+           所以條件不成立時就**停住這一段不再往下跑** ——
+           這和實機「卡在這裡」看到的結果是一樣的(畫面不再變)。 */
+        case 'wait_until':
+          if (!this.evalExpr(b.cond, ctx)) return;
+          break;
         case 'while': {
           let guard = 0;
-          while (this.evalExpr(b.cond, ctx)) {
+          let out = false;
+          while (!out && this.evalExpr(b.cond, ctx)) {
             this.step(ctx);
-            this.exec(b.body, ctx);
+            try { this.exec(b.body, ctx); }
+            catch (e) {
+              if (e === this._BREAK) out = true;
+              else if (e !== this._CONTINUE) throw e;
+            }
             if (++guard > 500) {
               throw vmError('too-long',
                 '「當…重複」停不下來,這是無限迴圈 ——'
@@ -218,14 +317,17 @@ const BlockVM = {
         default:
           break;     // 運算式積木被放到指令的位置:當作什麼都沒做
       }
-    });
+    }
   },
 
   /* 把這一輪的事件跑完,並讓「重複無限次」轉幾圈,
      畫面才會停在它該停的樣子。 */
   settle(ctx) {
     for (let i = 0; i < VM_FOREVER_ROUNDS; i++) {
-      ctx.handlers.forever.forEach(body => this.exec(body, ctx));
+      ctx.handlers.forever.forEach(body => {
+        try { this.exec(body, ctx); }
+        catch (e) { if (e !== this._BREAK && e !== this._CONTINUE) throw e; }
+      });
     }
   },
 
@@ -242,6 +344,18 @@ const BlockVM = {
      「我自己試明明是對的,按檢查卻說錯」。 */
   fire(ctx, stepDef) {
     ctx.frames = [];
+    /* 事件處理器裡的「跳出 / 繼續」如果不在迴圈裡,
+       會一路丟到這裡 —— 當作那一段提早結束,不要讓整支程式當掉。 */
+    try {
+      this._fireInner(ctx, stepDef);
+    } catch (e) {
+      if (e !== this._BREAK && e !== this._CONTINUE) throw e;
+    }
+    this.settle(ctx);
+    return { frames: ctx.frames.slice(), screen: ctx.screen };
+  },
+
+  _fireInner(ctx, stepDef) {
     switch (stepDef.do) {
       case 'start':
         ctx.vars = {};
@@ -256,17 +370,26 @@ const BlockVM = {
         ctx.buttons.A = false; ctx.buttons.B = false;
         break;
       }
+      /* shake 是舊劇本留下來的寫法,等於「晃動」 */
       case 'shake':
-        (ctx.handlers.gesture['搖動'] || []).forEach(body => this.exec(body, ctx));
+      case 'gesture': {
+        const g = stepDef.do === 'shake' ? '晃動'
+          : (GESTURE_ALIAS[stepDef.g] || stepDef.g || '晃動');
+        ctx.gesture = g;
+        (ctx.handlers.gesture[g] || []).forEach(body => this.exec(body, ctx));
+        ctx.gesture = '';
         break;
-      case 'gesture':
-        (ctx.handlers.gesture[stepDef.g] || []).forEach(body => this.exec(body, ctx));
+      }
+      case 'pin': {
+        const pin = stepDef.pin || 'P0';
+        ctx.pins[pin] = true;
+        (ctx.handlers.pin[pin] || []).forEach(body => this.exec(body, ctx));
+        ctx.pins[pin] = false;
         break;
+      }
       default:
         break;
     }
-    this.settle(ctx);
-    return { frames: ctx.frames.slice(), screen: ctx.screen };
   },
 
   runScript(program, script) {

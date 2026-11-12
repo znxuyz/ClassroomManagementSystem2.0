@@ -119,9 +119,9 @@ const BlockImport = {
       if (eat('op', '(')) { const e = expr(); eat('op', ')'); return e; }
       if (eat('op', '-')) {
         const e = primary();
-        return typeof e === 'number' ? -e : { t: 'op', a: 0, op: '−', b: e };
+        return typeof e === 'number' ? -e : { t: 'op', a: 0, op: '-', b: e };
       }
-      if (eat('op', '!')) { primary(); warn('「!」(不是)還沒有對應的積木'); return null; }
+      if (eat('op', '!')) return { t: 'not', a: primary() };
       const t = next();
       if (t.k === 'num') return t.v;
       if (t.k === 'str' || t.k === 'tpl') return { t: 'str', v: t.v };
@@ -159,8 +159,8 @@ const BlockImport = {
       return block();
     };
 
-    const MUL = { '*': '×', '/': '÷' };
-    const ADD = { '+': '+', '-': '−' };
+    const MUL = { '*': '×', '/': '/' };
+    const ADD = { '+': '+', '-': '-' };
     const CMP = { '==': '=', '===': '=', '!=': '≠', '!==': '≠',
                   '<': '<', '<=': '≤', '>': '>', '>=': '≥' };
 
@@ -268,6 +268,9 @@ const BlockImport = {
         return { t: 'repeat', n: 4, body: block() };
       }
 
+      if (at('id', 'break')) { p++; eat('op', ';'); return { t: 'break' }; }
+      if (at('id', 'continue')) { p++; eat('op', ';'); return { t: 'continue' }; }
+
       if (at('id', 'while')) {
         p++; eat('op', '(');
         const cond = expr(); eat('op', ')');
@@ -287,7 +290,7 @@ const BlockImport = {
         if (op === '=') return { t: 'set_var', name, v };
         if (op === '-=') {
           return { t: 'change_var', name,
-                   v: typeof v === 'number' ? -v : { t: 'op', a: 0, op: '−', b: v } };
+                   v: typeof v === 'number' ? -v : { t: 'op', a: 0, op: '-', b: v } };
         }
         return { t: 'change_var', name, v };
       }
@@ -353,6 +356,19 @@ const BlockImport = {
       case 'pause':       return { t: 'pause', ms: a[0] === undefined ? 500 : a[0] };
       case 'forever':     return { t: 'forever', body: body(a[0]) };
 
+      case 'showArrow': {
+        const key = String((a[0] && a[0].v) || '').split('.').pop();
+        const dir = { North: '北', NorthEast: '東北', East: '東', SouthEast: '東南',
+                      South: '南', SouthWest: '西南', West: '西', NorthWest: '西北' }[key];
+        if (!dir) warn(`看不懂的箭頭方向「${key}」,已改用北`);
+        return { t: 'show_arrow', dir: dir || '北' };
+      }
+
+      case 'onPinPressed': {
+        const pin = String((a[0] && a[0].v) || '').split('.').pop();
+        return { t: 'on_pin', pin: /^P[012]$/.test(pin) ? pin : 'P0', body: body(a[1]) };
+      }
+
       case 'showIcon': {
         const key = String((a[0] && a[0].v) || '').split('.').pop();
         const icon = this.ICONS[key];
@@ -373,16 +389,17 @@ const BlockImport = {
       }
 
       case 'onGesture': {
-        const g = { Shake: '搖動', LogoUp: '朝上', LogoDown: '朝下',
-                    ScreenUp: '朝上', ScreenDown: '朝下' }[
+        const g = { Shake: '晃動', LogoUp: 'logo朝上', LogoDown: 'logo朝下',
+                    ScreenUp: '螢幕朝上', ScreenDown: '螢幕朝下' }[
           String((a[0] && a[0].v) || '').split('.').pop()];
-        if (!g) { warn('還沒有這個手勢的積木,已改用「搖動」'); }
-        return { t: 'on_gesture', g: g || '搖動', body: body(a[1]) };
+        if (!g) { warn('還沒有這個姿勢的積木,已改用「晃動」'); }
+        return { t: 'on_gesture', g: g || '晃動', body: body(a[1]) };
       }
 
       /* MakeCode 的 on_start 在 JavaScript 裡沒有對應的函式
          (最外層就是開機),但有些人會自己包一層 */
       case 'onStart': return { t: 'on_start', body: body(a[0]) };
+      case 'pauseUntil': return { t: 'wait_until', cond: a[0] === undefined ? null : a[0] };
 
       default:
         warn(`還沒有「${name}」這塊積木`);
@@ -393,6 +410,16 @@ const BlockImport = {
   callExpr(name, a, warn) {
     const fn = name.split('.').pop();
     switch (fn) {
+      case 'isGesture': {
+        const g = { Shake: '晃動', LogoUp: 'logo朝上', LogoDown: 'logo朝下',
+                    ScreenUp: '螢幕朝上', ScreenDown: '螢幕朝下' }[
+          String((a[0] && a[0].v) || '').split('.').pop()];
+        return { t: 'is_gesture', g: g || '晃動' };
+      }
+      case 'pinIsPressed': {
+        const pin = String((a[0] && a[0].v) || '').split('.').pop();
+        return { t: 'pin_down', pin: /^P[012]$/.test(pin) ? pin : 'P0' };
+      }
       case 'buttonIsPressed': {
         const btn = { A: 'A', B: 'B' }[
           String((a[0] && a[0].v) || '').split('.').pop()] || 'A';
@@ -402,9 +429,18 @@ const BlockImport = {
       case 'randomRange':
         return { t: 'random', from: a[0] === undefined ? 0 : a[0],
                  to: a[1] === undefined ? 10 : a[1] };
-      case 'abs':
-      case 'min':
-      case 'max':
+      case 'abs': return { t: 'abs', a: a[0] === undefined ? 0 : a[0] };
+      case 'sqrt': return { t: 'sqrt', op: '平方根', a: a[0] === undefined ? 0 : a[0] };
+      case 'round': return { t: 'round', op: '四捨五入', a: a[0] === undefined ? 0 : a[0] };
+      case 'floor': return { t: 'round', op: '無條件捨去', a: a[0] === undefined ? 0 : a[0] };
+      case 'ceil': return { t: 'round', op: '無條件進位', a: a[0] === undefined ? 0 : a[0] };
+      case 'min': return { t: 'minmax', op: '最小值',
+                           a: a[0] === undefined ? 0 : a[0], b: a[1] === undefined ? 0 : a[1] };
+      case 'max': return { t: 'minmax', op: '最大值',
+                           a: a[0] === undefined ? 0 : a[0], b: a[1] === undefined ? 0 : a[1] };
+      case 'constrain': return { t: 'constrain', v: a[0], lo: a[1], hi: a[2] };
+      case 'map': return { t: 'map', v: a[0], fl: a[1], fh: a[2], tl: a[3], th: a[4] };
+      case 'randomBoolean': return { t: 'rand_bool' };
       default:
         warn(`還沒有「${name}()」這塊積木`);
         return null;

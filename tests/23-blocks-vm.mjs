@@ -34,7 +34,7 @@ const r = await page.evaluate(() => {
       { t: 'set_var', name: '步數', v: N(0) },
       { t: 'show_number', v: V('步數') }
     ] },
-    { t: 'on_gesture', g: '搖動', body: [
+    { t: 'on_gesture', g: '晃動', body: [
       { t: 'change_var', name: '步數', v: N(1) },
       { t: 'show_number', v: V('步數') }
     ] },
@@ -61,7 +61,7 @@ const r = await page.evaluate(() => {
   const forever = [
     { t: 'on_start', body: [{ t: 'set_var', name: 'n', v: N(0) }] },
     { t: 'forever', body: [{ t: 'show_number', v: V('n') }] },
-    { t: 'on_gesture', g: '搖動', body: [{ t: 'change_var', name: 'n', v: N(1) }] },
+    { t: 'on_gesture', g: '晃動', body: [{ t: 'change_var', name: 'n', v: N(1) }] },
     { t: 'on_button', btn: 'A+B', body: [{ t: 'set_var', name: 'n', v: N(0) }] }
   ];
   out.forever = judge(forever).pass;
@@ -79,7 +79,7 @@ const r = await page.evaluate(() => {
   out.wrapped = judge(wrapped).pass;
 
   // ── 真的錯的,必須不過 ──
-  // A. 搖動用「設為 1」而不是「加 1」(搖第二下還是 1)
+  // A. 晃動用「設為 1」而不是「加 1」(晃第二下還是 1)
   const setOne = JSON.parse(JSON.stringify(solution));
   setOne[1].body[0] = { t: 'set_var', name: '步數', v: N(1) };
   const rSetOne = judge(setOne);
@@ -118,7 +118,7 @@ const r = await page.evaluate(() => {
   out.pre = [
     BlockJudge.precheck([]),
     BlockJudge.precheck([{ t: 'show_number', v: N(1) }]),
-    BlockJudge.precheck([{ t: 'on_gesture', g: '搖動', body: [] }]),
+    BlockJudge.precheck([{ t: 'on_gesture', g: '晃動', body: [] }]),
     BlockJudge.precheck([{ t: 'on_start', body: [{ t: 'show_number', v: null }] }]),
     BlockJudge.precheck(solution)
   ];
@@ -143,7 +143,7 @@ const r = await page.evaluate(() => {
 });
 
 ok('自動排出來的劇本涵蓋每一種事件,而且不只做一次',
-   r.scriptLen >= 7 && r.scriptLabels.includes('搖動第 2 次')
+   r.scriptLen >= 7 && r.scriptLabels.includes('晃動第 2 次')
    && r.scriptLabels.includes('按下 A+B'),
    r.scriptLabels.join(' / '));
 
@@ -153,14 +153,14 @@ ok('顯示放在「重複無限次」裡 → 一樣過', r.forever);
 ok('歸零用「改變 −目前值」 → 一樣過', r.minus);
 ok('多包一層不影響的「如果」 → 一樣過', r.wrapped);
 
-ok('搖動用「設為 1」→ 不過(而且指得出是搖第二下開始錯)',
+ok('晃動用「設為 1」→ 不過(而且指得出是晃第二下開始錯)',
    r.setOne[0] === false && String(r.setOne[1]).includes('第 2 次'), r.setOne[1]);
 ok('忘了 A+B 歸零 → 不過', r.noReset === false);
 ok('有算但沒顯示 → 不過', r.noShow === false);
 ok('開機沒歸零 → 不過', r.noInit === false);
 
 ok('說明講得出「哪一步、應該多少、你是多少」',
-   r.explain.includes('搖動第 2 次') && r.explain.includes('應該') && r.explain.includes('2'),
+   r.explain.includes('晃動第 2 次') && r.explain.includes('應該') && r.explain.includes('2'),
    r.explain);
 
 ok('無限迴圈會被攔下來,而且講得出可能是無限迴圈',

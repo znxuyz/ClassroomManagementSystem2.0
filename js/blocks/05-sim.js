@@ -58,7 +58,11 @@ const BlockSim = {
       } else if (what === 'press') {
         BlockVM.fire(this.ctx, { do: 'press', btn });
       } else if (what === 'shake') {
-        BlockVM.fire(this.ctx, { do: 'shake' });
+        BlockVM.fire(this.ctx, { do: 'gesture', g: '晃動' });
+      } else if (what === 'gesture') {
+        BlockVM.fire(this.ctx, { do: 'gesture', g: btn });
+      } else if (what === 'pin') {
+        BlockVM.fire(this.ctx, { do: 'pin', pin: btn });
       }
       this.error = null;
     } catch (e) {
@@ -83,9 +87,23 @@ const BlockSim = {
       () => '<span class="sim-led"></span>').join('')}</div>`;
   },
 
+  /* 這支程式用到哪些姿勢、哪些引腳 —— 只長出按得到的那幾顆。
+     全部列出來的話,一排按鈕裡有一大半按了什麼事都不會發生,
+     孩子會以為是自己拼錯了。 */
+  triggers() {
+    const g = [], pins = [];
+    walkBlocks(this.program || [], b => {
+      if (b.t === 'on_gesture' && !g.includes(b.g)) g.push(b.g);
+      if (b.t === 'on_pin' && !pins.includes(b.pin)) pins.push(b.pin);
+    });
+    if (!g.length) g.push('晃動');      // 沒用到姿勢時仍給一顆,他可以先試試看
+    return { g, pins };
+  },
+
   render() {
     if (!this.el) return;
     const vars = this.ctx ? Object.keys(this.ctx.vars) : [];
+    const tr = this.triggers();
     this.el.innerHTML = `
       <div class="sim">
         <div class="sim-board">
@@ -95,7 +113,10 @@ const BlockSim = {
         </div>
         <div class="sim-acts">
           <button class="btn btn-ghost btn-small" data-sim="press" data-btn="A+B">A+B</button>
-          <button class="btn btn-ghost btn-small" data-sim="shake">搖一搖</button>
+          ${tr.g.map(g => `<button class="btn btn-ghost btn-small"
+             data-sim="gesture" data-btn="${escapeHtml(g)}">${escapeHtml(g)}</button>`).join('')}
+          ${tr.pins.map(p => `<button class="btn btn-ghost btn-small"
+             data-sim="pin" data-btn="${p}">碰 ${p}</button>`).join('')}
           <button class="btn btn-ghost btn-small" data-sim="start">重新開機</button>
         </div>
         ${this.error ? `<div class="sim-error">${escapeHtml(this.error)}</div>` : ''}

@@ -269,7 +269,7 @@ const real = await page.evaluate((hex) => {
      else-if 拆成三個獨立的 if。判的是跑出來的畫面,所以這些都該過。 */
   const deep = x => JSON.parse(JSON.stringify(x));
   const alt = deep(program);
-  const up = alt.find(b => b.t === 'on_gesture' && b.g === '朝上');
+  const up = alt.find(b => b.t === 'on_gesture' && b.g === '螢幕朝上');
   const rep = up.body[0];
   // repeat 5 次 → 用計數器 while
   up.body[0] = { t: 'set_var', name: 'i', v: 0 };
@@ -306,7 +306,7 @@ const real = await page.evaluate((hex) => {
 
   // 少做一件事就要被擋下來(不然「什麼都過」等於沒在判)
   const wrong = deep(program);
-  wrong.find(b => b.t === 'on_gesture' && b.g === '朝下').body = [];
+  wrong.find(b => b.t === 'on_gesture' && b.g === '螢幕朝下').body = [];
   out.wrong = !paper.error && BlockJudge.runCompiled(paper, wrong).pass;
 
   return out;

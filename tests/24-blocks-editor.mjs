@@ -41,7 +41,7 @@ const openCatFor = async label => page.evaluate(t => {
     BlockEditor.cat = c.id;
     BlockEditor.render();
     if ([...document.querySelectorAll('.bk-chip')]
-        .some(x => x.textContent.trim().startsWith(t))) return c.id;
+        .some(x => x.textContent.replace(/\s+/g, ' ').trim().includes(t))) return c.id;
   }
   return null;
 }, label);
@@ -51,7 +51,7 @@ const chip = async label => {
   if (!cat) throw new Error('面板上找不到積木:' + label);
   await page.evaluate(t => {
     [...document.querySelectorAll('.bk-chip')]
-      .find(x => x.textContent.trim().startsWith(t)).click();
+      .find(x => x.textContent.replace(/\s+/g, ' ').trim().includes(t)).click();
   }, label);
   await page.waitForTimeout(40);
 };
@@ -110,7 +110,7 @@ await page.evaluate(() => { BlockEditor.cat = 'basic'; BlockEditor.render(); });
 // ── 1. 當啟動時 → 新增變數 → 將 步數 設為 0 ──
 await chip('當啟動時');
 await chip('＋ 新增變數');
-await chip('將');
+await chip('設為');
 ok('點一下事件、再點一塊指令,就插在事件裡面',
    await page.evaluate(() => BlockEditor.program.length === 1
      && (BlockEditor.program[0].body || []).length === 1
@@ -121,7 +121,7 @@ ok('變數下拉選得到剛才新增的變數',
    await page.evaluate(() => BlockEditor.program[0].body[0].name === '步數'));
 
 // ── 2. 顯示數字,並把「步數」放進那個數字格 ──
-await chip('顯示數字');
+await chip('顯示 數字');
 await page.evaluate(() => {
   // 點開「改成放積木」的小箭頭
   const b = [...document.querySelectorAll('.bk-slot-mini')].pop();
@@ -136,12 +136,12 @@ ok('數字格可以換成變數積木',
    }));
 
 // ── 3. 當搖動時 → 改變 步數 1 → 顯示數字 步數 ──
-await chip('當搖動時');
+await chip('當姿勢 晃動 發生');
 await chip('改變');
 await setField(await page.evaluate(() =>
   [...document.querySelectorAll('[data-bk-field]')].findIndex(f =>
     f.dataset.type === 'var' && f.closest('.bk-blk').textContent.includes('改變'))), '步數');
-await chip('顯示數字');
+await chip('顯示 數字');
 await page.evaluate(() => {
   const b = [...document.querySelectorAll('.bk-slot-mini')].pop();
   if (b) b.click();
@@ -157,11 +157,11 @@ await page.evaluate(() => {
   sel.dispatchEvent(new Event('change', { bubbles: true }));
 });
 await page.waitForTimeout(40);
-await chip('將');
+await chip('設為');
 await setField(await page.evaluate(() =>
   [...document.querySelectorAll('[data-bk-field]')].findIndex(f =>
     f.dataset.type === 'var' && !f.value)), '步數');
-await chip('顯示數字');
+await chip('顯示 數字');
 await page.evaluate(() => {
   const b = [...document.querySelectorAll('.bk-slot-mini')].pop();
   if (b) b.click();
@@ -181,8 +181,8 @@ const judged = await page.evaluate(() => ({
   steps: (BlockTasks._judge && BlockTasks._judge.steps || []).map(s => s.label + '=' +
     BlockVM.describeScreen(s.expect))
 }));
-ok('試跑全過,而且劇本看得出「搖一下加一」',
-   judged.pass && judged.steps.join('|').includes('搖動第 2 次=2'),
+ok('試跑全過,而且劇本看得出「晃一下加一」',
+   judged.pass && judged.steps.join('|').includes('晃動第 2 次=2'),
    judged.steps.join(' / '));
 
 // ── 6. 模擬器:按下去真的有反應 ──
@@ -284,7 +284,7 @@ const bodyBox = await page.evaluate(() => {
   const r = c.getBoundingClientRect();
   return { x: r.left + 40, y: r.top + 8 };
 });
-await dragTo(await chipBox('顯示數字'), bodyBox);
+await dragTo(await chipBox('顯示 數字'), bodyBox);
 ok('拖進帽子的肚子裡就會變成它的內容',
    await page.evaluate(() => (BlockEditor.program[0].body || []).length === 1
      && BlockEditor.program[0].body[0].t === 'show_number'));

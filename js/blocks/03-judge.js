@@ -24,13 +24,15 @@ const BlockJudge = {
      依照參考解答用到的事件決定要測什麼。老師不必自己想測試案例 ——
      他只要把答案拼出來。 */
   scriptFor(solution) {
-    const used = { start: false, forever: false, btn: {}, gesture: {} };
+    migrateProgram(solution || []);
+    const used = { start: false, forever: false, btn: {}, gesture: {}, pin: {} };
     (solution || []).forEach(b => {
       if (!b) return;
       if (b.t === 'on_start') used.start = true;
       if (b.t === 'forever') used.forever = true;
       if (b.t === 'on_button') used.btn[b.btn || 'A'] = true;
-      if (b.t === 'on_gesture') used.gesture[b.g || '搖動'] = true;
+      if (b.t === 'on_gesture') used.gesture[b.g || '晃動'] = true;
+      if (b.t === 'on_pin') used.pin[b.pin || 'P0'] = true;
     });
 
     const script = [{ do: 'start', label: '開機' }];
@@ -39,8 +41,12 @@ const BlockJudge = {
        只做一次的話「設為 1」和「加 1」會長得一模一樣。 */
     Object.keys(used.gesture).forEach(g => {
       for (let i = 1; i <= 3; i++) {
-        script.push({ do: g === '搖動' ? 'shake' : 'gesture', g,
-                      label: g + '第 ' + i + ' 次' });
+        script.push({ do: 'gesture', g, label: g + '第 ' + i + ' 次' });
+      }
+    });
+    Object.keys(used.pin).forEach(pin => {
+      for (let i = 1; i <= 2; i++) {
+        script.push({ do: 'pin', pin, label: '碰 ' + pin + ' 第 ' + i + ' 次' });
       }
     });
     Object.keys(used.btn).forEach(btn => {
@@ -49,8 +55,10 @@ const BlockJudge = {
     /* 按過之後再觸發一次,檢查「歸零之後還能不能繼續算」——
        很多人的歸零會把事件也弄壞 */
     Object.keys(used.gesture).forEach(g => {
-      script.push({ do: g === '搖動' ? 'shake' : 'gesture', g,
-                    label: '(歸零後)' + g + '一次' });
+      script.push({ do: 'gesture', g, label: '(歸零後)' + g + '一次' });
+    });
+    Object.keys(used.pin).forEach(pin => {
+      script.push({ do: 'pin', pin, label: '(歸零後)碰 ' + pin + '一次' });
     });
     Object.keys(used.btn).forEach(btn => {
       script.push({ do: 'press', btn, label: '再按一次 ' + btn });

@@ -67,39 +67,68 @@ const BLOCK_CATS = [
    ──
    刻意只做老師真的會教的那一組(大約 20 塊)。積木一多,
    小學生在面板上找不到東西,反而更難拼。 */
+/* 姿勢的名稱照 MakeCode 的下拉選單。
+   舊資料用的是「搖動 / 朝上 / 朝下」,載入時會換成新的(見 migrateProgram)
+   —— 名字不一樣的話,孩子在這裡學會的詞回到 MakeCode 就對不上。 */
+const GESTURES = ['晃動', '螢幕朝上', '螢幕朝下', 'logo朝上', 'logo朝下'];
+
+const GESTURE_ALIAS = { '搖動': '晃動', '朝上': '螢幕朝上', '朝下': '螢幕朝下' };
+
+/* 箭頭的 LED 圖樣,照 MakeCode 的 ArrowNames */
+const LED_ARROWS = {
+  '北':   '0010001110101010010000100',
+  '東北': '0011100011001010100010000',
+  '東':   '0010000010111110001000100',
+  '東南': '1000001000001011000111110',
+  '南':   '0010000100101010111000100',
+  '西南': '0000100010101010110011100',
+  '西':   '0010001000111110100000100',
+  '西北': '1110011000101000001000001'
+};
+
 const BLOCK_DEFS = [
   /* ---------- 基本 ----------
      順序照 MakeCode:顯示數字 → 顯示 LED → 顯示圖示 → 顯示文字 → 清空畫面
      → 重複無限次 → 當啟動時 → 暫停 */
-  { t: 'show_number', cat: 'basic', kind: 'stmt', label: '顯示數字 ${v}',
+  { t: 'show_number', cat: 'basic', kind: 'stmt', label: '顯示 數字 ${v}',
     args: [{ name: 'v', type: 'num', def: 0 }] },
-  { t: 'show_leds',   cat: 'basic', kind: 'stmt', label: '顯示 LED ${grid}',
-    args: [{ name: 'grid', type: 'leds', def: '0000000000011100000000000' }] },
-  { t: 'show_icon',   cat: 'basic', kind: 'stmt', label: '顯示圖示 ${icon}',
+  { t: 'show_leds',   cat: 'basic', kind: 'stmt', label: '顯示 指示燈 ${grid}',
+    args: [{ name: 'grid', type: 'leds', def: '0000000000000000000000000' }] },
+  { t: 'show_icon',   cat: 'basic', kind: 'stmt', label: '顯示 圖示 ${icon}',
     args: [{ name: 'icon', type: 'pick', def: '愛心',
              options: ['愛心', '笑臉', '哭臉', '打勾', '打叉', '箭頭上', '箭頭下'] }] },
-  { t: 'show_string', cat: 'basic', kind: 'stmt', label: '顯示文字 ${v}',
-    args: [{ name: 'v', type: 'text', def: 'Hello' }] },
-  { t: 'clear',       cat: 'basic', kind: 'stmt', label: '清空畫面' },
+  { t: 'show_string', cat: 'basic', kind: 'stmt', label: '顯示 文字 ${v}',
+    args: [{ name: 'v', type: 'text', def: 'Hello!' }] },
+  { t: 'clear',       cat: 'basic', kind: 'stmt', label: '清空 畫面' },
   { t: 'forever',     cat: 'basic', kind: 'event', body: true, label: '重複無限次' },
   { t: 'on_start',    cat: 'basic', kind: 'event', body: true, label: '當啟動時' },
   { t: 'pause',       cat: 'basic', kind: 'stmt', label: '暫停 ${ms} 毫秒',
-    args: [{ name: 'ms', type: 'num', def: 500 }] },
+    args: [{ name: 'ms', type: 'num', def: 100 }] },
+  { t: 'show_arrow',  cat: 'basic', kind: 'stmt', label: '顯示 箭頭 ${dir}',
+    args: [{ name: 'dir', type: 'pick', def: '北',
+             options: ['北', '東北', '東', '東南', '南', '西南', '西', '西北'] }] },
 
   /* ---------- 輸入 ---------- */
   { t: 'on_button',  cat: 'input', kind: 'event', body: true,
-    label: '當按鈕 ${btn} 被按下時',
+    label: '當按鈕 ${btn} 被按下',
     args: [{ name: 'btn', type: 'pick', options: ['A', 'B', 'A+B'], def: 'A' }] },
   { t: 'on_gesture', cat: 'input', kind: 'event', body: true,
-    label: '當${g}時',
-    args: [{ name: 'g', type: 'pick', options: ['搖動', '朝上', '朝下'], def: '搖動' }] },
-  { t: 'btn_down', cat: 'input', kind: 'expr', label: '按鈕 ${btn} 被按下',
+    label: '當姿勢 ${g} 發生',
+    args: [{ name: 'g', type: 'pick', options: GESTURES, def: '晃動' }] },
+  { t: 'on_pin',     cat: 'input', kind: 'event', body: true,
+    label: '當引腳 ${pin} 被按下',
+    args: [{ name: 'pin', type: 'pick', options: ['P0', 'P1', 'P2'], def: 'P0' }] },
+  { t: 'btn_down', cat: 'input', kind: 'expr', label: '按鈕 ${btn} 被按下?',
     args: [{ name: 'btn', type: 'pick', options: ['A', 'B'], def: 'A' }] },
+  { t: 'pin_down', cat: 'input', kind: 'expr', label: '引腳 ${pin} 被按下?',
+    args: [{ name: 'pin', type: 'pick', options: ['P0', 'P1', 'P2'], def: 'P0' }] },
+  { t: 'is_gesture', cat: 'input', kind: 'expr', label: '姿勢為 ${g} ?',
+    args: [{ name: 'g', type: 'pick', options: GESTURES, def: '晃動' }] },
 
   /* ---------- 變數 ---------- */
-  { t: 'set_var',    cat: 'var', kind: 'stmt', label: '將 ${name} 設為 ${v}',
+  { t: 'set_var',    cat: 'var', kind: 'stmt', label: '變數 ${name} 設為 ${v}',
     args: [{ name: 'name', type: 'var', def: '' }, { name: 'v', type: 'num', def: 0 }] },
-  { t: 'change_var', cat: 'var', kind: 'stmt', label: '改變 ${name} ${v}',
+  { t: 'change_var', cat: 'var', kind: 'stmt', label: '變數 ${name} 改變 ${v}',
     args: [{ name: 'name', type: 'var', def: '' }, { name: 'v', type: 'num', def: 1 }] },
   { t: 'var',        cat: 'var', kind: 'expr', label: '${name}',
     args: [{ name: 'name', type: 'var', def: '' }] },
@@ -108,6 +137,10 @@ const BLOCK_DEFS = [
   { t: 'if',    cat: 'logic', kind: 'stmt', body: true, else: true,
     label: '如果 ${cond} 那麼',
     args: [{ name: 'cond', type: 'bool', def: null }] },
+  { t: 'not',   cat: 'logic', kind: 'expr', label: '${a} 不成立',
+    args: [{ name: 'a', type: 'bool', def: null }] },
+  { t: 'bool',  cat: 'logic', kind: 'expr', label: '${v}',
+    args: [{ name: 'v', type: 'pick', options: ['true', 'false'], def: 'true' }] },
   { t: 'cmp',   cat: 'logic', kind: 'expr', label: '${a} ${op} ${b}',
     args: [{ name: 'a', type: 'num', def: 0 },
            { name: 'op', type: 'pick', options: ['=', '≠', '<', '≤', '>', '≥'], def: '=' },
@@ -120,18 +153,49 @@ const BLOCK_DEFS = [
   /* ---------- 迴圈 ---------- */
   { t: 'repeat', cat: 'loop', kind: 'stmt', body: true, label: '重複 ${n} 次',
     args: [{ name: 'n', type: 'num', def: 4 }] },
-  { t: 'while',  cat: 'loop', kind: 'stmt', body: true, label: '當 ${cond} 重複',
+  { t: 'while',  cat: 'loop', kind: 'stmt', body: true, label: '重複 判斷 ${cond}',
     args: [{ name: 'cond', type: 'bool', def: null }] },
+  { t: 'for',    cat: 'loop', kind: 'stmt', body: true, label: '計次 ${name} 從 0 到 ${to}',
+    args: [{ name: 'name', type: 'var', def: '' }, { name: 'to', type: 'num', def: 4 }] },
+  { t: 'wait_until', cat: 'loop', kind: 'stmt', label: '暫停直到 ${cond}',
+    args: [{ name: 'cond', type: 'bool', def: null }] },
+  { t: 'break',    cat: 'loop', kind: 'stmt', label: '跳出' },
+  { t: 'continue', cat: 'loop', kind: 'stmt', label: '繼續' },
 
   /* ---------- 數學 ---------- */
   { t: 'num',    cat: 'math', kind: 'expr', label: '${v}',
     args: [{ name: 'v', type: 'rawnum', def: 0 }] },
   { t: 'op',     cat: 'math', kind: 'expr', label: '${a} ${op} ${b}',
     args: [{ name: 'a', type: 'num', def: 0 },
-           { name: 'op', type: 'pick', options: ['+', '−', '×', '÷'], def: '+' },
+           { name: 'op', type: 'pick', options: ['+', '-', '×', '/'], def: '+' },
            { name: 'b', type: 'num', def: 0 }] },
-  { t: 'random', cat: 'math', kind: 'expr', label: '隨機數 ${from} 到 ${to}',
-    args: [{ name: 'from', type: 'num', def: 0 }, { name: 'to', type: 'num', def: 10 }] }
+  { t: 'mod',    cat: 'math', kind: 'expr', label: '餘數 ${a} / ${b}',
+    args: [{ name: 'a', type: 'num', def: 0 }, { name: 'b', type: 'num', def: 1 }] },
+  { t: 'minmax', cat: 'math', kind: 'expr', label: '${a} 和 ${b} 的 ${op}',
+    args: [{ name: 'a', type: 'num', def: 0 }, { name: 'b', type: 'num', def: 0 },
+           { name: 'op', type: 'pick', options: ['最小值', '最大值'], def: '最小值' }] },
+  { t: 'abs',    cat: 'math', kind: 'expr', label: '${a} 的絕對值',
+    args: [{ name: 'a', type: 'num', def: 0 }] },
+  { t: 'sqrt',   cat: 'math', kind: 'expr', label: '${op} ${a}',
+    args: [{ name: 'op', type: 'pick', options: ['平方根'], def: '平方根' },
+           { name: 'a', type: 'num', def: 0 }] },
+  { t: 'round',  cat: 'math', kind: 'expr', label: '${op} ${a}',
+    args: [{ name: 'op', type: 'pick',
+             options: ['四捨五入', '無條件捨去', '無條件進位'], def: '四捨五入' },
+           { name: 'a', type: 'num', def: 0 }] },
+  { t: 'random', cat: 'math', kind: 'expr', label: '隨機取數 ${from} 到 ${to}',
+    args: [{ name: 'from', type: 'num', def: 0 }, { name: 'to', type: 'num', def: 10 }] },
+  { t: 'constrain', cat: 'math', kind: 'expr',
+    label: '制限 ${v} 最低 ${lo} 最高 ${hi}',
+    args: [{ name: 'v', type: 'num', def: 0 }, { name: 'lo', type: 'num', def: 0 },
+           { name: 'hi', type: 'num', def: 0 }] },
+  { t: 'map',    cat: 'math', kind: 'expr',
+    label: '對應 ${v} 從低 ${fl} 到高 ${fh} 至低 ${tl} 到高 ${th}',
+    args: [{ name: 'v', type: 'num', def: 0 },
+           { name: 'fl', type: 'num', def: 0 }, { name: 'fh', type: 'num', def: 1023 },
+           { name: 'tl', type: 'num', def: 0 }, { name: 'th', type: 'num', def: 4 }] },
+  { t: 'rand_bool', cat: 'math', kind: 'expr', label: '隨機取布林值' },
+  { t: 'pi',     cat: 'math', kind: 'expr', label: 'π' }
 ];
 
 const BLOCK_BY_T = {};
@@ -159,6 +223,20 @@ function blockDef(t) {
 }
 
 /* 這塊積木是不是「帽子」(只能放在最外層) */
+/* ---------- 舊資料的名稱轉新的 ----------
+   姿勢從「搖動 / 朝上 / 朝下」改成 MakeCode 的講法。
+   已經出好的題目與學生交過的作品都要跟著換,否則事件會對不上
+   ——「當姿勢 搖動 發生」在新的表裡根本不存在,那一段就不會被觸發。
+   就地改,然後回傳同一棵樹。 */
+function migrateProgram(list) {
+  walkBlocks(list, b => {
+    if (b.t === 'on_gesture' || b.t === 'is_gesture') {
+      b.g = GESTURE_ALIAS[b.g] || b.g || '晃動';
+    }
+  });
+  return list;
+}
+
 function isEventBlock(t) {
   const d = blockDef(t);
   return !!d && d.kind === 'event';
