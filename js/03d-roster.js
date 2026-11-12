@@ -43,7 +43,10 @@ const Roster = {
       name: s.name,
       totalPoints: s.totalPoints || 0,
       pet: s.pet || null,
-      petName: s.petName || ''
+      petName: s.petName || '',
+      /* 星星榜看的是「總共拿到幾顆」,不是餘額 ——
+         花掉星星不會掉名次,不然孩子會捨不得用。 */
+      starsEarned: s.starsEarned || 0
     };
   },
 
@@ -57,6 +60,7 @@ const Roster = {
       quizResults: s.quizResults || {},
       inventory: s.inventory || [],
       renameLeft: s.renameLeft || 0,   // 還剩幾次改名(改名卡兌換來的)
+      starSpent: s.starSpent || 0,     // 花掉幾顆星(可用 = 總數 − 這個)
       at: Date.now()
     };
   },

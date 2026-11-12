@@ -84,17 +84,21 @@ function addShopItem() {
   const name  = document.getElementById('shopItemName').value.trim();
   const icon  = document.getElementById('shopItemIcon').value.trim() || '🎁';
   const price = parseInt(document.getElementById('shopItemPrice').value);
+  const starRaw = (document.getElementById('shopItemStars') || {}).value || '';
   const stockRaw = document.getElementById('shopItemStock').value.trim();
   const desc  = document.getElementById('shopItemDesc').value.trim();
 
   if (!name) { toast('請輸入獎品名稱'); return; }
-  if (isNaN(price) || price < 0) { toast('請輸入有效的點數'); return; }
+  const starPrice = starRaw.trim() === '' ? 0 : Math.max(0, parseInt(starRaw) || 0);
+  /* 兩種價錢至少要有一種 —— 兩種都空的獎品誰也買不到 */
+  if ((isNaN(price) || price < 0) && !starPrice) { toast('請輸入有效的點數'); return; }
 
   state.shopItems.unshift({
     id: 'item_' + Date.now(),
     name,
     icon,
-    price,
+    price: isNaN(price) ? 0 : price,
+    starPrice,     // 0 = 不能用星星換
     // 留空代表數量不限,例如「免寫作業」這種不會用完的獎勵
     stock: stockRaw === '' ? null : Math.max(0, parseInt(stockRaw) || 0),
     description: desc,
@@ -102,8 +106,9 @@ function addShopItem() {
     createdAt: Date.now()
   });
 
-  ['shopItemName', 'shopItemIcon', 'shopItemPrice', 'shopItemStock', 'shopItemDesc']
-    .forEach(id => { document.getElementById(id).value = ''; });
+  ['shopItemName', 'shopItemIcon', 'shopItemPrice', 'shopItemStars',
+   'shopItemStock', 'shopItemDesc']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
 
   save();
   renderShopItems();
@@ -134,10 +139,10 @@ function updateShopItem(itemId, field, value) {
   const item = state.shopItems.find(i => i.id === itemId);
   if (!item) return;
 
-  if (field === 'price') {
-    const n = parseInt(value);
+  if (field === 'price' || field === 'starPrice') {
+    const n = value === '' ? 0 : parseInt(value);
     if (isNaN(n) || n < 0) return;
-    item.price = n;
+    item[field] = n;
   } else if (field === 'stock') {
     item.stock = value === '' ? null : Math.max(0, parseInt(value) || 0);
   } else {
@@ -223,7 +228,10 @@ function renderShopItems() {
             ${item.description
               ? `<div class="shop-item-desc">${escapeHtml(item.description)}</div>` : ''}
             <div class="shop-item-tags">
-              <span class="shop-tag is-price">${item.price} 點</span>
+              ${item.price > 0 || !(item.starPrice > 0)
+                ? `<span class="shop-tag is-price">${item.price} 點</span>` : ''}
+              ${item.starPrice > 0
+                ? `<span class="shop-tag is-star">★ ${item.starPrice}</span>` : ''}
               <span class="shop-tag ${out ? 'is-out' : ''}">${
                 item.stock === null ? '不限' : '剩 ' + item.stock + ' 份'}</span>
               ${item.active ? '' : '<span class="shop-tag is-off">已下架</span>'}
@@ -273,6 +281,12 @@ function renderShopItems() {
             <span class="field-label">點數</span>
             <input type="number" class="rule-editor-input" min="0" value="${item.price}"
                    onchange="updateShopItem('${item.id}','price',this.value)" />
+          </label>
+          <label class="field grow">
+            <span class="field-label">星星價(留空 = 不收星星)</span>
+            <input type="number" class="rule-editor-input" min="0" placeholder="—"
+                   value="${item.starPrice > 0 ? item.starPrice : ''}"
+                   onchange="updateShopItem('${item.id}','starPrice',this.value)" />
           </label>
           <label class="field grow">
             <span class="field-label">庫存(留空 = 不限)</span>
@@ -374,9 +388,17 @@ const PurchaseWatch = {
     /* 議價:價格打折。折扣倍率記在技能使用紀錄上(已被安全規則核對),
        而且同一筆技能只能吃掉一次 —— 所以重複結算不會重複打折。
        果實本身不給打折。 */
-    let price = item.price;
+    /* 雙貨幣:學生申請時選的那一種。
+       能不能用星星付,以**老師這一端的獎品設定**為準 ——
+       申請單上寫什麼不算數(學生送出後老師可能把星星價拿掉)。 */
+    const byStar = p.currency === 'star';
+    if (byStar && !(Number(item.starPrice) > 0)) {
+      return no('這項獎品現在不能用星星換');
+    }
+
+    let price = byStar ? Number(item.starPrice) : item.price;
     let discountNote = '';
-    if (!fruit && p.skillUseId && typeof SkillAdmin !== 'undefined' && SkillAdmin.on()) {
+    if (!byStar && !fruit && p.skillUseId && typeof SkillAdmin !== 'undefined' && SkillAdmin.on()) {
       const use = SkillAdmin.byId(p.skillUseId);
       if (use && use.skillId === 'shop_discount' && use.power > 0
           && SkillAdmin.claim(p.skillUseId, student.id, 'shop_discount')) {
@@ -386,11 +408,16 @@ const PurchaseWatch = {
     }
 
     // 以老師端的價格為準,不採用申請單上的 —— 學生送出後老師可能改價
-    if (student.currentPoints < price) {
-      return no(`可用積分不足(需要 ${price} 分)`);
+    if (byStar) {
+      if (!StarBank.spend(student, price)) {
+        return no(`星星不夠(需要 ${price} 顆,還有 ${StarBank.available(student)} 顆)`);
+      }
+    } else {
+      if (student.currentPoints < price) {
+        return no(`可用積分不足(需要 ${price} 分)`);
+      }
+      student.currentPoints -= price;
     }
-
-    student.currentPoints -= price;
     if (item.stock !== null) item.stock -= 1;
 
     if (!student.inventory) student.inventory = [];
@@ -407,21 +434,23 @@ const PurchaseWatch = {
       itemId: item.id,
       itemName: item.name,
       time: Date.now(),
-      price
+      price,
+      currency: byStar ? 'star' : 'point'
     };
     state.shopHistory.push(record);
 
     /* 系統內建的獎品直接記成已發放(見 isSystemShopItem)。
        auto 留著,清單上才能寫「自動發放」而不是讓老師以為自己發過了。 */
     const auto = isSystemShopItem(item.id);
-    toast(`${student.name} 兌換了「${item.name}」${discountNote}`);
+    toast(`${student.name} 用 ${price} ${byStar ? '顆星' : '點'}兌換了「${item.name}」${discountNote}`);
     return {
       result: auto
         ? { status: 'delivered', settledPrice: price, settledAt: Date.now(),
             deliveredAt: Date.now(), auto: true }
         : { status: 'paid', settledPrice: price, settledAt: Date.now() },
       revert: () => {
-        student.currentPoints += price;
+        if (byStar) StarBank.refund(student, price);
+        else student.currentPoints += price;
         if (isRename) student.renameLeft = Math.max(0, (student.renameLeft || 0) - 1);
         if (item.stock !== null) item.stock += 1;
         const i = student.inventory.lastIndexOf(item.id);
@@ -445,9 +474,14 @@ const PurchaseWatch = {
     if (!p) return;
     const student = state.students.find(s => s.id === p.studentId);
     if (!student) return;
-    if (!confirm(`確定退還「${p.itemName}」的 ${p.settledPrice} 點給 ${student.name}?`)) return;
+    const byStar = p.currency === 'star';
+    const unit = byStar ? '顆星' : '點';
+    if (!confirm(`確定退還「${p.itemName}」的 ${p.settledPrice} ${unit}給 ${student.name}?`)) return;
 
-    student.currentPoints += p.settledPrice || 0;
+    /* 星星也要退得回去 —— 退不回去的話,被退過一次的孩子
+       下次就不敢用星星付了。 */
+    if (byStar) StarBank.refund(student, p.settledPrice || 0);
+    else student.currentPoints += p.settledPrice || 0;
     const idx = student.inventory ? student.inventory.indexOf(p.itemId) : -1;
     if (idx >= 0) student.inventory.splice(idx, 1);
     /* 改名卡退點要把改名次數一起收回 —— 不收的話學生退了點數還能改名字。
@@ -464,7 +498,7 @@ const PurchaseWatch = {
     await Cloud.updatePurchase(state.classId, purchaseId, {
       status: 'refunded', refundedAt: Date.now()
     });
-    toast(`已退還 ${p.settledPrice} 點`);
+    toast(`已退還 ${p.settledPrice} ${unit}`);
   }
 };
 
@@ -497,10 +531,11 @@ function renderPurchaseList() {
       <span class="purchase-main">
         <strong>${escapeHtml(p.studentName)}</strong> · ${escapeHtml(p.itemName)}
         <span class="purchase-meta">
-          ${p.settledPrice != null ? p.settledPrice + ' 點' : ''}
+          ${p.settledPrice != null
+            ? (p.currency === 'star' ? '★ ' + p.settledPrice : p.settledPrice + ' 點') : ''}
           ${p.status === 'rejected' ? ' · 未成立:' + escapeHtml(p.reason || '') : ''}
           ${p.status === 'delivered' ? (p.auto ? ' · 自動發放' : ' · 已發放') : ''}
-          ${p.status === 'refunded' ? ' · 已退點' : ''}
+          ${p.status === 'refunded' ? (p.currency === 'star' ? ' · 已退星星' : ' · 已退點') : ''}
         </span>
       </span>
       ${isWaiting ? `
@@ -508,7 +543,8 @@ function renderPurchaseList() {
                 onclick="PurchaseWatch.markDelivered('${p.id}')">標記已發放</button>` : ''}
       ${isWaiting || p.status === 'delivered' ? `
         <button class="btn btn-ghost btn-small"
-                onclick="PurchaseWatch.refund('${p.id}')">退點</button>` : ''}
+                onclick="PurchaseWatch.refund('${p.id}')"
+                >退${p.currency === 'star' ? '星星' : '點'}</button>` : ''}
     </div>`;
 
   el.innerHTML = `

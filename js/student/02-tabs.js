@@ -337,9 +337,22 @@ Object.assign(StudentApp, {
      所以扣完點就直接記成已發放(見 isSystemShopItem),
      紀錄上寫「可以使用了」而不是「等老師發放」。 */
 
+  /* 這位學生還有幾顆星可以花。
+     earned 來自公開名冊(每個人都看得到,星星榜要用),
+     spent 來自他自己那一份私有資料 —— 兩個數字分開存,
+     重做一題讓星星長回來也不會多出餘額。 */
+  myStars() {
+    /* this.student 是「公開名冊 + 自己那一份」合起來的,
+       earned 來自公開那一份(星星榜要用)、spent 來自私有那一份,
+       所以兩個都在這裡讀得到;退回讀主文件時也一樣。 */
+    const me = this.student || {};
+    return Math.max(0, (me.starsEarned || 0) - (me.starSpent || 0));
+  },
+
   renderShopTab() {
     const items = (this.shopItems || []).filter(i => i.active);
     const points = this.student ? this.student.currentPoints : 0;
+    const stars = this.myStars();
 
     const pendingIds = (this.myPurchases || [])
       .filter(p => p.status === 'pending')
@@ -350,14 +363,21 @@ Object.assign(StudentApp, {
           '獎品上架之後,就可以用可用積分來換。')
       : items.map(item => {
           const soldOut  = item.stock !== null && item.stock <= 0;
-          const tooPoor  = points < item.price;
           const waiting  = pendingIds.includes(item.id);
+          /* 雙貨幣:老師可以只填一種價錢。
+             兩種都填就兩顆按鈕,買得起哪一種就亮哪一種。 */
+          const byPoint = Number(item.price) > 0 || !(Number(item.starPrice) > 0);
+          const byStar  = Number(item.starPrice) > 0;
+          const tooPoor = byPoint && points < item.price;
+          const tooFew  = byStar && stars < item.starPrice;
           // 技能果實用技能自己的圖示(帶統一外框),其他獎品照舊用 emoji
           const fruitOf = SkillEngine.skillOfFruit(item.id);
           // 已經有的果實不能再買。按下去本來就會被擋,但按鈕該先變灰 ——
           // 讓學生按了才被拒絕是很差的體驗
           const owned = !!fruitOf && SkillEngine.owns(this.student, fruitOf.id);
-          const disabled = soldOut || tooPoor || waiting || owned;
+          // 兩種都付不起才算真的買不起
+          const broke = (!byPoint || tooPoor) && (!byStar || tooFew);
+          const disabled = soldOut || broke || waiting || owned;
 
           return `
           <div class="prize-card ${disabled ? 'disabled' : ''} ${fruitOf ? 'is-fruit' : ''}">
@@ -369,16 +389,29 @@ Object.assign(StudentApp, {
               ${item.description
                 ? `<div class="prize-desc">${escapeHtml(item.description)}</div>` : ''}
               <div class="prize-meta">
-                <span class="prize-price">${item.price} 點</span>
+                ${byPoint ? `<span class="prize-price">${item.price} 點</span>` : ''}
+                ${byStar ? `<span class="prize-price is-star">★ ${item.starPrice}</span>` : ''}
                 ${item.stock !== null
                   ? `<span class="prize-stock">${soldOut ? '已兌完' : '剩 ' + item.stock + ' 份'}</span>`
                   : ''}
               </div>
             </div>
-            <button class="btn btn-accent btn-small" ${disabled ? 'disabled' : ''}
-                    onclick="StudentApp.buy('${item.id}')">
-              ${owned ? '已擁有' : waiting ? '處理中' : soldOut ? '已兌完' : tooPoor ? `還差 ${item.price - points} 點` : '兌換'}
-            </button>
+            ${owned || waiting || soldOut || broke ? `
+            <button class="btn btn-accent btn-small" disabled>
+              ${owned ? '已擁有' : waiting ? '處理中' : soldOut ? '已兌完'
+                : byPoint && byStar
+                  ? `還差 ${Math.min(item.price - points, item.starPrice - stars)}`
+                  : byStar ? `還差 ${item.starPrice - stars} ★`
+                           : `還差 ${item.price - points} 點`}
+            </button>` : `
+            <div class="prize-pay">
+              ${byPoint ? `<button class="btn btn-accent btn-small" ${tooPoor ? 'disabled' : ''}
+                      onclick="StudentApp.buy('${item.id}','point')"
+                      >${tooPoor ? `還差 ${item.price - points} 點` : byStar ? `${item.price} 點` : '兌換'}</button>` : ''}
+              ${byStar ? `<button class="btn btn-small btn-star" ${tooFew ? 'disabled' : ''}
+                      onclick="StudentApp.buy('${item.id}','star')"
+                      >${tooFew ? `還差 ${item.starPrice} ★` : `★ ${item.starPrice}`}</button>` : ''}
+            </div>`}
           </div>`;
         }).join('');
 
@@ -386,6 +419,9 @@ Object.assign(StudentApp, {
       <div class="prize-balance">
         <span>我的可用積分</span>
         <strong>${points}</strong>
+        ${(this.student && this.student.starsEarned)
+          ? `<span class="prize-balance-star" title="積木冒險拿到的星星,也可以在這裡花掉">
+               <span>星星</span><strong>★ ${stars}</strong></span>` : ''}
       </div>
       <div class="prize-grid">${cards}</div>
       ${this.renderMyPurchases()}`;
@@ -398,12 +434,12 @@ Object.assign(StudentApp, {
       .slice(0, 10);
     if (list.length === 0) return '';
 
-    const label = {
-      paid: '已扣點,等老師發放',
+    const label = p => ({
+      paid: p.currency === 'star' ? '已扣星星,等老師發放' : '已扣點,等老師發放',
       delivered: '已領取',
       rejected: '未成立',
-      refunded: '已退點'
-    };
+      refunded: p.currency === 'star' ? '已退星星' : '已退點'
+    })[p.status] || p.status;
 
     return `
       <section class="student-section">
@@ -414,22 +450,27 @@ Object.assign(StudentApp, {
               <span class="student-history-reason">
                 ${escapeHtml(p.itemIcon || '🎁')} ${escapeHtml(p.itemName)}
                 <span class="prize-status ${p.status}">${
-                  p.status === 'delivered' && p.auto ? '可以使用了' : (label[p.status] || p.status)
+                  p.status === 'delivered' && p.auto ? '可以使用了' : label(p)
                 }</span>
                 ${p.status === 'rejected' && p.reason
                   ? `<span class="prize-reason">${escapeHtml(p.reason)}</span>` : ''}
               </span>
               <span class="student-history-points neg">
-                ${p.settledPrice != null ? '-' + p.settledPrice : ''}
+                ${p.settledPrice != null
+                  ? (p.currency === 'star' ? '-★' + p.settledPrice : '-' + p.settledPrice) : ''}
               </span>
             </div>`).join('')}
         </div>
       </section>`;
   },
 
-  async buy(itemId) {
+  async buy(itemId, currency) {
     const item = (this.shopItems || []).find(i => i.id === itemId);
     if (!item) return;
+    const cur = currency === 'star' ? 'star' : 'point';
+    const cost = cur === 'star' ? Number(item.starPrice) : Number(item.price);
+    const unit = cur === 'star' ? '★' : '點';
+    if (cur === 'star' && !(cost > 0)) { toast('這項獎品不能用星星換'); return; }
 
     const fruit = SkillEngine.skillOfFruit(item.id);
     if (fruit && SkillEngine.owns(this.student, fruit.id)) {
@@ -437,14 +478,16 @@ Object.assign(StudentApp, {
       return;
     }
     if (!confirm(fruit
-        ? `用 ${item.price} 點買「${item.name}」嗎?\n\n` +
+        ? `用 ${cost} ${unit}買「${item.name}」嗎?\n\n` +
           `買一次就永久擁有,守護獸每進化一次這個技能就更強。\n\n` +
           SkillEngine.fruitDescription(fruit)
-        : `用 ${item.price} 點兌換「${item.name}」嗎?`)) return;
+        : `用 ${cost} ${unit}兌換「${item.name}」嗎?`)) return;
 
     /* 議價要先登記,再把它的 id 寫進申請單 —— 老師結算時照著打折。
        取消或用不了就是原價兌換。技能果實本身不給打折(買一次就永久)。 */
-    const useId = (this.skillsOn() && !SkillEngine.isFruit(item.id))
+    /* 議價只打積分的折 —— 星星沒有「折扣」這回事(數字太小,
+       打完折常常和原價一樣,孩子會覺得被騙)。 */
+    const useId = (cur === 'point' && this.skillsOn() && !SkillEngine.isFruit(item.id))
       ? await this.askDiscount(item) : null;
 
     try {
@@ -454,7 +497,8 @@ Object.assign(StudentApp, {
         itemId: item.id,
         itemName: item.name,
         itemIcon: item.icon || '🎁',
-        requestedPrice: item.price,
+        currency: cur,
+        requestedPrice: cost,
         skillId: useId ? 'shop_discount' : '',
         skillUseId: useId || ''
       });
@@ -485,21 +529,28 @@ Object.assign(StudentApp, {
 
   renderRankTab() {
     const hasGroups = !!(this.groups && this.groups.length);
-    const showGroup = this.rankTab === 'group' && hasGroups;
+    /* 星星榜只有在真的有人拿過星星時才出現 ——
+       還沒開積木冒險的班,多一顆永遠是空的按鈕只會讓人困惑。 */
+    const starRows = Leaderboard.stars(this.allStudents);
+    const hasStars = starRows.length > 0;
+    const showStar = this.rankTab === 'star' && hasStars;
+    const showGroup = this.rankTab === 'group' && hasGroups && !showStar;
 
-    const rows = showGroup
-      ? Leaderboard.groups(this.allStudents, this.groups)
+    const rows = showStar ? starRows
+      : showGroup ? Leaderboard.groups(this.allStudents, this.groups)
       : Leaderboard.individual(this.allStudents);
 
     // 小組榜要高亮的是「我所屬的那一組」
     const myId = showGroup ? this.myGroupId() : this.classInfo.studentId;
 
-    const switcher = hasGroups ? `
+    const switcher = (hasGroups || hasStars) ? `
       <div class="rank-switch">
-        <button class="rank-switch-btn ${!showGroup ? 'active' : ''}"
+        <button class="rank-switch-btn ${!showGroup && !showStar ? 'active' : ''}"
                 onclick="StudentApp.setRankTab('individual')">個人榜</button>
-        <button class="rank-switch-btn ${showGroup ? 'active' : ''}"
-                onclick="StudentApp.setRankTab('group')">小組榜</button>
+        ${hasGroups ? `<button class="rank-switch-btn ${showGroup ? 'active' : ''}"
+                onclick="StudentApp.setRankTab('group')">小組榜</button>` : ''}
+        ${hasStars ? `<button class="rank-switch-btn ${showStar ? 'active' : ''}"
+                onclick="StudentApp.setRankTab('star')">星星榜</button>` : ''}
       </div>` : '';
 
     // 前三名沒變動就不重播動畫
@@ -512,7 +563,8 @@ Object.assign(StudentApp, {
       ${showGroup && this.groupsName
         ? `<div class="rank-groupset-name">依「${escapeHtml(this.groupsName)}」分組</div>` : ''}
       ${Leaderboard.renderPodium(rows, { highlightId: myId, animate })}
-      ${Leaderboard.renderMyRank(rows, myId, showGroup ? '我這組的名次' : '我的名次')}
+      ${Leaderboard.renderMyRank(rows, myId,
+          showGroup ? '我這組的名次' : showStar ? '我的星星' : '我的名次')}
       ${Leaderboard.renderRest(rows, myId)}
     `;
   },

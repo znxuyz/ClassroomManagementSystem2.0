@@ -16,6 +16,24 @@ const Leaderboard = {
   /* ---------- 資料 ---------- */
 
   /* 個人排名。同分者並列,名次跳號(1,2,2,4) */
+  /* 星星榜:排「總共拿到幾顆星」,不是餘額 ——
+     花掉星星不會掉名次,不然孩子會捨不得用,星星就失去意義了。
+     沒有人拿過星星時回傳空陣列,呼叫端自己決定要不要顯示這個榜。 */
+  stars(students) {
+    const ranked = [...students]
+      .filter(s => (s.starsEarned || 0) > 0)
+      .sort((a, b) => (b.starsEarned || 0) - (a.starsEarned || 0)
+                      || a.name.localeCompare(b.name, 'zh-Hant'));
+    let lastScore = null;
+    let lastRank = 0;
+    return ranked.map((s, i) => {
+      const n = s.starsEarned || 0;
+      const rank = n === lastScore ? lastRank : i + 1;
+      lastScore = n; lastRank = rank;
+      return { id: s.id, name: s.name, score: n, icon: PetEngine.getIcon(s), rank, unit: '★' };
+    });
+  },
+
   individual(students) {
     const ranked = [...students]
       .filter(s => s.pet || s.totalPoints > 0)
@@ -119,7 +137,8 @@ const Leaderboard = {
             ${row.icon ? `<div class="podium-icon">${row.icon}</div>` : ''}
             <div class="podium-medal">${medals[row.rank] || ''}</div>
             <div class="podium-name">${escapeHtml(row.name)}</div>
-            <div class="podium-score">${row.score} 分</div>
+            <div class="podium-score">${row.unit === '★'
+              ? '★ ' + row.score : row.score + ' 分'}</div>
           </div>
           <div class="podium-block podium-rank-${row.rank}"
                style="height:${height}px; animation-delay:${delay}s">
@@ -179,7 +198,8 @@ const Leaderboard = {
             <span class="my-rank-of">/ ${total}</span>
           </div>
           <div class="my-rank-detail">
-            <div class="my-rank-score">${me.score} 分</div>
+            <div class="my-rank-score">${me.unit === '★'
+              ? '★ ' + me.score : me.score + ' 分'}</div>
             <div class="my-rank-note">${
               me.rank === 1 ? '目前第一名,守住它!'
               : beaten > 0 ? `領先 ${beaten} 位,再加油可以往前`

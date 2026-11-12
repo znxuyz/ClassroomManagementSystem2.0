@@ -45,6 +45,7 @@ const BlockWork = {
     this.processing = true;
     try {
       let awarded = 0;
+      let starsGained = false;
       const papers = {};
       (state.blockTasks || []).forEach(t => {
         if (t.status !== 'open') return;
@@ -61,9 +62,6 @@ const BlockWork = {
           const paper = papers[taskId];
           if (!task || !paper || paper.error) return;
 
-          const paid = this.paidOf(task);
-          if (paid[student.id]) return;              // 已經發過了
-
           const r = BlockJudge.runCompiled(paper, doc.work[taskId].program);
           if (!r.pass) return;
 
@@ -75,7 +73,17 @@ const BlockWork = {
           task.stars = task.stars || {};
           const got = starsFor(task, w.program,
             { pass: true, hintsUsed: w.hintsUsed || 0 });
-          if (got > (task.stars[student.id] || 0)) task.stars[student.id] = got;
+          if (got > (task.stars[student.id] || 0)) {
+            task.stars[student.id] = got;
+            starsGained = true;
+          }
+
+          /* 分數一位學生一題只給一次(和作業繳交同一招),
+             但**星星要一直能往上** —— 孩子回頭把程式整理乾淨、
+             補到第三顆星,是我們最想要他做的那件事。
+             分數鎖住、星星不鎖,兩件事分開判。 */
+          const paid = this.paidOf(task);
+          if (paid[student.id]) return;
 
           paid[student.id] = Date.now();
           if ((task.points || 0) > 0) {
@@ -85,10 +93,15 @@ const BlockWork = {
         });
       });
 
-      if (awarded > 0) {
+      /* 星星帳本:把每個人的累積星數寫回學生身上。
+         放在這裡而不是現算,是因為排行榜與商店都要用,
+         而它們拿不到題目清單(學生端根本沒有別人的題目資料)。 */
+      if (starsGained) StarBank.sync(state.students, state.blockTasks);
+
+      if (awarded > 0 || starsGained) {
         save();
         renderAll();
-        toast(`✦ 積木冒險:${awarded} 位同學完成,已發分`);
+        if (awarded > 0) toast(`✦ 積木冒險:${awarded} 位同學完成,已發分`);
       }
     } finally {
       this.processing = false;

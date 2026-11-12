@@ -22,9 +22,11 @@ const lines = await page.evaluate(async () => {
   const PRIVATE = ['history', 'quizResults', 'currentPoints', 'email', 'inventory'];
   const leaked = PRIVATE.filter(k => db.roster.students.some(s => k in s));
   t.ok('公開名冊不含任何私有欄位', leaked.length === 0, leaked.join(', '));
-  t.ok('公開名冊的欄位就是那五個',
+  /* 多一個 starsEarned:星星榜要排「總共拿到幾顆」,所以它是公開的。
+     花掉幾顆(starSpent)留在私有那一份 —— 別人沒必要知道誰買了什麼。 */
+  t.ok('公開名冊的欄位就是那六個',
     JSON.stringify(Object.keys(db.roster.students[0]).sort()) ===
-    JSON.stringify(['id', 'name', 'pet', 'petName', 'totalPoints']),
+    JSON.stringify(['id', 'name', 'pet', 'petName', 'starsEarned', 'totalPoints']),
     Object.keys(db.roster.students[0]).join(','));
   t.ok('公開名冊比主文件小很多', window.__bytes(db.roster) < window.__bytes(db.blob) / 3,
     `${Math.round(window.__bytes(db.blob) / 1024)} KB → ${Math.round(window.__bytes(db.roster) / 1024)} KB`);
