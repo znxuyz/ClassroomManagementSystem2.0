@@ -73,7 +73,7 @@ input.onButtonPressed(Button.A, function () {
 
 const UNKNOWN = `
 music.playTone(262, 500)
-radio.sendNumber(7)
+led.plot(0, 0)
 basic.showNumber(1)
 `;
 
@@ -176,7 +176,8 @@ ok('if / else、比較、字串都轉得出來',
    r.logic.warnings.join('/'));
 
 ok('還沒有的積木會明講,不會默默吞掉',
-   r.unknown.warn.length === 2 && /music/.test(r.unknown.warn.join()),
+   r.unknown.warn.length === 2 && /music/.test(r.unknown.warn.join())
+   && /led/.test(r.unknown.warn.join()),
    r.unknown.warn.join(' / '));
 ok('看不懂的那幾行丟掉,其他照樣轉',
    /show_number/.test(r.unknown.program), r.unknown.program);

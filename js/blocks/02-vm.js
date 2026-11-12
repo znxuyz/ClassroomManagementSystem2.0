@@ -58,7 +58,8 @@ const BlockVM = {
   /* ---------- 執行環境 ---------- */
 
   newCtx(program) {
-    const handlers = { start: [], forever: [], button: {}, gesture: {}, pin: {} };
+    const handlers = { start: [], forever: [], button: {}, gesture: {}, pin: {},
+                       radio: { number: [], string: [], value: [] } };
     migrateProgram(program || []);
     (program || []).forEach(b => {
       if (!b || !isEventBlock(b.t)) return;
@@ -73,6 +74,13 @@ const BlockVM = {
       } else if (b.t === 'on_pin') {
         const k = b.pin || 'P0';
         (handlers.pin[k] = handlers.pin[k] || []).push(b.body || []);
+      } else if (b.t === 'on_radio_number') {
+        handlers.radio.number.push({ body: b.body || [], name: b.name || 'receivedNumber' });
+      } else if (b.t === 'on_radio_string') {
+        handlers.radio.string.push({ body: b.body || [], name: b.name || 'receivedString' });
+      } else if (b.t === 'on_radio_value') {
+        handlers.radio.value.push({ body: b.body || [],
+                                    key: b.key || 'name', name: b.name || 'value' });
       }
     });
 
@@ -84,6 +92,12 @@ const BlockVM = {
       buttons: { A: false, B: false },
       pins: { P0: false, P1: false, P2: false },
       gesture: '',          // 這一步正在發生的姿勢(給「姿勢為 ⬚ ?」用)
+      /* 廣播。group 預設 0 —— 和實機一樣,沒設定就是第 0 群。
+         sent 是「這一步發出去的封包」,會一起記進行為裡,
+         所以「有沒有送對東西」判得出來,不是只看螢幕。 */
+      group: 0,
+      sent: [],
+      strength: -42,        // 訊號強度:實機會變,這裡固定,判題才可重現
       frames: [],        // 畫面變過的樣子(連續重複的只記一次)
       handlers,
       /* 隨機數要可以重現,不然同一支程式判兩次會得到不同結果。
@@ -163,6 +177,7 @@ const BlockVM = {
                               Number(this.evalExpr(e.to, ctx)) || 0);
       case 'rand_bool': return this.rand(ctx, 0, 1) === 1;
       case 'pi': return Math.PI;
+      case 'radio_strength': return ctx.strength;
       case 'mod': {
         const a = Number(this.evalExpr(e.a, ctx)) || 0;
         const b = Number(this.evalExpr(e.b, ctx)) || 0;
@@ -222,7 +237,10 @@ const BlockVM = {
           ctx.time += 400;      // 數字會捲過去,實機上本來就要一點時間
           break;
         case 'show_string':
-          this.setScreen(ctx, { kind: 'string', value: String(b.v == null ? '' : b.v) });
+          /* 文字格裡也可以放變數或算式 —— 直接 String() 的話
+             會印出 [object Object],孩子完全看不懂發生什麼事 */
+          this.setScreen(ctx, { kind: 'string',
+            value: String(this.evalExpr(b.v == null ? '' : b.v, ctx)) });
           ctx.time += 600;
           break;
         case 'show_icon':
@@ -287,6 +305,23 @@ const BlockVM = {
           }
           break;
         }
+        case 'radio_group':
+          ctx.group = Math.max(0, Math.min(255,
+            Math.floor(Number(this.evalExpr(b.n, ctx)) || 0)));
+          break;
+        case 'radio_number':
+          ctx.sent.push({ kind: 'number', group: ctx.group,
+                          value: Number(this.evalExpr(b.v, ctx)) || 0 });
+          break;
+        case 'radio_string':
+          ctx.sent.push({ kind: 'string', group: ctx.group,
+                          value: String(this.evalExpr(b.v == null ? '' : b.v, ctx)) });
+          break;
+        case 'radio_value':
+          ctx.sent.push({ kind: 'value', group: ctx.group,
+                          key: String(this.evalExpr(b.name == null ? '' : b.name, ctx)),
+                          value: Number(this.evalExpr(b.v, ctx)) || 0 });
+          break;
         case 'break':    throw this._BREAK;
         case 'continue': throw this._CONTINUE;
         /* 暫停直到:真的 micro:bit 會停在這裡等條件成立。
@@ -344,6 +379,7 @@ const BlockVM = {
      「我自己試明明是對的,按檢查卻說錯」。 */
   fire(ctx, stepDef) {
     ctx.frames = [];
+    ctx.sent = [];
     /* 事件處理器裡的「跳出 / 繼續」如果不在迴圈裡,
        會一路丟到這裡 —— 當作那一段提早結束,不要讓整支程式當掉。 */
     try {
@@ -352,7 +388,7 @@ const BlockVM = {
       if (e !== this._BREAK && e !== this._CONTINUE) throw e;
     }
     this.settle(ctx);
-    return { frames: ctx.frames.slice(), screen: ctx.screen };
+    return { frames: ctx.frames.slice(), screen: ctx.screen, sent: ctx.sent.slice() };
   },
 
   _fireInner(ctx, stepDef) {
@@ -378,6 +414,21 @@ const BlockVM = {
         ctx.gesture = g;
         (ctx.handlers.gesture[g] || []).forEach(body => this.exec(body, ctx));
         ctx.gesture = '';
+        break;
+      }
+      /* 收到廣播。把收到的東西放進那個事件自己的變數裡 ——
+         MakeCode 的 receivedNumber 就是這樣,它只在那一段裡面有值。 */
+      case 'radio': {
+        const kind = stepDef.kind || 'number';
+        (ctx.handlers.radio[kind] || []).forEach(h => {
+          if (kind === 'value') {
+            if (stepDef.key !== undefined && h.key) ctx.vars[h.key] = stepDef.key;
+            ctx.vars[h.name] = stepDef.value;
+          } else {
+            ctx.vars[h.name] = stepDef.value;
+          }
+          this.exec(h.body, ctx);
+        });
         break;
       }
       case 'pin': {

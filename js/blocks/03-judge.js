@@ -25,7 +25,7 @@ const BlockJudge = {
      他只要把答案拼出來。 */
   scriptFor(solution) {
     migrateProgram(solution || []);
-    const used = { start: false, forever: false, btn: {}, gesture: {}, pin: {} };
+    const used = { start: false, forever: false, btn: {}, gesture: {}, pin: {}, radio: {} };
     (solution || []).forEach(b => {
       if (!b) return;
       if (b.t === 'on_start') used.start = true;
@@ -33,6 +33,9 @@ const BlockJudge = {
       if (b.t === 'on_button') used.btn[b.btn || 'A'] = true;
       if (b.t === 'on_gesture') used.gesture[b.g || '晃動'] = true;
       if (b.t === 'on_pin') used.pin[b.pin || 'P0'] = true;
+      if (b.t === 'on_radio_number') used.radio.number = true;
+      if (b.t === 'on_radio_string') used.radio.string = true;
+      if (b.t === 'on_radio_value') used.radio.value = true;
     });
 
     const script = [{ do: 'start', label: '開機' }];
@@ -49,6 +52,21 @@ const BlockJudge = {
         script.push({ do: 'pin', pin, label: '碰 ' + pin + ' 第 ' + i + ' 次' });
       }
     });
+    /* 收到廣播。送幾個不一樣的值進去,才看得出他是「照收到的做」
+       還是「不管收到什麼都做同一件事」。 */
+    if (used.radio.number) {
+      [1, 2, 7].forEach(v => script.push(
+        { do: 'radio', kind: 'number', value: v, label: '收到廣播數字 ' + v }));
+    }
+    if (used.radio.string) {
+      ['A', 'B'].forEach(v => script.push(
+        { do: 'radio', kind: 'string', value: v, label: '收到廣播文字 ' + v }));
+    }
+    if (used.radio.value) {
+      [['name', 1], ['name', 5]].forEach(([k, v]) => script.push(
+        { do: 'radio', kind: 'value', key: k, value: v,
+          label: '收到廣播鍵值 ' + k + ' = ' + v }));
+    }
     Object.keys(used.btn).forEach(btn => {
       script.push({ do: 'press', btn, label: '按下 ' + btn });
     });
@@ -136,7 +154,8 @@ const BlockJudge = {
         label: s.label || ('第 ' + (i + 1) + ' 步'),
         ok: this.sameStep(a, b),
         expect: a.screen, got: b.screen,
-        expectFrames: a.frames || [], gotFrames: b.frames || []
+        expectFrames: a.frames || [], gotFrames: b.frames || [],
+        expectSent: a.sent || [], gotSent: b.sent || []
       };
     });
     const firstFail = steps.findIndex(s => !s.ok);
@@ -153,6 +172,11 @@ const BlockJudge = {
      只比「最後那一張」的話,會把「會閃爍的」和「不會閃的」判成一樣。 */
   sameStep(a, b) {
     if (!BlockVM.screenEq(a.screen, b.screen)) return false;
+    /* 發出去的廣播也算「做出來的結果」—— 只看螢幕的話,
+       「該廣播卻沒廣播」會被判成對的,那一題就等於沒在考廣播。 */
+    const pk = list => (list || []).map(p =>
+      p.kind + ':' + (p.key || '') + ':' + p.value + '@' + p.group).join('|');
+    if (pk(a.sent) !== pk(b.sent)) return false;
     const fa = (a.frames || []).map(f => f.kind + ':' + f.value).join('|');
     const fb = (b.frames || []).map(f => f.kind + ':' + f.value).join('|');
     return fa === fb;
@@ -167,6 +191,18 @@ const BlockJudge = {
 
     const s = result.steps[result.firstFail];
     if (!s) return '還沒通過,再檢查看看。';
+
+    /* 廣播沒送對的時候,講廣播 —— 螢幕一樣但廣播不一樣的話,
+       只講螢幕會讓孩子完全找不到問題在哪。 */
+    const sayPk = list => (list || []).length
+      ? (list || []).map(p => p.kind === 'string' ? '文字「' + p.value + '」'
+          : p.kind === 'value' ? '鍵值 ' + p.key + ' = ' + p.value
+          : '數字 ' + p.value).join('、')
+      : '什麼都沒廣播';
+    const ea = sayPk(s.expectSent), ga = sayPk(s.gotSent);
+    if (ea !== ga) {
+      return `「${s.label}」的時候,應該廣播${ea},但你的程式${ga}。`;
+    }
 
     const want = BlockVM.describeScreen(s.expect);
     const got  = BlockVM.describeScreen(s.got);

@@ -145,7 +145,10 @@ const BlockImport = {
       eat('op', '(');
       if (eat('op', ')')) return list;
       for (;;) {
-        if (at('id', 'function')) { list.push({ t: '_fn', body: fnBody() }); }
+        if (at('id', 'function')) {
+          const f = fnBody();
+          list.push({ t: '_fn', body: f.body, params: f.params });
+        }
         else list.push(expr());
         if (eat('op', ',')) continue;
         eat('op', ')');
@@ -153,10 +156,19 @@ const BlockImport = {
       }
     };
 
+    /* function (receivedNumber) { … } —— 參數名要留著:
+       MakeCode 的「當收到廣播數字」把收到的值放在那個參數裡,
+       名字丟掉的話,裡面用到它的地方就接不上。 */
     const fnBody = () => {
       eat('id', 'function');
-      eat('op', '('); eat('op', ')');
-      return block();
+      eat('op', '(');
+      const params = [];
+      while (!at('op', ')') && p < toks.length) {
+        if (peek().k === 'id') params.push(String(next().v));
+        else p++;
+      }
+      eat('op', ')');
+      return { params, body: block() };
     };
 
     const MUL = { '*': '×', '/': '/' };
@@ -320,8 +332,7 @@ const BlockImport = {
       const before = p;
       const st = statement();
       [].concat(st || []).filter(Boolean).forEach(b => {
-        if (b.t === 'on_start' || b.t === 'forever'
-            || b.t === 'on_button' || b.t === 'on_gesture') tops.push(b);
+        if (isEventBlock(b.t)) tops.push(b);
         else loose.push(b);
       });
       if (p === before) p++;
@@ -348,6 +359,8 @@ const BlockImport = {
   callStatement(name, a, warn) {
     const fn = name.split('.').pop();
     const body = (x) => (x && x.t === '_fn') ? x.body : [];
+    const param = (x, i, def) =>
+      ((x && x.params) || [])[i] || def;
 
     switch (fn) {
       case 'showNumber':  return { t: 'show_number', v: a[0] === undefined ? 0 : a[0] };
@@ -399,6 +412,22 @@ const BlockImport = {
       /* MakeCode 的 on_start 在 JavaScript 裡沒有對應的函式
          (最外層就是開機),但有些人會自己包一層 */
       case 'onStart': return { t: 'on_start', body: body(a[0]) };
+
+      /* ---------- 廣播 ---------- */
+      case 'setGroup':   return { t: 'radio_group', n: a[0] === undefined ? 1 : a[0] };
+      case 'sendNumber': return { t: 'radio_number', v: a[0] === undefined ? 0 : a[0] };
+      case 'sendString': return { t: 'radio_string', v: this.asText(a[0]) };
+      case 'sendValue':  return { t: 'radio_value', name: this.asText(a[0]),
+                                  v: a[1] === undefined ? 0 : a[1] };
+      case 'onReceivedNumber':
+        return { t: 'on_radio_number', name: param(a[0], 0, 'receivedNumber'),
+                 body: body(a[0]) };
+      case 'onReceivedString':
+        return { t: 'on_radio_string', name: param(a[0], 0, 'receivedString'),
+                 body: body(a[0]) };
+      case 'onReceivedValue':
+        return { t: 'on_radio_value', key: param(a[0], 0, 'name'),
+                 name: param(a[0], 1, 'value'), body: body(a[0]) };
       case 'pauseUntil': return { t: 'wait_until', cond: a[0] === undefined ? null : a[0] };
 
       default:
@@ -441,6 +470,7 @@ const BlockImport = {
       case 'constrain': return { t: 'constrain', v: a[0], lo: a[1], hi: a[2] };
       case 'map': return { t: 'map', v: a[0], fl: a[1], fh: a[2], tl: a[3], th: a[4] };
       case 'randomBoolean': return { t: 'rand_bool' };
+      case 'receivedPacket': return { t: 'radio_strength' };
       default:
         warn(`還沒有「${name}()」這塊積木`);
         return null;

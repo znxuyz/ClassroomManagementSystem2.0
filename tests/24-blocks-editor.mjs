@@ -110,7 +110,7 @@ await page.evaluate(() => { BlockEditor.cat = 'basic'; BlockEditor.render(); });
 // ── 1. 當啟動時 → 新增變數 → 將 步數 設為 0 ──
 await chip('當啟動時');
 await chip('＋ 新增變數');
-await chip('設為');
+await chip('變數');
 ok('點一下事件、再點一塊指令,就插在事件裡面',
    await page.evaluate(() => BlockEditor.program.length === 1
      && (BlockEditor.program[0].body || []).length === 1
@@ -157,7 +157,7 @@ await page.evaluate(() => {
   sel.dispatchEvent(new Event('change', { bubbles: true }));
 });
 await page.waitForTimeout(40);
-await chip('設為');
+await chip('變數');
 await setField(await page.evaluate(() =>
   [...document.querySelectorAll('[data-bk-field]')].findIndex(f =>
     f.dataset.type === 'var' && !f.value)), '步數');

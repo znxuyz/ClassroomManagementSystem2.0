@@ -133,6 +133,31 @@ const BLOCK_DEFS = [
   { t: 'var',        cat: 'var', kind: 'expr', label: '${name}',
     args: [{ name: 'name', type: 'var', def: '' }] },
 
+  /* ---------- 廣播 ----------
+     一台 micro:bit **收不到自己發出去的廣播**,所以這一類要有
+     兩台機器才有意義 —— 模擬器在用到廣播時會自己變成兩台(見 05-sim.js)。
+     判題時由劇本送進「收到了什麼」,並且把**發出去的封包也記進行為裡**,
+     所以「有沒有送對東西」也判得出來。 */
+  { t: 'radio_group', cat: 'radio', kind: 'stmt', label: '廣播群組設為 ${n}',
+    args: [{ name: 'n', type: 'num', def: 1 }] },
+  { t: 'radio_number', cat: 'radio', kind: 'stmt', label: '廣播 發送數字 ${v}',
+    args: [{ name: 'v', type: 'num', def: 0 }] },
+  { t: 'radio_value', cat: 'radio', kind: 'stmt', label: '廣播 發送鍵值 ${name} = ${v}',
+    args: [{ name: 'name', type: 'text', def: 'name' }, { name: 'v', type: 'num', def: 0 }] },
+  { t: 'radio_string', cat: 'radio', kind: 'stmt', label: '廣播 發送文字 ${v}',
+    args: [{ name: 'v', type: 'text', def: '' }] },
+  { t: 'on_radio_number', cat: 'radio', kind: 'event', body: true,
+    label: '當收到廣播數字 ${name}',
+    args: [{ name: 'name', type: 'var', def: 'receivedNumber' }] },
+  { t: 'on_radio_value', cat: 'radio', kind: 'event', body: true,
+    label: '當收到廣播鍵值 ${key} 值 ${name}',
+    args: [{ name: 'key', type: 'var', def: 'name' },
+           { name: 'name', type: 'var', def: 'value' }] },
+  { t: 'on_radio_string', cat: 'radio', kind: 'event', body: true,
+    label: '當收到廣播文字 ${name}',
+    args: [{ name: 'name', type: 'var', def: 'receivedString' }] },
+  { t: 'radio_strength', cat: 'radio', kind: 'expr', label: '收到的封包 訊號強度' },
+
   /* ---------- 邏輯 ---------- */
   { t: 'if',    cat: 'logic', kind: 'stmt', body: true, else: true,
     label: '如果 ${cond} 那麼',

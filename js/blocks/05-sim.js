@@ -16,11 +16,17 @@
 
    · 程式一改,模擬器就自動重新開機 —— 否則畫面停在舊程式的結果,
      孩子會以為是自己改壞了。
+
+   · **用到廣播就自動變成兩台**。一台 micro:bit 收不到自己發出去的廣播,
+     只給一台的話,孩子把程式拼對了也什麼都不會發生,然後開始亂改。
+     兩台跑的是**同一支程式**(就像兩片板子燒同一個檔案),
+     A 送出去 B 就收到 —— 這和 MakeCode 模擬器看到的是同一件事。
 ============================================ */
 
 const BlockSim = {
   el: null,
-  ctx: null,
+  ctx: null,          // 單機時用這一個;兩台時是 devs[0].ctx
+  devs: [],           // [{ ctx, error }]
   program: [],
   error: null,
 
@@ -32,7 +38,7 @@ const BlockSim = {
         if (!this.el || !this.el.contains(e.target)) return;
         const b = e.target.closest('[data-sim]');
         if (!b) return;
-        this.act(b.dataset.sim, b.dataset.btn);
+        this.act(b.dataset.sim, b.dataset.btn, b.dataset.dev);
       });
       this._wired = true;
     }
@@ -43,37 +49,68 @@ const BlockSim = {
     this.reset();
   },
 
-  reset() {
-    this.ctx = BlockVM.newCtx(this.program);
-    this.error = null;
-    this.act('start');
+  /* 這支程式有沒有用到廣播 —— 有的話就要兩台 */
+  usesRadio() {
+    let yes = false;
+    walkBlocks(this.program || [], b => {
+      if (b.t && b.t.indexOf('radio') === 0) yes = true;
+      if (b.t === 'on_radio_number' || b.t === 'on_radio_string'
+          || b.t === 'on_radio_value') yes = true;
+    });
+    return yes;
   },
 
-  act(what, btn) {
-    if (!this.ctx) return;
+  reset() {
+    const n = this.usesRadio() ? 2 : 1;
+    this.devs = Array.from({ length: n }, () => ({
+      ctx: BlockVM.newCtx(this.program), error: null
+    }));
+    this.ctx = this.devs[0].ctx;      // 舊的呼叫端還是看得到
+    this.error = null;
+    this.devs.forEach((d, i) => this.fireOn(i, { do: 'start' }));
+    this.render();
+  },
+
+  /* 在第 i 台上做一件事,然後把它發出去的廣播送到別台。
+     群組不一樣就收不到 —— 和實機一樣,這一條要留著,
+     不然「廣播群組設為」那塊積木就變成裝飾品。 */
+  fireOn(i, stepDef) {
+    const me = this.devs[i];
+    if (!me) return;
     try {
-      if (what === 'start') {
-        this.ctx = BlockVM.newCtx(this.program);
-        BlockVM.fire(this.ctx, { do: 'start' });
-      } else if (what === 'press') {
-        BlockVM.fire(this.ctx, { do: 'press', btn });
-      } else if (what === 'shake') {
-        BlockVM.fire(this.ctx, { do: 'gesture', g: '晃動' });
-      } else if (what === 'gesture') {
-        BlockVM.fire(this.ctx, { do: 'gesture', g: btn });
-      } else if (what === 'pin') {
-        BlockVM.fire(this.ctx, { do: 'pin', pin: btn });
-      }
-      this.error = null;
+      const r = BlockVM.fire(me.ctx, stepDef);
+      me.error = null;
+      (r.sent || []).forEach(pk => {
+        this.devs.forEach((other, j) => {
+          if (j === i || other.ctx.group !== pk.group) return;
+          try {
+            BlockVM.fire(other.ctx, { do: 'radio', kind: pk.kind,
+                                      value: pk.value, key: pk.key });
+            other.error = null;
+          } catch (e) { other.error = e.message; }
+        });
+      });
     } catch (e) {
-      this.error = e.message;
+      me.error = e.message;
     }
+    this.error = this.devs.map(d => d.error).filter(Boolean)[0] || null;
+  },
+
+  act(what, btn, dev) {
+    if (!this.devs.length) return;
+    const i = Number(dev) || 0;
+    if (what === 'start') { this.reset(); return; }
+    if (what === 'press') this.fireOn(i, { do: 'press', btn });
+    else if (what === 'shake') this.fireOn(i, { do: 'gesture', g: '晃動' });
+    else if (what === 'gesture') this.fireOn(i, { do: 'gesture', g: btn });
+    else if (what === 'pin') this.fireOn(i, { do: 'pin', pin: btn });
+    this.ctx = this.devs[0].ctx;
     this.render();
   },
 
   /* 螢幕現在的樣子 */
-  renderScreen() {
-    const s = this.ctx ? this.ctx.screen : null;
+  renderScreen(ctx) {
+    const s = ctx ? ctx.screen : null;
     if (s && s.kind === 'leds') {
       const g = String(s.value || LED_BLANK);
       return `<div class="sim-leds">${Array.from({ length: 25 }, (_, i) =>
@@ -100,31 +137,55 @@ const BlockSim = {
     return { g, pins };
   },
 
-  render() {
-    if (!this.el) return;
-    const vars = this.ctx ? Object.keys(this.ctx.vars) : [];
+  renderDevice(i) {
+    const d = this.devs[i];
     const tr = this.triggers();
-    this.el.innerHTML = `
-      <div class="sim">
+    const vars = d.ctx ? Object.keys(d.ctx.vars) : [];
+    const two = this.devs.length > 1;
+    return `
+      <div class="sim ${two ? 'is-one-of-two' : ''}">
+        ${two ? `<div class="sim-name">${i === 0 ? '第 1 台' : '第 2 台'}
+          <small>群組 ${d.ctx.group}</small></div>` : ''}
         <div class="sim-board">
-          ${this.renderScreen()}
-          <button class="sim-btn sim-btn-a" data-sim="press" data-btn="A">A</button>
-          <button class="sim-btn sim-btn-b" data-sim="press" data-btn="B">B</button>
+          ${this.renderScreen(d.ctx)}
+          <button class="sim-btn sim-btn-a" data-sim="press" data-btn="A"
+                  data-dev="${i}">A</button>
+          <button class="sim-btn sim-btn-b" data-sim="press" data-btn="B"
+                  data-dev="${i}">B</button>
         </div>
         <div class="sim-acts">
-          <button class="btn btn-ghost btn-small" data-sim="press" data-btn="A+B">A+B</button>
+          <button class="btn btn-ghost btn-small" data-sim="press" data-btn="A+B"
+                  data-dev="${i}">A+B</button>
           ${tr.g.map(g => `<button class="btn btn-ghost btn-small"
-             data-sim="gesture" data-btn="${escapeHtml(g)}">${escapeHtml(g)}</button>`).join('')}
+             data-sim="gesture" data-dev="${i}"
+             data-btn="${escapeHtml(g)}">${escapeHtml(g)}</button>`).join('')}
           ${tr.pins.map(p => `<button class="btn btn-ghost btn-small"
-             data-sim="pin" data-btn="${p}">碰 ${p}</button>`).join('')}
-          <button class="btn btn-ghost btn-small" data-sim="start">重新開機</button>
+             data-sim="pin" data-dev="${i}" data-btn="${p}">碰 ${p}</button>`).join('')}
+          ${two ? '' : '<button class="btn btn-ghost btn-small" data-sim="start">重新開機</button>'}
         </div>
-        ${this.error ? `<div class="sim-error">${escapeHtml(this.error)}</div>` : ''}
+        ${d.error ? `<div class="sim-error">${escapeHtml(d.error)}</div>` : ''}
         ${vars.length ? `
           <div class="sim-vars">
             ${vars.map(n => `<span class="sim-var"><b>${escapeHtml(n)}</b>
-              ${escapeHtml(String(this.ctx.vars[n]))}</span>`).join('')}
+              ${escapeHtml(String(d.ctx.vars[n]))}</span>`).join('')}
           </div>` : ''}
       </div>`;
+  },
+
+  render() {
+    if (!this.el || !this.devs.length) return;
+    const two = this.devs.length > 1;
+    this.el.innerHTML = two ? `
+      <div class="sim-pair-note">
+        用到廣播了,所以這裡有<strong>兩台</strong> —— 一台收不到自己發出去的廣播。
+        兩台跑的是<strong>同一支程式</strong>,在一台上按,另一台就會收到。
+      </div>
+      <div class="sim-pair">
+        ${this.devs.map((d, i) => this.renderDevice(i)).join('')}
+      </div>
+      <div class="sim-acts sim-acts-all">
+        <button class="btn btn-ghost btn-small" data-sim="start">兩台都重新開機</button>
+      </div>`
+      : this.renderDevice(0);
   }
 };

@@ -1490,3 +1490,36 @@ body.is-preview-frame .student-header-actions { display: none; }
   gap: 10px;
   margin-top: 16px;
 }
+
+/* ---------- 兩台 micro:bit(用到廣播時) ----------
+   並排,中間不要留太寬 —— 孩子要能同時看到兩個螢幕,
+   「在左邊按、右邊跟著變」是這一課唯一要看的東西。 */
+.sim-pair {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.sim-pair > .sim { flex: 1 1 200px; min-width: 0; }
+
+.sim-pair-note {
+  font-size: 12px;
+  color: var(--ink-muted);
+  line-height: 1.7;
+  margin-bottom: 8px;
+}
+
+.sim-name {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin-bottom: 4px;
+}
+
+.sim-name small { color: var(--ink-muted); font-weight: 500; }
+
+.sim-acts-all { margin-top: 10px; }
