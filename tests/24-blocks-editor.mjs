@@ -36,23 +36,25 @@ await page.waitForTimeout(200);
 /* 點面板上的某一塊積木(用上面的字找)。
    面板和 MakeCode 一樣是分類抽屜,所以要先切到那一類 —— 這一步就是
    孩子真的會做的動作。 */
-const openCatFor = async label => page.evaluate(t => {
+/* 變數積木在面板上是一塊一塊的(每個變數一塊),用變數名字找 */
+const sel = t => /^[a-z_]+$/.test(t)
+  ? `.bk-chip[data-t="${t}"]` : `.bk-chip[data-var="${t}"]`;
+
+/* 面板上畫的是真的積木,所以文字裡會混進下拉選單的每一個選項
+   (「當姿勢 晃動螢幕朝上… 發生」)—— 用積木的型別找才準。 */
+const openCatFor = async t => page.evaluate(k => {
   for (const c of BLOCK_CATS) {
     BlockEditor.cat = c.id;
     BlockEditor.render();
-    if ([...document.querySelectorAll('.bk-chip')]
-        .some(x => x.textContent.replace(/\s+/g, ' ').trim().includes(t))) return c.id;
+    if (document.querySelector(k)) return c.id;
   }
   return null;
-}, label);
+}, sel(t));
 
-const chip = async label => {
-  const cat = await openCatFor(label);
-  if (!cat) throw new Error('面板上找不到積木:' + label);
-  await page.evaluate(t => {
-    [...document.querySelectorAll('.bk-chip')]
-      .find(x => x.textContent.replace(/\s+/g, ' ').trim().includes(t)).click();
-  }, label);
+const chip = async t => {
+  const cat = await openCatFor(t);
+  if (!cat) throw new Error('面板上找不到積木:' + t);
+  await page.evaluate(k => { document.querySelector(k).click(); }, sel(t));
   await page.waitForTimeout(40);
 };
 
@@ -108,9 +110,15 @@ ok('分類裡真的是那一類的積木',
 await page.evaluate(() => { BlockEditor.cat = 'basic'; BlockEditor.render(); });
 
 // ── 1. 當啟動時 → 新增變數 → 將 步數 設為 0 ──
-await chip('當啟動時');
-await chip('＋ 新增變數');
-await chip('變數');
+await chip('on_start');
+/* 「建立一個變數…」在面板上不是一塊積木,是上面那顆按鈕(照 MakeCode) */
+await page.evaluate(() => {
+  BlockEditor.cat = 'var';
+  BlockEditor.render();
+  document.querySelector('[data-bk="addvar"]').click();
+});
+await page.waitForTimeout(40);
+await chip('set_var');
 ok('點一下事件、再點一塊指令,就插在事件裡面',
    await page.evaluate(() => BlockEditor.program.length === 1
      && (BlockEditor.program[0].body || []).length === 1
@@ -121,7 +129,7 @@ ok('變數下拉選得到剛才新增的變數',
    await page.evaluate(() => BlockEditor.program[0].body[0].name === '步數'));
 
 // ── 2. 顯示數字,並把「步數」放進那個數字格 ──
-await chip('顯示 數字');
+await chip('show_number');
 await page.evaluate(() => {
   // 點開「改成放積木」的小箭頭
   const b = [...document.querySelectorAll('.bk-slot-mini')].pop();
@@ -136,12 +144,12 @@ ok('數字格可以換成變數積木',
    }));
 
 // ── 3. 當搖動時 → 改變 步數 1 → 顯示數字 步數 ──
-await chip('當姿勢 晃動 發生');
-await chip('改變');
+await chip('on_gesture');
+await chip('change_var');
 await setField(await page.evaluate(() =>
   [...document.querySelectorAll('[data-bk-field]')].findIndex(f =>
     f.dataset.type === 'var' && f.closest('.bk-blk').textContent.includes('改變'))), '步數');
-await chip('顯示 數字');
+await chip('show_number');
 await page.evaluate(() => {
   const b = [...document.querySelectorAll('.bk-slot-mini')].pop();
   if (b) b.click();
@@ -150,18 +158,18 @@ await page.waitForTimeout(40);
 await chip('步數');
 
 // ── 4. 當按鈕 A 被按下時 → 改成 A+B → 將 步數 設為 0 → 顯示 ──
-await chip('當按鈕');
+await chip('on_button');
 await page.evaluate(() => {
-  const sel = [...document.querySelectorAll('[data-bk-field][data-type="pick"]')].pop();
-  sel.value = 'A+B';
-  sel.dispatchEvent(new Event('change', { bubbles: true }));
+  const picker = [...document.querySelectorAll('[data-bk-field][data-type="pick"]')].pop();
+  picker.value = 'A+B';
+  picker.dispatchEvent(new Event('change', { bubbles: true }));
 });
 await page.waitForTimeout(40);
-await chip('變數');
+await chip('set_var');
 await setField(await page.evaluate(() =>
   [...document.querySelectorAll('[data-bk-field]')].findIndex(f =>
     f.dataset.type === 'var' && !f.value)), '步數');
-await chip('顯示 數字');
+await chip('show_number');
 await page.evaluate(() => {
   const b = [...document.querySelectorAll('.bk-slot-mini')].pop();
   if (b) b.click();
@@ -243,17 +251,28 @@ const chipBox = async label => {
   await page.evaluate(() => {
     document.querySelector('.bk-editor').scrollIntoView({ block: 'center' });
   });
-  return page.evaluate(t => {
-    const b = [...document.querySelectorAll('.bk-chip')]
-      .find(x => x.textContent.trim().startsWith(t));
+  return page.evaluate(k => {
+    const b = document.querySelector(k);
     if (!b) return null;
-    b.scrollIntoView({ block: 'nearest' });
+    /* 面板上現在畫的是真的積木,所以每一塊都比以前高很多 ——
+       要捲到中間才抓得到,捲到 nearest 常常停在抽屜邊緣被切掉。 */
+    b.scrollIntoView({ block: 'center' });
     const r = b.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-  }, label);
+    /* 抓積木的「頭」,不是整塊的正中間 —— C 形積木的正中間是它的肚子
+       (那是畫布,不是積木),按在那裡拖不動。 */
+    const h = b.querySelector('.bk-head') || b;
+    const hr = h.getBoundingClientRect();
+    const p = { x: hr.left + Math.min(40, hr.width / 2), y: hr.top + hr.height / 2 };
+    // 抓到的點真的落在這一塊上嗎 —— 不檢查的話會在別的地方按下去,
+    // 然後看到「拖曳壞了」,其實是測試沒抓對位置
+    const hit = document.elementFromPoint(p.x, p.y);
+    if (!hit || !b.contains(hit)) return null;
+    return p;
+  }, sel(label));
 };
 
 const dragTo = async (from, to) => {
+  if (!from) throw new Error('抓不到面板上那一塊積木(可能被抽屜切掉了)');
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
   await page.mouse.move(from.x + 20, from.y + 10, { steps: 3 });
@@ -266,38 +285,41 @@ const dragTo = async (from, to) => {
 // 清空,從頭用拖的
 await page.evaluate(() => { BlockEditor.program = []; BlockEditor.changed(); });
 
+/* 先把面板上那一塊捲到定位,**再**量工作區的座標 ——
+   面板上現在畫的是真的積木,比以前高很多,捲動之後整頁都會移位,
+   先量好的座標就不準了(這是測試的順序問題,不是產品的問題)。 */
+const hatFrom = await chipBox('on_start');
 const workBox = await page.evaluate(() => {
-  document.querySelector('.bk-editor').scrollIntoView({ block: 'center' });
   const r = document.querySelector('.bk-work').getBoundingClientRect();
   return { x: r.left + 120, y: r.top + 40 };
 });
-await dragTo(await chipBox('當啟動時'), workBox);
+await dragTo(hatFrom, workBox);
 ok('從面板把帽子拖進工作區',
    await page.evaluate(() => BlockEditor.program.length === 1
      && BlockEditor.program[0].t === 'on_start'));
 
+const numFrom = await chipBox('show_number');
 const bodyBox = await page.evaluate(() => {
-  document.querySelector('.bk-editor').scrollIntoView({ block: 'center' });
-  const c = document.querySelector('.bk-body .bk-cursor');
+  const c = document.querySelector('.bk-work .bk-body .bk-cursor');
   if (!c) throw new Error('沒有可以放的位置,目前的程式是:'
     + JSON.stringify(BlockEditor.value()));
   const r = c.getBoundingClientRect();
   return { x: r.left + 40, y: r.top + 8 };
 });
-await dragTo(await chipBox('顯示 數字'), bodyBox);
+await dragTo(numFrom, bodyBox);
 ok('拖進帽子的肚子裡就會變成它的內容',
    await page.evaluate(() => (BlockEditor.program[0].body || []).length === 1
      && BlockEditor.program[0].body[0].t === 'show_number'));
 
 // 變數拖進數字格
 await page.evaluate(() => { BlockEditor.vars = ['步數']; BlockEditor.render(); });
+const varFrom = await chipBox('步數');
 const numSlot = await page.evaluate(() => {
-  document.querySelector('.bk-editor').scrollIntoView({ block: 'center' });
-  const w = document.querySelector('.bk-numwrap');
+  const w = document.querySelector('.bk-work .bk-numwrap');
   const r = w.getBoundingClientRect();
   return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
 });
-await dragTo(await chipBox('步數'), numSlot);
+await dragTo(varFrom, numSlot);
 ok('把變數拖進數字格,那一格就變成變數',
    await page.evaluate(() => {
      const v = BlockEditor.program[0].body[0].v;

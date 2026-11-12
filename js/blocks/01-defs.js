@@ -118,11 +118,11 @@ const BLOCK_DEFS = [
   { t: 'on_pin',     cat: 'input', kind: 'event', body: true,
     label: '當引腳 ${pin} 被按下',
     args: [{ name: 'pin', type: 'pick', options: ['P0', 'P1', 'P2'], def: 'P0' }] },
-  { t: 'btn_down', cat: 'input', kind: 'expr', label: '按鈕 ${btn} 被按下?',
+  { t: 'btn_down', ret: 'bool', cat: 'input', kind: 'expr', label: '按鈕 ${btn} 被按下?',
     args: [{ name: 'btn', type: 'pick', options: ['A', 'B'], def: 'A' }] },
-  { t: 'pin_down', cat: 'input', kind: 'expr', label: '引腳 ${pin} 被按下?',
+  { t: 'pin_down', ret: 'bool', cat: 'input', kind: 'expr', label: '引腳 ${pin} 被按下?',
     args: [{ name: 'pin', type: 'pick', options: ['P0', 'P1', 'P2'], def: 'P0' }] },
-  { t: 'is_gesture', cat: 'input', kind: 'expr', label: '姿勢為 ${g} ?',
+  { t: 'is_gesture', ret: 'bool', cat: 'input', kind: 'expr', label: '姿勢為 ${g} ?',
     args: [{ name: 'g', type: 'pick', options: GESTURES, def: '晃動' }] },
 
   /* ---------- 變數 ---------- */
@@ -159,18 +159,24 @@ const BLOCK_DEFS = [
   { t: 'radio_strength', cat: 'radio', kind: 'expr', label: '收到的封包 訊號強度' },
 
   /* ---------- 邏輯 ---------- */
+  /* MakeCode 的面板上「如果」有兩塊:一塊只有「那麼」,一塊帶「否則」。
+     這裡是同一種積木(t 都是 if),差別只在有沒有 elseBody ——
+     有 ⊕ 可以後來再加上去,和 MakeCode 一樣。 */
   { t: 'if',    cat: 'logic', kind: 'stmt', body: true, else: true,
     label: '如果 ${cond} 那麼',
     args: [{ name: 'cond', type: 'bool', def: null }] },
-  { t: 'not',   cat: 'logic', kind: 'expr', label: '${a} 不成立',
+  { t: 'if', variant: 'else', cat: 'logic', kind: 'stmt', body: true, else: true,
+    label: '如果 ${cond} 那麼',
+    args: [{ name: 'cond', type: 'bool', def: null }] },
+  { t: 'not', ret: 'bool',   cat: 'logic', kind: 'expr', label: '${a} 不成立',
     args: [{ name: 'a', type: 'bool', def: null }] },
-  { t: 'bool',  cat: 'logic', kind: 'expr', label: '${v}',
+  { t: 'bool', ret: 'bool',  cat: 'logic', kind: 'expr', label: '${v}',
     args: [{ name: 'v', type: 'pick', options: ['true', 'false'], def: 'true' }] },
-  { t: 'cmp',   cat: 'logic', kind: 'expr', label: '${a} ${op} ${b}',
+  { t: 'cmp', ret: 'bool',   cat: 'logic', kind: 'expr', label: '${a} ${op} ${b}',
     args: [{ name: 'a', type: 'num', def: 0 },
            { name: 'op', type: 'pick', options: ['=', '≠', '<', '≤', '>', '≥'], def: '=' },
            { name: 'b', type: 'num', def: 0 }] },
-  { t: 'logic', cat: 'logic', kind: 'expr', label: '${a} ${op} ${b}',
+  { t: 'logic', ret: 'bool', cat: 'logic', kind: 'expr', label: '${a} ${op} ${b}',
     args: [{ name: 'a', type: 'bool', def: null },
            { name: 'op', type: 'pick', options: ['且', '或'], def: '且' },
            { name: 'b', type: 'bool', def: null }] },
@@ -181,7 +187,7 @@ const BLOCK_DEFS = [
   { t: 'while',  cat: 'loop', kind: 'stmt', body: true, label: '重複 判斷 ${cond}',
     args: [{ name: 'cond', type: 'bool', def: null }] },
   { t: 'for',    cat: 'loop', kind: 'stmt', body: true, label: '計次 ${name} 從 0 到 ${to}',
-    args: [{ name: 'name', type: 'var', def: '' }, { name: 'to', type: 'num', def: 4 }] },
+    args: [{ name: 'name', type: 'var', def: 'index' }, { name: 'to', type: 'num', def: 4 }] },
   { t: 'wait_until', cat: 'loop', kind: 'stmt', label: '暫停直到 ${cond}',
     args: [{ name: 'cond', type: 'bool', def: null }] },
   { t: 'break',    cat: 'loop', kind: 'stmt', label: '跳出' },
@@ -219,12 +225,14 @@ const BLOCK_DEFS = [
     args: [{ name: 'v', type: 'num', def: 0 },
            { name: 'fl', type: 'num', def: 0 }, { name: 'fh', type: 'num', def: 1023 },
            { name: 'tl', type: 'num', def: 0 }, { name: 'th', type: 'num', def: 4 }] },
-  { t: 'rand_bool', cat: 'math', kind: 'expr', label: '隨機取布林值' },
+  { t: 'rand_bool', ret: 'bool', cat: 'math', kind: 'expr', label: '隨機取布林值' },
   { t: 'pi',     cat: 'math', kind: 'expr', label: 'π' }
 ];
 
+/* 同一個 t 可能在面板上出現兩次(如果 / 如果-否則),
+   查定義時一律用第一個 —— variant 只影響面板上多擺一塊。 */
 const BLOCK_BY_T = {};
-BLOCK_DEFS.forEach(d => { BLOCK_BY_T[d.t] = d; });
+BLOCK_DEFS.forEach(d => { if (!BLOCK_BY_T[d.t]) BLOCK_BY_T[d.t] = d; });
 
 /* 圖示對應到 5×5 的點陣。學生端與判斷都用同一份,
    所以「顯示圖示 愛心」和「顯示 LED(愛心的圖案)」會被判成同一件事 ——

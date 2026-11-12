@@ -120,7 +120,7 @@ const BlockEditor = {
   },
 
   /* ---------- 操作 ---------- */
-  makeBlock(t, varName) {
+  makeBlock(t, varName, variant) {
     const d = blockDef(t);
     if (!d) return null;
     const blk = { id: 'b' + (this._uid++), t };
@@ -129,18 +129,22 @@ const BlockEditor = {
       if (blk[a.name] !== undefined) return;         // 面板已經給好的(變數名稱)
       if (a.type === 'num' || a.type === 'rawnum') blk[a.name] = a.def;
       else if (a.type === 'bool') blk[a.name] = null;
-      else if (a.type === 'var') blk[a.name] = this.vars[0] || '';
+      /* 變數格:定義裡有寫預設名稱的就用它(例如「當收到廣播數字」的
+         receivedNumber,那是 MakeCode 給的名字),否則用班上現有的第一個。 */
+      else if (a.type === 'var') blk[a.name] = a.def || this.vars[0] || '';
       else blk[a.name] = a.def;
     });
     if (d.body) blk.body = [];
-    if (d.else) blk.elseBody = [];
+    /* 「否則」只有選了那一塊才有 —— MakeCode 的面板上是兩塊積木,
+       另一塊可以之後按 ⊕ 補上去。 */
+    if (d.else && variant === 'else') blk.elseBody = [];
     return blk;
   },
 
-  addFromPalette(t, varName) {
+  addFromPalette(t, varName, variant) {
     const d = blockDef(t);
     if (!d) return;
-    const blk = this.makeBlock(t, varName);
+    const blk = this.makeBlock(t, varName, variant);
     if (!blk) return;
 
     if (d.kind === 'expr') {
@@ -325,6 +329,10 @@ const BlockEditor = {
       ? '.bk-slot, .bk-numwrap'
       : '.bk-cursor';
     return [...this.el.querySelectorAll(sel)].filter(el => {
+      /* 面板上那幾塊只是樣品,裡面的插入點與格子**不是**可以放的位置。
+         不擋掉的話,拖到一半會被面板裡的某個點搶走,看起來就像
+         「拖曳壞了」。 */
+      if (el.closest('.bk-chip')) return false;
       if (this.drag.kind === 'expr') return true;
       const top = !el.dataset.parent;
       // 帽子只能放最外層,一般積木只能放在事件裡面
@@ -409,7 +417,22 @@ const BlockEditor = {
     const act = t.dataset.bk;
     if (this.readonly && act !== 'cursor') return;
 
-    if (act === 'add') { this.addFromPalette(t.dataset.t, t.dataset.var); }
+    if (act === 'add') {
+      this.addFromPalette(t.dataset.t, t.dataset.var, t.dataset.variant);
+    }
+    if (act === 'addelse') {
+      const hit = this.find(t.dataset.id);
+      if (hit && !hit.block.elseBody) { hit.block.elseBody = []; this.changed(); }
+    }
+    if (act === 'delelse') {
+      const hit = this.find(t.dataset.id);
+      if (hit && hit.block.elseBody) {
+        if (hit.block.elseBody.length
+            && !confirm('「否則」裡面還有積木,拿掉的話那些會一起不見。確定嗎?')) return;
+        delete hit.block.elseBody;
+        this.changed();
+      }
+    }
     else if (act === 'del') { this.removeBlock(t.dataset.id); }
     else if (act === 'up') { this.moveBlock(t.dataset.id, -1); }
     else if (act === 'down') { this.moveBlock(t.dataset.id, 1); }
@@ -465,6 +488,33 @@ const BlockEditor = {
           ${this.renderList(this.program, null, 'body')}
         </div>
       </div>`;
+    this.fitFields();
+  },
+
+  /* ---------- 下拉只要「現在這個值」那麼寬 ----------
+     瀏覽器預設會把 <select> 撐到**最長那個選項**那麼寬,所以
+     「顯示 數字 [步數]」會被「＋ 新增變數…」撐成兩倍長 ——
+     那和 MakeCode 完全不一樣(它的下拉就是當下那個字那麼寬)。
+
+     新版瀏覽器有 field-sizing: content 可以直接做到;沒有的就自己量一次。
+     量的方式是把選到的字放進一個看不見的 span,再把寬度抄過去。 */
+  fitFields() {
+    if (!this.el) return;
+    if (typeof CSS !== 'undefined' && CSS.supports
+        && CSS.supports('field-sizing', 'content')) return;
+    const ruler = this._ruler || (this._ruler = (() => {
+      const el = document.createElement('span');
+      el.className = 'bk-ruler';
+      document.body.appendChild(el);
+      return el;
+    })());
+    this.el.querySelectorAll('select.bk-field').forEach(sel => {
+      const cs = getComputedStyle(sel);
+      ruler.style.font = cs.font;
+      ruler.textContent = sel.options[sel.selectedIndex]
+        ? sel.options[sel.selectedIndex].textContent : '';
+      sel.style.width = Math.ceil(ruler.getBoundingClientRect().width) + 26 + 'px';
+    });
   },
 
   /* 面板的樣子照 MakeCode:左邊一欄分類,點了才展開那一類的積木。
@@ -491,25 +541,55 @@ const BlockEditor = {
             </button>`).join('')}
         </div>
         <div class="bk-chips" style="--c:${cur.color}">
+          ${/* 變數那一類照 MakeCode:「建立一個變數…」在最上面,
+                再來是兩塊積木,最後才是「Your Variables」那幾塊。 */ ''}
+          ${cur.id === 'var' ? `<button class="bk-chip-new" data-bk="addvar"
+              style="--c:${cur.color}">建立一個變數…</button>` : ''}
           ${blocks.map(d => {
             /* 變數積木和 MakeCode 一樣:有幾個變數就擺幾塊,上面寫的就是
                變數的名字。寫成「◻」的話,孩子根本不知道那一塊是什麼。 */
             if (d.t === 'var') {
-              return this.vars.map(n => `
-                <button class="bk-chip" data-bk="add" data-t="var" data-var="${escapeHtml(n)}"
-                  style="--c:${cur.color}">${escapeHtml(n)}</button>`).join('');
+              if (!this.vars.length) return '';
+              return `<div class="bk-chips-head">Your Variables</div>`
+                + this.vars.map(n => `
+                <div class="bk-chip" data-bk="add" data-t="var" data-var="${escapeHtml(n)}"
+                  >${this.chipPreview('var', n)}</div>`).join('');
             }
             return `
-              <button class="bk-chip" data-bk="add" data-t="${d.t}" style="--c:${cur.color}"
-                >${this.labelPreview(d)}</button>`;
+              <div class="bk-chip" data-bk="add" data-t="${d.t}"
+                   ${d.variant ? `data-variant="${d.variant}"` : ''}
+                >${this.chipPreview(d.t, null, d.variant)}</div>`;
           }).join('')}
-          ${cur.id === 'var' ? `<button class="bk-chip bk-chip-new" data-bk="addvar"
-              style="--c:${cur.color}">＋ 新增變數</button>` : ''}
         </div>
       </div>`;
   },
 
-  /* 面板上只給一個「大概長這樣」的名字,插槽用底線代替 */
+  /* ---------- 面板上的那一塊 ----------
+     面板上畫的就是**真的那塊積木**(同一支 renderBlock),不是一個寫著
+     名字的長方形。理由很實在:孩子是靠形狀認積木的 ——
+     帽子、凹凸、橢圓、六角形各代表「可以接在哪裡」。
+     面板上全部長成一樣的方塊,他拖進去才第一次看到形狀,
+     那等於把最重要的那個訊息藏起來。
+
+     裡面的欄位(下拉、數字格)在面板上**不能點** —— 要改值是拖進去之後
+     的事;在面板上改了也不會留著,只會讓人困惑。 */
+  chipPreview(t, varName, variant) {
+    const blk = this.makeBlock(t, varName, variant);
+    if (!blk) return '';
+    const was = this.readonly;
+    this.readonly = true;                 // 面板上的那一塊不掛小工具
+    this.preview = true;                  // 也不畫插入點
+    const html = this.renderBlock(blk);
+    this.preview = false;
+    this.readonly = was;
+    /* 把裡面的 data-id / data-bk 拔掉 —— 留著的話,拖曳會以為你在搬
+       「程式裡的某一塊」(那塊根本不在程式裡),整個拖曳就不會發生。
+       面板上那一塊只是**圖**,所有互動都由外面那層 .bk-chip 負責。 */
+    return html.replace(/\sdata-(id|bk|arg|index|which)="[^"]*"/g, '');
+  },
+
+  /* 面板上只給一個「大概長這樣」的名字,插槽用底線代替。
+     (目前只有測試與說明會用到,畫面上已經改成畫真的積木) */
   labelPreview(d) {
     return escapeHtml(d.label.replace(/\$\{(\w+)\}/g, (m, k) => {
       const a = (d.args || []).find(x => x.name === k);
@@ -527,6 +607,7 @@ const BlockEditor = {
   },
 
   renderCursor(parentId, which, index, last) {
+    if (this.preview) return '';      // 面板上的樣品不畫插入點
     const on = this.cursor && this.cursor.parentId === (parentId || null)
       && this.cursor.list === which && this.cursor.index === index;
     if (this.readonly) return '';
@@ -555,12 +636,20 @@ const BlockEditor = {
          一般指令 —— 上下有凹凸的接點,疊起來像接上去的 */
     return `
       <div class="bk-blk ${d.kind === 'event' ? 'is-hat' : ''} ${d.body ? 'is-c' : ''}
-                  ${d.kind === 'expr' ? 'is-expr' : ''}"
+                  ${d.kind === 'expr' ? 'is-expr' : ''} ${d.ret === 'bool' ? 'is-bool' : ''}"
            data-id="${b.id}" style="--c:${cat.color}">
         <div class="bk-head">${label}${tools}</div>
         ${d.body ? `<div class="bk-body">${this.renderList(b.body, b.id, 'body')}</div>` : ''}
-        ${d.else ? `<div class="bk-else">否則</div>
-                    <div class="bk-body">${this.renderList(b.elseBody, b.id, 'elseBody')}</div>` : ''}
+        ${d.else && b.elseBody ? `
+          <div class="bk-else">否則${this.readonly || this.preview ? '' : `
+            <button class="bk-plus" data-bk="delelse" data-id="${b.id}"
+                    title="拿掉「否則」">⊖</button>`}</div>
+          <div class="bk-body">${this.renderList(b.elseBody, b.id, 'elseBody')}</div>` : ''}
+        ${d.else && !b.elseBody && !this.readonly && !this.preview ? `
+          <div class="bk-else is-add">
+            <button class="bk-plus" data-bk="addelse" data-id="${b.id}"
+                    title="加上「否則」">⊕</button>
+          </div>` : ''}
         ${d.body ? '<div class="bk-foot"></div>' : ''}
       </div>`;
   },
@@ -578,7 +667,11 @@ const BlockEditor = {
     }
 
     if (a.type === 'var') {
-      const opts = this.vars.map(n =>
+      /* 這一塊自己的變數名也要在選項裡 —— 例如「當收到廣播數字
+         receivedNumber」,那個名字是這塊積木自己帶來的,不在班上的
+         變數清單裡。沒放進去的話下拉會顯示空白,孩子看不懂那是什麼。 */
+      const names = this.vars.includes(v) || !v ? this.vars : [v, ...this.vars];
+      const opts = names.map(n =>
         `<option ${n === v ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('');
       return `<select class="bk-field bk-var" data-bk-field data-id="${b.id}" data-arg="${name}"
         data-type="var" ${this.readonly ? 'disabled' : ''}>

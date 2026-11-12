@@ -12,7 +12,9 @@
 
 .bk-editor {
   display: grid;
-  grid-template-columns: 210px minmax(0, 1fr);
+  /* 面板要夠寬,積木才排得成**一行** —— 照 MakeCode 的抽屜。
+     擠成兩三行的話,孩子看到的形狀就和原版不一樣了。 */
+  grid-template-columns: 290px minmax(0, 1fr);
   gap: var(--pad-sm);
   align-items: start;
 }
@@ -22,7 +24,7 @@
    分類前面那一點就是那一類的顏色。 */
 .bk-palette {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
+  grid-template-columns: 84px minmax(0, 1fr);
   border-radius: var(--r-tile);
   overflow: hidden;
   border: 1px solid var(--paper-shadow);
@@ -80,24 +82,30 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  overflow-y: auto;
+  overflow: auto;
 }
 
+/* 面板上的積木**不換行** —— MakeCode 的抽屜裡每一塊都是一行,
+   換行之後形狀就走樣了。太寬的那幾塊讓抽屜自己橫向捲動,
+   這和原版一樣(原版也是捲的)。 */
+.bk-chip .bk-head {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  min-height: 30px;
+  padding: 5px 9px;
+}
+
+.bk-chip .bk-blk { min-width: 0; }
+
 .bk-chip {
+  /* 面板上畫的就是真的那塊積木(同一支 renderBlock),
+     所以這裡不畫長方形 —— 只負責定位、游標與整塊可拖。
+     凹凸是用「和底色同色」的小方塊挖出來的,所以面板這邊
+     要把那個底色換成抽屜的深灰,不然會露出一塊白。 */
+  --bk-canvas: #3f4450;
   position: relative;
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 700;
-  text-align: left;
-  color: #fff;
-  background: var(--c);
-  border: none;
-  border-radius: 4px;
-  padding: 8px 10px;
-  min-height: 32px;
   cursor: grab;
   touch-action: none;
-  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .18);
   transition: transform var(--dur-fast) var(--ease-out),
               filter var(--dur-fast) var(--ease-out);
 }
@@ -105,12 +113,30 @@
 .bk-chip:hover { transform: translateX(2px); filter: brightness(1.08); }
 .bk-chip:active { cursor: grabbing; }
 
+/* 面板上的積木是「樣品」:裡面的下拉與數字格不能點,
+   整塊才抓得起來(點到裡面的 select 會變成在改那個樣品的值)。 */
+.bk-chip .bk-blk { margin-bottom: 0; cursor: grab; }
+.bk-chip .bk-field,
+.bk-chip .bk-slot,
+.bk-chip .bk-numwrap,
+.bk-chip .bk-leds,
+.bk-chip .bk-cursor { pointer-events: none; }
+
+/* 面板上的 C 形積木只留一個淺淺的嘴巴,不要整個插入點清單 */
+.bk-chip .bk-body { min-height: 18px; padding: 2px 0 2px 4px; }
+.bk-chip .bk-cursor { display: none; }
+.bk-chip .bk-foot { height: 9px; }
+
 .bk-chip-new {
   background: transparent;
   color: #fff;
   border: 1px dashed rgba(255, 255, 255, .5);
-  box-shadow: none;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-family: var(--font-body);
+  font-size: 12px;
   font-weight: 600;
+  cursor: pointer;
 }
 
 /* ---------- 中間:工作區 ---------- */
@@ -146,7 +172,9 @@
 .bk-blk {
   position: relative;
   width: fit-content;
-  min-width: 150px;
+  /* 積木只要內容那麼寬(MakeCode 就是這樣)。
+     最小寬度只要撐得住上下那個凹凸就夠了。 */
+  min-width: 56px;
   max-width: 100%;
   background: var(--c);
   color: #fff;
@@ -200,6 +228,18 @@
 
 .bk-blk.is-expr::before,
 .bk-blk.is-expr::after { display: none; }
+
+/* 布林值:六角形。MakeCode 用形狀區分「這塊回傳的是什麼」——
+   橢圓是數字、六角形是是非題,所以六角形只放得進條件那一格。
+   孩子就是靠這個形狀知道「這塊能不能放這裡」,做成一樣的橢圓
+   等於把那個訊息拿掉。 */
+.bk-blk.is-bool {
+  border-radius: 0;
+  clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 50%, 100% 100%,
+                     10px 100%, 0 50%);
+}
+
+.bk-blk.is-bool > .bk-head { padding-left: 14px; padding-right: 14px; }
 
 .bk-head {
   display: flex;
@@ -354,12 +394,12 @@
   max-width: 100%;
 }
 
-.bk-num { width: 64px; }
-.bk-text { width: 120px; }
-/* 下拉的寬度會跟著「最長的那個選項」長,而選項裡有「＋ 新增變數…」——
-   不框住的話,一個兩個字的變數會撐成一塊很寬的積木。 */
+/* 數字格也只要內容那麼寬(照 MakeCode),太短的時候留一點餘地 */
+.bk-num { width: 52px; field-sizing: content; min-width: 34px; }
+.bk-text { width: 110px; field-sizing: content; min-width: 54px; }
+/* 變數下拉:寬度交給 field-sizing(見上面那條),
+   這裡只管字重與顏色。寫死寬度的話,長一點的變數名會被切掉。 */
 .bk-var {
-  width: 92px;
   font-weight: 700;
   color: var(--ink);
 }
@@ -388,25 +428,28 @@
 
 .bk-slot-mini:hover { background: rgba(255, 255, 255, .55); }
 
+/* 空的條件格是一個**六角形的洞**,和 MakeCode 一樣 ——
+   形狀就是在說「這裡只放得進六角形的那種積木」。
+   用挖洞(深色)而不是虛線框:虛線的六角形在 clip-path 下會被切掉,
+   而且挖洞看起來才像「還沒填」。 */
 .bk-slot {
-  min-width: 56px;
+  min-width: 58px;
   height: 26px;
-  padding: 0 10px;
-  border: 1px dashed var(--moss);
-  border-radius: 5px;
-  background: var(--paper);
-  color: var(--ink-muted);
+  padding: 0 12px;
+  border: none;
+  background: rgba(0, 0, 0, .28);
+  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 50%, 100% 100%,
+                     8px 100%, 0 50%);
+  color: rgba(255, 255, 255, .72);
   font-family: var(--font-body);
   font-size: 11px;
   cursor: pointer;
 }
 
 .bk-slot.on {
-  border-style: solid;
-  border-color: var(--forest);
+  background: rgba(255, 255, 255, .9);
   color: var(--forest);
   font-weight: 700;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--forest) 30%, transparent);
 }
 
 .bk-sub { display: inline-flex; }
@@ -1523,3 +1566,48 @@ body.is-preview-frame .student-header-actions { display: none; }
 .sim-name small { color: var(--ink-muted); font-weight: 500; }
 
 .sim-acts-all { margin-top: 10px; }
+
+/* 「如果」底下的 ⊕ / ⊖ —— 和 MakeCode 一樣,可以把「否則」加上去或拿掉。
+   面板上兩塊都擺(一塊有否則、一塊沒有),拼進去之後還能再改。 */
+.bk-plus {
+  width: 20px;
+  height: 20px;
+  margin-left: 6px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, .22);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.bk-plus:hover { background: rgba(0, 0, 0, .35); }
+
+/* 下拉只要「現在這個值」那麼寬 —— 預設會被最長的那個選項撐開,
+   「顯示 數字 [步數]」就會變成兩倍長,和 MakeCode 完全不一樣。 */
+select.bk-field { field-sizing: content; }
+
+/* 量字用的尺,看不見也不佔位置 */
+.bk-ruler {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  white-space: pre;
+  visibility: hidden;
+}
+
+.bk-else.is-add { padding: 3px 10px 5px 14px; }
+
+/* 抽屜裡的小標題(例如「Your Variables」)—— 照 MakeCode 擺在那一組上面 */
+.bk-chips-head {
+  color: rgba(255, 255, 255, .72);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  margin: 4px 0 -2px 2px;
+  border-bottom: 1px dotted rgba(255, 255, 255, .3);
+  padding-bottom: 3px;
+}
