@@ -1351,3 +1351,54 @@ body.is-preview-frame .student-header-actions { display: none; }
   font-size: 10px;
   opacity: .8;
 }
+
+/* ---------- 積木冒險裡的技能 ---------- */
+.bk-stu-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.bk-skill-on {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gold) 18%, transparent);
+  color: var(--gold-ink, #8a6a17);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* 🔬 放大鏡攤開的逐步對照。
+   對的那幾步刻意畫淡:孩子要找的是「從哪一步開始不一樣」,
+   對的步驟越安靜,錯的那一行越跳得出來。 */
+.bk-trace {
+  margin-top: 10px;
+  border-top: 1px dashed var(--paper-shadow);
+  padding-top: 8px;
+}
+
+.bk-trace-head {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  margin-bottom: 4px;
+}
+
+.bk-trace-row {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 3px 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.bk-trace-row.ok { color: var(--ink-muted); opacity: 0.7; }
+.bk-trace-row.bad { color: var(--sick-ink); font-weight: 600; }
+
+.bk-trace-step { flex: 0 0 auto; }
+.bk-trace-got { flex: 1; min-width: 0; }
+.bk-trace-want { flex: 0 0 auto; color: var(--ink-muted); font-weight: 500; }

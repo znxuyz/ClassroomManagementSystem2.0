@@ -122,6 +122,8 @@ async function startTerritoryGame() {
     maxSwaps: Math.max(0, parseInt(document.getElementById('tgMaxSwaps').value) || 0),
     cooldownWrong: Math.max(0, parseInt(document.getElementById('tgCooldownWrong').value) || 0),
     cooldownSeconds: Math.max(0, parseInt(document.getElementById('tgCooldownSeconds').value) || 0),
+    openFrom: (document.getElementById('tgOpenFrom') || {}).value || '',
+    openTo: (document.getElementById('tgOpenTo') || {}).value || '',
     stageMode: document.getElementById('tgStageMode').value,
     stageSeconds: parseInt(document.getElementById('tgStageSeconds').value) || 300
   });
@@ -266,6 +268,14 @@ function renderLiveSettings(c) {
                value="${c.cooldownSeconds === undefined ? 60 : c.cooldownSeconds}" min="0" max="600" />
         <label>秒(0=不冷卻)</label>
 
+        <label style="margin-left:10px;">開放</label>
+        <input type="time" id="lsOpenFrom" class="rule-editor-input" style="width:120px;"
+               value="${c.openFrom || ''}" />
+        <label>～</label>
+        <input type="time" id="lsOpenTo" class="rule-editor-input" style="width:120px;"
+               value="${c.openTo || ''}" />
+        <label>(都空 = 全天)</label>
+
         <label class="tg-live-check" style="margin-left:10px;">
           <input type="checkbox" id="lsStrict" ${c.strictMode !== false ? 'checked' : ''} />
           嚴格作答(全螢幕,離開或切分頁就作廢)
@@ -296,7 +306,9 @@ async function applyLiveSettings() {
     maxSwaps: Math.max(0, parseInt(document.getElementById('lsSwaps').value) || 0),
     cooldownWrong: Math.max(0, parseInt(document.getElementById('lsCoolN').value) || 0),
     cooldownSeconds: Math.max(0, parseInt(document.getElementById('lsCoolSec').value) || 0),
-    strictMode: document.getElementById('lsStrict').checked
+    strictMode: document.getElementById('lsStrict').checked,
+    openFrom: (document.getElementById('lsOpenFrom') || {}).value || '',
+    openTo: (document.getElementById('lsOpenTo') || {}).value || ''
   };
 
   // 會影響重播結果的三項,改了就得先鎖住現況

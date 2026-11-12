@@ -176,10 +176,17 @@ function awardPointsCore(student, points, reason) {
     historyLen: (student.history || []).length
   };
 
+  /* 🌱 成長:發動後 24 小時內,加分算**進化經驗**時變多。
+     可用積分照原本的數字 —— 它只影響養獸,不影響兌換、不影響排行榜,
+     所以是全部技能裡最安全的一個。
+     記在歷程上(grow)只是為了讓老師看得懂那幾分怎麼多出來的。 */
+  const boost = (typeof SkillAdmin !== 'undefined' && points > 0)
+    ? SkillAdmin.growBoost(student.id) : 1;
+
   // 正分:totalPoints 與 currentPoints 都加
   // 負分:只扣 currentPoints,totalPoints 不減(寵物不會退化)
   if (points >= 0) {
-    student.totalPoints += points;
+    student.totalPoints += Math.round(points * boost);
     student.currentPoints += points;
   } else {
     student.currentPoints = Math.max(0, student.currentPoints + points);
@@ -187,7 +194,9 @@ function awardPointsCore(student, points, reason) {
 
   student.lastPointTime = Date.now();
   if (!student.history) student.history = [];
-  student.history.push({ time: Date.now(), points, reason });
+  student.history.push(boost > 1
+    ? { time: Date.now(), points, reason, grow: boost }
+    : { time: Date.now(), points, reason });
   return before;
 }
 

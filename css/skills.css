@@ -356,3 +356,16 @@
 /* 果實的說明有四行階段效果,卡片會變高 —— 圖示和按鈕要靠上,
    不然會浮在卡片中間,看起來像沒對齊。 */
 .prize-card.is-fruit { align-items: flex-start; }
+
+/* 🌱 成長正在生效:不是按鈕,是狀態 —— 所以不做成按鈕的樣子,
+   孩子才不會一直想按它。 */
+.skill-on {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--data-pos) 16%, transparent);
+  color: var(--data-pos);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}

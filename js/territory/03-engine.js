@@ -68,6 +68,12 @@ const Territory = {
       /* 每次攻擊最多可以換幾次題目。換到的題目難度降一階,
          分數也跟著降 —— 代價內建在規則裡,不需要另外罰。 */
       maxSwaps: opts.maxSwaps === 0 ? 0 : (opts.maxSwaps || 3),
+      /* 開放時段(當地時間的 "HH:MM")。兩個都空 = 全天開放,
+         也就是舊的行為 —— 已經在跑的那幾局不會因為更新突然打不了。
+         時段外:地圖、戰況照樣看得到,只有「攻擊」停住。
+         看得到卻打不了是故意的:孩子會先想好等一下要打哪一格。 */
+      openFrom: opts.openFrom || '',
+      openTo: opts.openTo || '',
       stageMode: opts.stageMode || 'auto',      // auto = 依倒數自動開放 / manual = 老師手動
       stageSeconds: opts.stageSeconds || 300,   // 自動模式下每階段的間隔
       openDepth: 1,                             // 手動模式用:已開放到第幾層
@@ -77,6 +83,36 @@ const Territory = {
       status: 'running',
       startedAt: Date.now()
     };
+  },
+
+  /* ---------- 開放時段 ----------
+     回傳 { open, from, to }。兩個時間都沒設就永遠是開的。
+
+     跨夜也要能設(例如 19:00–08:00 的營隊):from > to 時代表跨過午夜,
+     判斷方式從「兩者之間」變成「兩者之外」。
+
+     用的是**裝置的當地時間**。這一條刻意不走伺服器時間:
+     它只是「現在能不能按」的介面限制,不是計分規則
+     —— 真正算分的是事件重播,那邊一律用伺服器時間。
+     把鐘調快一小時最多提早開始打,打下來的地照樣要答對題目。 */
+  openWindow(config, now) {
+    const c = config || {};
+    const from = c.openFrom || '';
+    const to = c.openTo || '';
+    if (!from || !to) return { open: true, from, to };
+
+    const mins = t => {
+      const m = /^(\d{1,2}):(\d{2})$/.exec(t);
+      return m ? (+m[1]) * 60 + (+m[2]) : null;
+    };
+    const a = mins(from), b = mins(to);
+    if (a === null || b === null || a === b) return { open: true, from, to };
+
+    const d = new Date(now || Date.now());
+    const cur = d.getHours() * 60 + d.getMinutes();
+    const open = a < b ? (cur >= a && cur < b)      // 同一天之內
+                       : (cur >= a || cur < b);     // 跨過午夜
+    return { open, from, to };
   },
 
   /* ---------- 內陸深度 ----------

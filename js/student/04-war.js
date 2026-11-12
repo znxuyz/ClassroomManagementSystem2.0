@@ -120,7 +120,27 @@ Object.assign(StudentApp, {
     const coolLeft = this.cooldownLeftMs();
     if (coolLeft > 0) requestAnimationFrame(() => this.startCooldownTimer());
 
+    /* 開放時段:時段外地圖照樣看得到,只有攻擊停住。
+       把整頁換成「現在不能打」會把孩子趕走 ——
+       看得到戰況,他才會先想好等一下要打哪一格。 */
+    const win = Territory.openWindow(c);
+    const night = !win.open && this.canUse('war_night');
+
     return `
+      ${win.open ? '' : `
+        <div class="war-cooldown-bar is-closed">
+          <span class="war-cooldown-icon">🌙</span>
+          <div>
+            <strong>現在是休息時間,不能攻擊</strong><br>
+            每天 <strong>${win.from}</strong> 到 <strong>${win.to}</strong> 才打得了 ——
+            地圖和戰況照樣看得到,先想好等一下要打哪一格。
+          </div>
+          ${night ? `
+            <button class="btn btn-accent btn-small"
+                    onclick="StudentApp.useNight()"
+                    title="用掉一次夜襲,休息時間也能打 ${this.skillPower('war_night')} 格">
+              🌙 夜襲(剩 ${this.skillLeft('war_night')})</button>` : ''}
+        </div>`}
       ${coolLeft > 0 ? `
         <div class="war-cooldown-bar">
           <span class="war-cooldown-icon">⏳</span>
@@ -150,7 +170,10 @@ Object.assign(StudentApp, {
                 ? ' 已待命' : `(剩 ${this.skillLeft('war_power')})`}</button>` : ''}
         </div>
         <div class="war-hint">
-          點選<strong>亮起來</strong>的地塊發動攻擊(有 ${targets.size} 格可打)<br>
+          ${win.open || this.nightLeft() > 0
+            ? `點選<strong>亮起來</strong>的地塊發動攻擊(有 ${targets.size} 格可打)${
+                !win.open ? `<br>🌙 夜襲中,還可以打 <strong>${this.nightLeft()}</strong> 格` : ''}`
+            : '休息時間,攻擊先停住'}<br>
           ${nextAt
             ? `下一圈地圖在 <strong id="warCountdown">${formatCountdown(nextAt - Date.now())}</strong> 後開放`
             : '地圖已全部開放'}
@@ -248,6 +271,7 @@ Object.assign(StudentApp, {
 
     this.tSwapping = false;
     this.tSwapsLeft--;
+    this.timeUseId = null;      // 換到的是新題目,加時可以再用一次
     this.tQuestion = q;
     this.shuffleOptions(q);
     this.tPickedAnswer = null;
@@ -259,8 +283,54 @@ Object.assign(StudentApp, {
     this.render();
   },
 
+  /* ---------- 加時 ----------
+     做成「作答中按」而不是「開題前先開啟」:倒數跳出來才知道不夠用,
+     要孩子預先決定等於要他賭。一題只能加一次。 */
+  async useTime() {
+    if (!this.canUse('war_time')) { toast('加時現在用不了'); return; }
+    if (this.tDeadline <= 0) { toast('這一題沒有限時,不需要加時'); return; }
+    if (this.timeUseId) { toast('這一題已經加過時間了'); return; }
+    try {
+      this.timeUseId = await this.spendSkill('war_time', this.tAttemptId || String(Date.now()));
+      const add = this.skillPower('war_time') || 0;
+      this.tDeadline += add * 1000;
+      this.startAnswerTimer();
+      toast(`⏱️ 加時 +${add} 秒`);
+      this.render();
+    } catch (e) {
+      toast(this.skillError(e));
+    }
+  },
+
+  /* 夜襲還剩幾格可以打(發動一次給 power 格,打一格少一格) */
+  nightLeft() { return Math.max(0, this._nightLeft || 0); },
+
+  /* 用掉一次夜襲 —— 和靜心同一條路:先登記到伺服器,再放行。
+     登記不成功就不給打,不然改前端就能無限夜襲。 */
+  async useNight() {
+    if (!this.canUse('war_night')) { toast('夜襲現在用不了'); return; }
+    try {
+      await this.spendSkill('war_night', String(Date.now()));
+      this._nightLeft = this.skillPower('war_night') || 1;
+      toast(`🌙 夜襲!休息時間還可以打 ${this._nightLeft} 格`);
+      this.render();
+    } catch (e) {
+      toast(this.skillError(e));
+    }
+  },
+
   async attackHex(hexKey) {
     if (this.tQuestions.length === 0) { toast('題庫是空的,請找老師'); return; }
+    /* 休息時間只有夜襲過的才打得了。這一關是介面上的限制 ——
+       真正算分的是事件重播,所以就算有人改了前端硬送出,
+       也只是提早打一格,照樣要答對題目才拿得到分。 */
+    if (!Territory.openWindow(TerritoryGame.config).open) {
+      if (this.nightLeft() <= 0) {
+        toast('現在是休息時間,還不能攻擊');
+        return;
+      }
+      this._nightLeft = this.nightLeft() - 1;
+    }
     // 紀錄是開局後才讀的,萬一還沒讀完就被點到,先補讀 —— 否則會抽到
     // 已經答對過的題目,送出時被規則擋下來,看起來就像莫名其妙答錯
     if (!this._warHistoryLoaded) { this._warHistoryLoaded = true; await this.loadMyAttempts(); }
@@ -338,6 +408,7 @@ Object.assign(StudentApp, {
        所以技能可以綁定「就是這一次攻擊」,不會被挪去別次用。 */
     this.tAttackId = this.tAttemptId;
     this.handUseId = null;
+    this.timeUseId = null;      // 加時一題只能用一次,換題也算新的一題
 
     this.warPowerUse = null;
     this.warPowerMult = 1;
@@ -648,6 +719,12 @@ Object.assign(StudentApp, {
         </div>
 
         <div class="war-q-acts">
+          ${this.tDeadline > 0 && this.canUse('war_time') && !this.timeUseId ? `
+            <button class="btn btn-ghost btn-small"
+                    onclick="StudentApp.useTime()"
+                    title="用掉一次加時,這一題多 ${this.skillPower('war_time')} 秒">
+              ⏱️ 加時 +${this.skillPower('war_time')} 秒(剩 ${
+                this.skillLeft('war_time')})</button>` : ''}
           ${this.canUse('war_hand') && !this.handUseId ? `
             <button class="btn btn-ghost btn-small"
                     onclick="StudentApp.useHand()"

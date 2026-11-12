@@ -49,8 +49,14 @@ function starsFor(task, program, opts) {
   const o = opts || {};
   if (!o.pass) return 0;
   let s = 1;
-  if (!o.hintsUsed) s = 2;
-  const limit = (task && task.starLimitPublic) || starBlockLimit(task);
+  /* 🔍 偵錯:這一題有幾條提示不算數。
+     現在的規則「看提示就少一顆星」會讓孩子寧可卡住也不看提示,
+     那是反效果 —— 這個技能買的就是「這次可以安心看」。 */
+  const forgiven = Math.max(0, o.hintFree || 0);
+  if ((o.hintsUsed || 0) <= forgiven) s = 2;
+  /* 🧰 工具箱:第三顆星的積木上限放寬幾塊。 */
+  const base = (task && task.starLimitPublic) || starBlockLimit(task);
+  const limit = base > 0 ? base + Math.max(0, o.limitBonus || 0) : 0;
   if (s === 2 && limit > 0 && blockCount(program) <= limit) s = 3;
   return s;
 }
@@ -67,10 +73,13 @@ function starText(n) {
    為什麼用「前一關」而不是「全部前面的關」:
    中間卡住一題就整條路斷掉的話,孩子只能等老師;
    前一關過了就能往前,老師也可以把難的那一題設成隨時可挑戰。 */
-function taskUnlocked(tasks, index, starsOf) {
+function taskUnlocked(tasks, index, starsOf, opened) {
   if (index <= 0) return true;
   const t = tasks[index];
   if (t && t.free) return true;
+  /* 🔓 開路:用技能先開給他的那幾關。這一條只在學生端有意義
+     —— 解鎖只是介面上的順序,分數還是交了作品老師才給。 */
+  if (opened && t && opened.has(t.id)) return true;
   const prev = tasks[index - 1];
   return !!prev && (starsOf(prev.id) > 0);
 }

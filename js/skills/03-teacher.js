@@ -90,6 +90,19 @@ const SkillAdmin = {
     return this.uses.find(u => u.id === useId) || null;
   },
 
+  /* 🌱 成長:這位學生現在的經驗倍率(沒發動或已經過了 24 小時就是 1)。
+     刻意是 24 小時而不是「這一週」—— 技能次數每週一歸零,
+     做成一整週的話,每週一發動一次就等於永久加成,
+     冷卻設多久都擋不住(冷卻 7 天剛好就是每週一次)。
+     24 小時反而變成一個決定:孩子會挑有戰紀、有大考的那天用。 */
+  growBoost(studentId, now) {
+    if (!this.on()) return 1;
+    const t = now || Date.now();
+    const u = this.uses.find(x => x.studentId === studentId && x.skillId === 'pet_grow'
+      && x.at && t - x.at < 86400000);
+    return u && u.power > 1 ? u.power : 1;
+  },
+
   /* 技能使用是一次性的:同一筆不能套用在兩次結算上。
      已經吃掉的記在這裡(存進班級資料,換裝置也算數)。 */
   consumed() {

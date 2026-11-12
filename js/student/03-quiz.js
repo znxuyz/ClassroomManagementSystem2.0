@@ -14,6 +14,7 @@ Object.assign(StudentApp, {
     if (!quiz) return;
     this.activeQuiz = quiz;
     this.draftAnswers = {};
+    this.restoreCuts(quiz);
 
     // 逐題搶答:先查自己已經答過哪幾題,重新整理或換裝置都接得回去
     if (quiz.scoreMode === 'perQuestion') {
@@ -28,6 +29,7 @@ Object.assign(StudentApp, {
     const quiz = this.activeQuiz;
     this.activeQuiz = null;
     this.draftAnswers = {};
+    this.cutMap = {};
     this.qPicked = null;
     // 逐題搶答離開時把進度更新回列表,不然還是顯示舊的題數
     if (quiz && quiz.scoreMode === 'perQuestion') {
@@ -161,8 +163,13 @@ Object.assign(StudentApp, {
 
     let options = '';
     if (q.type === 'choice') {
+      const cut = this.cutOf(q.id);
       // 顯示順序打亂,但送出的仍是原本的索引
-      options = this.optionOrder(quiz.id, q).map((oi, pos) => `
+      options = this.optionOrder(quiz.id, q).map((oi, pos) => cut.includes(oi) ? `
+        <div class="student-option is-cut">
+          <span class="student-option-letter">${'ABCD'[pos]}</span>
+          <span>${escapeHtml(q.options[oi])}</span>
+        </div>` : `
         <div class="student-option ${picked === oi ? 'picked' : ''}"
              onclick="StudentApp.pickQAnswer(${oi})">
           <span class="student-option-letter">${'ABCD'[pos]}</span>
@@ -194,6 +201,7 @@ Object.assign(StudentApp, {
 
         <div class="student-question">
           <div class="student-question-text">${escapeHtml(q.text)}</div>
+          ${this.cutButton(quiz, q)}
           ${options}
         </div>
 
@@ -218,7 +226,13 @@ Object.assign(StudentApp, {
           <span class="student-question-num">${i + 1}</span>${escapeHtml(q.text)}
         </div>
 
-        ${q.type === 'choice' ? this.optionOrder(quiz.id, q).map((oi, pos) => `
+        ${q.type === 'choice' ? this.cutButton(quiz, q) : ''}
+        ${q.type === 'choice' ? this.optionOrder(quiz.id, q).map((oi, pos) =>
+          this.cutOf(q.id).includes(oi) ? `
+          <label class="student-option is-cut">
+            <span class="student-option-letter">${'ABCD'[pos]}</span>
+            <span>${escapeHtml(q.options[oi])}</span>
+          </label>` : `
           <label class="student-option">
             <input type="radio" name="sq_${q.id}" value="${oi}"
                    onchange="StudentApp.setAnswer('${q.id}', ${oi})" />
@@ -254,6 +268,83 @@ Object.assign(StudentApp, {
         <div class="student-note">交卷後無法修改,請確認每題都作答了。</div>
       </main>
     `;
+  },
+
+  /* ---------- 🧹 刪去 ----------
+     畫掉幾個一定不對的選項。做在前端是可以的:選項本來就都在學生那裡,
+     刪去沒有多給他任何資訊,只是幫他把「一定不對」的那幾個收起來。
+     真正要守住的是**次數**,那一筆在伺服器上(spendSkill 會擋)。
+
+     只對四選一這種題目開放:剩兩個選項再刪就等於直接給答案。 */
+  cutOf(qid) { return (this.cutMap || {})[qid] || []; },
+
+  /* 畫掉哪幾個,用題目 id 當種子算出來 ——
+     **不能用 Math.random**:學生重新整理一次就會換一組,
+     等於同一次技能可以看兩套不同的刪法,慢慢就把答案刪出來了。
+     固定下來之後,重新整理只是把同一個結果再畫一次。
+     最少留兩個選項:剩兩個再刪就等於直接送答案。 */
+  cutPick(q, n) {
+    const wrong = q.options
+      .map((o, i) => (o && i !== q.answer) ? i : -1).filter(i => i >= 0);
+    const live = q.options.filter(o => o).length;
+    const take = Math.max(0, Math.min(n, wrong.length, live - 2));
+    let h = 2166136261;
+    for (const ch of String(q.id)) { h = ((h ^ ch.charCodeAt(0)) * 16777619) >>> 0; }
+    const order = wrong.map((v, i) => {
+      h = (h * 1103515245 + 12345) >>> 0;
+      return { v, k: h };
+    }).sort((a, b) => a.k - b.k).map(x => x.v);
+    return order.slice(0, take);
+  },
+
+  /* 重新整理之後要把畫掉的那幾個畫回來 ——
+     技能已經扣掉了,畫面卻復原的話等於白花一次。
+     紀錄在 skillUses 裡(ref = 測驗 id # 題目 id),所以換裝置也接得回來。 */
+  restoreCuts(quiz) {
+    this.cutMap = {};
+    if (!this.skillsOn()) return;
+    const p = this.skillPower('quiz_cut') || 1;
+    (this.skillUses || []).forEach(u => {
+      if (u.skillId !== 'quiz_cut') return;
+      const [qz, qid] = String(u.ref || '').split('#');
+      if (qz !== quiz.id || !qid) return;
+      const q = quiz.questions.find(x => x.id === qid);
+      if (q) this.cutMap[qid] = this.cutPick(q, u.power || p);
+    });
+  },
+
+  cutButton(quiz, q) {
+    if (q.type !== 'choice') return '';
+    const live = (q.options || []).filter(o => o).length;
+    if (live < 3 || !this.canUse('quiz_cut')) return '';
+    if (this.cutOf(q.id).length) return '';
+    return `
+      <button class="btn btn-ghost btn-small quiz-cut-btn"
+              onclick="StudentApp.useCut('${quiz.id}','${q.id}')"
+              title="用掉一次刪去,畫掉 ${this.skillPower('quiz_cut')} 個錯的選項">
+        🧹 刪去 ${this.skillPower('quiz_cut')} 個錯的(剩 ${this.skillLeft('quiz_cut')})
+      </button>`;
+  },
+
+  async useCut(quizId, qid) {
+    const quiz = this.activeQuiz;
+    const q = quiz && quiz.questions.find(x => x.id === qid);
+    if (!q || !this.canUse('quiz_cut')) { toast('刪去現在用不了'); return; }
+    try {
+      await this.spendSkill('quiz_cut', quizId + '#' + qid);
+      this.cutMap = this.cutMap || {};
+      this.cutMap[qid] = this.cutPick(q, this.skillPower('quiz_cut') || 1);
+      const take = this.cutMap[qid].length;
+      // 畫掉的剛好是他選的,就把選擇清掉
+      if (this.cutMap[qid].includes(this.qPicked)) this.qPicked = null;
+      if (this.draftAnswers && this.cutMap[qid].includes(this.draftAnswers[qid])) {
+        delete this.draftAnswers[qid];
+      }
+      toast(`🧹 畫掉了 ${take} 個錯的選項`);
+      this.render();
+    } catch (e) {
+      toast(this.skillError(e));
+    }
   },
 
   async submit() {

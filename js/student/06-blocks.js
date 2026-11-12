@@ -51,7 +51,61 @@ Object.assign(StudentApp, {
 
   bkLocked(id) {
     const i = this.blockTasks.findIndex(t => t.id === id);
-    return !taskUnlocked(this.blockTasks, i, x => this.bkStars(x));
+    return !taskUnlocked(this.blockTasks, i, x => this.bkStars(x), this.bkOpened());
+  },
+
+  /* ---------- 積木冒險的三個技能 ----------
+     偵錯、工具箱、開路都是「對某一題用一次」,所以紀錄的 ref 就是題目 id。
+     每次都從 skillUses 重算,不另外存 —— 換裝置、重新整理都接得回來,
+     而且老師那一端看的是同一批紀錄,算出來的星星不會和學生看到的不一樣。 */
+  bkUse(skillId, taskId) {
+    return (this.skillUses || []).find(u => u.skillId === skillId && u.ref === taskId) || null;
+  },
+
+  /* 🔍 偵錯:這一題有幾條提示不扣星 */
+  bkHintFree(taskId) {
+    const u = this.bkUse('bk_debug', taskId);
+    return u ? (u.power || 1) : 0;
+  },
+
+  /* 🧰 工具箱:這一題第三顆星的積木上限多幾塊 */
+  bkLimitBonus(taskId) {
+    const u = this.bkUse('bk_room', taskId);
+    return u ? (u.power || 0) : 0;
+  },
+
+  /* 🔓 開路:被先開起來的那幾關。
+     在第 i 關用開路,開的是它後面的 power 關。 */
+  bkOpened() {
+    const out = new Set();
+    (this.skillUses || []).forEach(u => {
+      if (u.skillId !== 'bk_open') return;
+      const i = this.blockTasks.findIndex(t => t.id === u.ref);
+      if (i < 0) return;
+      for (let k = 1; k <= (u.power || 1); k++) {
+        const t = this.blockTasks[i + k];
+        if (t) out.add(t.id);
+      }
+    });
+    return out;
+  },
+
+  async bkUseSkill(skillId) {
+    const t = this.bkTask;
+    if (!t) return;
+    if (!this.canUse(skillId)) { toast('這個技能現在用不了'); return; }
+    if (this.bkUse(skillId, t.id)) { toast('這一題已經用過這個技能了'); return; }
+    try {
+      await this.spendSkill(skillId, t.id);
+      const sk = SkillEngine.byId(skillId);
+      toast(`${sk.icon} ${sk.name}!`);
+      if (skillId === 'bk_open') { this.render(); return; }
+      // 偵錯與工具箱會改變星數,所以當場重算一次
+      this.bkCheck();
+      this.bkSyncButtons();
+    } catch (e) {
+      toast(this.skillError(e));
+    }
   },
 
   bkOpen(id) {
@@ -91,7 +145,9 @@ Object.assign(StudentApp, {
     if (bad) { this.bkResult = { kind: 'hint', text: bad }; this.bkSyncButtons(); return; }
 
     const r = BlockJudge.runCompiled({ script: t.script, expect: t.expect }, program);
-    const stars = starsFor(t, program, { pass: r.pass, hintsUsed: this.bkHints });
+    const stars = starsFor(t, program, {
+      pass: r.pass, hintsUsed: this.bkHints,
+      hintFree: this.bkHintFree(t.id), limitBonus: this.bkLimitBonus(t.id) });
     this.bkResult = {
       kind: r.pass ? 'pass' : 'fail',
       text: BlockJudge.explain(r),
@@ -216,14 +272,62 @@ Object.assign(StudentApp, {
     if (!hints.length) return '';
     const used = hints.slice(0, this.bkHints);
     const left = hints.length - this.bkHints;
+    const free = this.bkHintFree(t.id);
     return `
       <div class="bk-stu-hints">
         ${used.map((h, i) => `
           <div class="bk-stu-hint"><b>提示 ${i + 1}</b>${escapeHtml(h)}</div>`).join('')}
         ${left > 0 ? `
           <button class="btn btn-ghost btn-block btn-small" onclick="StudentApp.bkUseHint()">
-            卡住了?看一條提示(還有 ${left} 條 · 會少一顆星)
+            卡住了?看一條提示(還有 ${left} 條 · ${free > 0 ? '🔍 這一題不扣星' : '會少一顆星'})
           </button>` : ''}
+      </div>`;
+  },
+
+  /* 這一題用得上的技能。
+     已經用過的就標出來,不給再按 —— 按了只會被擋,那很差。 */
+  renderBkSkills() {
+    const t = this.bkTask;
+    if (!t || !this.skillsOn()) return '';
+    const btn = (id, label, hint) => {
+      if (!this.owns(id)) return '';
+      const used = this.bkUse(id, t.id);
+      const sk = SkillEngine.byId(id);
+      if (used) return `<span class="bk-skill-on">${sk.icon} ${sk.name}已生效</span>`;
+      if (this.skillLeft(id) <= 0) return '';
+      return `<button class="btn btn-ghost btn-small"
+                 onclick="StudentApp.bkUseSkill('${id}')" title="${hint}"
+                 >${sk.icon} ${label}(剩 ${this.skillLeft(id)})</button>`;
+    };
+    const parts = [
+      btn('bk_debug', '偵錯', '這一題看提示不扣星'),
+      btn('bk_room', `工具箱 +${this.skillPower('bk_room')}`, '第三顆星的積木上限放寬'),
+      btn('bk_open', '開路', '沒過也先把下一關開起來'),
+      /* 放大鏡只有「檢查沒過」時才有意義 */
+      (this.bkResult && this.bkResult.kind === 'fail')
+        ? btn('bk_scope', '放大鏡', '把每一步攤開來看,不只第一個錯的地方') : ''
+    ].filter(Boolean);
+    return parts.length ? `<div class="bk-stu-skills">${parts.join('')}</div>` : '';
+  },
+
+  /* 🔬 放大鏡:把每一步攤開。
+     平常只講「第一個不一樣的地方」就夠了,但有時候錯的是一個規律
+     (每次都少 1、順序反了),只看一步看不出來。整排攤開才看得見。 */
+  renderBkTrace(r) {
+    const steps = r.steps || [];
+    if (!steps.length) return '';
+    const deep = (this.bkUse('bk_scope', (this.bkTask || {}).id) || {}).power >= 2;
+    return `
+      <div class="bk-trace">
+        <div class="bk-trace-head">🔬 每一步攤開來看</div>
+        ${steps.map(s => `
+          <div class="bk-trace-row ${s.ok ? 'ok' : 'bad'}">
+            <span class="bk-trace-step">${escapeHtml(s.label)}</span>
+            <span class="bk-trace-got">${escapeHtml(BlockVM.describeScreen(s.got))}</span>
+            ${!s.ok && deep
+              ? `<span class="bk-trace-want">應該是 ${
+                   escapeHtml(BlockVM.describeScreen(s.expect))}</span>` : ''}
+          </div>`).join('')}
       </div>`;
   },
 
@@ -231,7 +335,9 @@ Object.assign(StudentApp, {
     const r = this.bkResult;
     const t = this.bkTask;
     const done = t && this.myBlockWork[t.id];
-    const limit = t ? (t.starLimitPublic || 0) : 0;
+    const limit = t
+      ? ((t.starLimitPublic || 0) + (t.starLimitPublic ? this.bkLimitBonus(t.id) : 0))
+      : 0;
     const actions = `
       <div class="bk-stu-acts">
         <button class="btn btn-primary btn-block" onclick="StudentApp.bkCheck()">檢查看看</button>
@@ -240,6 +346,7 @@ Object.assign(StudentApp, {
                done ? '再交一次' : '交出去'}</button>`
           : ''}
       </div>
+      ${this.renderBkSkills()}
       ${this.renderBkHints()}`;
 
     if (!r) {
@@ -273,6 +380,7 @@ Object.assign(StudentApp, {
         <div class="bk-stu-bar"><span style="width:${r.score}%"></span></div>
         <div class="bk-stu-bar-label">已經對了 ${r.score}%</div>
         ${escapeHtml(r.text)}
+        ${this.bkUse('bk_scope', t.id) ? this.renderBkTrace(r) : ''}
       </div>${actions}`;
   }
 });

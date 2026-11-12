@@ -880,3 +880,13 @@
   }
   .tg-hud-bar { min-width: 20px; }
 }
+
+/* 休息時間:和「連錯冷卻」用同一條橫幅,但換成夜色 ——
+   冷卻是「你剛才錯太多」,休息時間是「現在不是打的時候」,
+   兩件事不該長得一樣,孩子才不會以為自己被罰了。 */
+.war-cooldown-bar.is-closed {
+  border-color: rgba(92, 105, 160, 0.45);
+  background: rgba(92, 105, 160, 0.12);
+}
+
+.war-cooldown-bar.is-closed .war-cooldown-icon { animation: none; }

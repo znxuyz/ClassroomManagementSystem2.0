@@ -167,14 +167,14 @@ for (const [w, h, tag] of [[1440, 1000, '1440'], [1024, 800, '1024'], [390, 844,
     navGoItem('challenge', 'territory', 'tgBoard');
     const ids = ['tgShape','tgSize','tgStageMode','tgStageSeconds','tgBattle','tgAnswerSeconds',
                  'tgThreshold','tgWrongPenalty','tgPenaltyFloor','tgCooldownWrong',
-                 'tgCooldownSeconds','tgMaxSwaps','tgStageUnit'];
+                 'tgCooldownSeconds','tgMaxSwaps','tgOpenFrom','tgOpenTo','tgStageUnit'];
     const missing = ids.filter(id => !document.getElementById(id));
     t.ok('開局設定的每個欄位都還在', missing.length === 0, missing.join(', '));
     t.ok('設定分成有標題的組別',
       document.querySelectorAll('.tg-group-title').length === 3,
       document.querySelectorAll('.tg-group-title').length + ' 組');
     t.ok('每個欄位都自己帶名稱',
-      document.querySelectorAll('.tg-field-name').length === 12,
+      document.querySelectorAll('.tg-field-name').length === 13,
       document.querySelectorAll('.tg-field-name').length + ' 個');
 
     document.getElementById('tgStageMode').value = 'manual'; toggleStageSeconds();

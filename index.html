@@ -619,9 +619,19 @@
                 <span class="tg-field-name">可換題</span>
                 <span class="tg-input-row">
                   <input type="number" id="tgMaxSwaps" class="rule-editor-input"
-                         value="3" min="0" max="5"
-                         title="每次攻擊最多換幾次題目,換到的難度降一階。0 = 不能換" />
-                  <span class="tg-unit">次 · 0 不能換</span>
+                         value="0" min="0" max="5"
+                         title="全班每次攻擊最多換幾次題目。0 = 只有學過「✋ 巧手」的孩子能換" />
+                  <span class="tg-unit">次 · 0 只靠巧手</span>
+                </span>
+              </label>
+              <label class="tg-field">
+                <span class="tg-field-name">開放時段</span>
+                <span class="tg-input-row">
+                  <input type="time" id="tgOpenFrom" class="rule-editor-input"
+                         title="這個時間之後才打得了。兩欄都留空 = 全天開放" />
+                  <span class="tg-unit">～</span>
+                  <input type="time" id="tgOpenTo" class="rule-editor-input"
+                         title="這個時間之後就停打。兩欄都留空 = 全天開放" />
                 </span>
               </label>
             </div>
@@ -642,6 +652,11 @@
           ✦ 地圖從<strong>各組基地往外</strong>一圈一圈開放,所以每一組每個階段能碰到的
             格子數大致相同。你也可以按「手動開放/封鎖」框選格子,提早開放某片區域或
             把某些格子封起來當障礙。<br>
+          ✦ <strong>開放時段</strong>兩欄留空就是全天開放。設了之後,時段外孩子
+            <strong>看得到地圖與戰況,但按不了攻擊</strong> —— 學過「🌙 夜襲」的可以破例打幾格。
+            可以跨夜(例如 19:00～08:00)。<br>
+          ✦ <strong>可換題設 0</strong>,換題就變成只有學過「✋ 巧手」的孩子才有的能力;
+            設大於 0 就是全班都能換那麼多次。<br>
           ✦ 判定由系統依<strong>伺服器時間</strong>自動進行,你不需要一直開著這個頁面。
         </div>
 

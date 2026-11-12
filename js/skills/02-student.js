@@ -100,7 +100,8 @@ Object.assign(StudentApp, {
       skillId, season, n, power,
       ref: ref || ''
     });
-    this.skillUses.push({ id, skillId, season, n, power, ref: ref || '', uid: Cloud.uid });
+    this.skillUses.push({ id, skillId, season, n, power, ref: ref || '',
+                          uid: Cloud.uid, at: Date.now() });
     return id;
   },
 
@@ -147,6 +148,7 @@ Object.assign(StudentApp, {
                   <div class="skill-level">${escapeHtml(s.levelText)}</div>
                   <div class="skill-desc">${escapeHtml(s.desc)}</div>
                 </div>
+                ${s.id === 'pet_grow' && s.total > 0 ? this.growAction(s) : ''}
                 ${s.total > 0
                   ? `<span class="skill-left">${s.left}<small>/${s.total}</small></span>`
                   : '<span class="skill-left locked">🔒</span>'}
@@ -162,6 +164,51 @@ Object.assign(StudentApp, {
             —— 在<strong>兌換</strong>分頁。
           </div>` : ''}
       </section>`;
+  },
+
+  /* ---------- 🌱 成長 ----------
+     別的技能都是「做某件事的時候順手用」,成長沒有那個時機,
+     所以它的按鈕就放在這張卡上。
+
+     效果是**發動後 24 小時**,不是一整週 —— 一整週的話,
+     每週一按一次就等於永久加成。24 小時讓它變成一個決定:
+     今天有蜂巢戰紀、明天要考試,挑一天用。 */
+  growUntil() {
+    const u = (this.skillUses || [])
+      .filter(x => x.skillId === 'pet_grow' && x.at)
+      .sort((a, b) => b.at - a.at)[0];
+    if (!u) return 0;
+    const end = u.at + 86400000;
+    return end > Date.now() ? end : 0;
+  },
+
+  growAction(s) {
+    const until = this.growUntil();
+    if (until) {
+      const h = Math.max(1, Math.ceil((until - Date.now()) / 3600000));
+      return `<span class="skill-on">生效中 · 還有 ${h} 小時</span>`;
+    }
+    if (s.left <= 0) return '';
+    return `<button class="btn btn-accent btn-small"
+               onclick="StudentApp.useGrow()"
+               title="發動後 24 小時內拿到的分數,算進化經驗時會變 ${s.power} 倍"
+               >發動</button>`;
+  },
+
+  async useGrow() {
+    if (!this.canUse('pet_grow')) { toast('成長現在用不了'); return; }
+    const p = this.skillPower('pet_grow');
+    if (!confirm(`現在發動「成長」嗎?\n\n`
+      + `接下來 24 小時內拿到的分數,算進化經驗時會變 ${p} 倍。\n`
+      + `(可用積分不變,所以不會影響兌換。)\n\n`
+      + `挑一個會拿到比較多分的日子用 —— 例如今天有蜂巢戰紀,或明天要考試。`)) return;
+    try {
+      await this.spendSkill('pet_grow', String(Date.now()));
+      toast('🌱 成長發動!接下來 24 小時多拿經驗');
+      this.render();
+    } catch (e) {
+      toast(this.skillError(e));
+    }
   },
 
   /* 「再進化一次,我的技能會變成什麼」——

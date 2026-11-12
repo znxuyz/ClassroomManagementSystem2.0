@@ -71,8 +71,19 @@ const BlockWork = {
              因為那只影響榮譽,不影響分數。 */
           const w = doc.work[taskId];
           task.stars = task.stars || {};
+          /* 🔍 偵錯、🧰 工具箱也要在這一端算進去,
+             不然學生畫面上看到三顆星、老師這邊只給兩顆 ——
+             那比沒有這兩個技能更糟。
+             用 usedOn 不是 claim:這一段會重跑很多次,
+             技能綁的是「這一題」,不是「這一次結算」。 */
+          const sk = (typeof SkillAdmin !== 'undefined' && SkillAdmin.on())
+            ? {
+                hintFree: (SkillAdmin.usedOn(student.id, 'bk_debug', taskId) || {}).power || 0,
+                limitBonus: (SkillAdmin.usedOn(student.id, 'bk_room', taskId) || {}).power || 0
+              }
+            : {};
           const got = starsFor(task, w.program,
-            { pass: true, hintsUsed: w.hintsUsed || 0 });
+            { pass: true, hintsUsed: w.hintsUsed || 0, ...sk });
           if (got > (task.stars[student.id] || 0)) {
             task.stars[student.id] = got;
             starsGained = true;

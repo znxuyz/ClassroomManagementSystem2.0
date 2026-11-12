@@ -388,3 +388,15 @@
   font-weight: 600;
   color: var(--ink-soft);
 }
+
+/* 🧹 刪去畫掉的選項:留在原位但按不下去。
+   直接拿掉的話,選項會往上跳,孩子會懷疑自己看錯了;
+   留著並畫掉,他才看得出「這一個被刪掉了」。 */
+.student-option.is-cut {
+  opacity: 0.4;
+  text-decoration: line-through;
+  pointer-events: none;
+  background: var(--paper-shadow);
+}
+
+.quiz-cut-btn { margin: 4px 0 8px; }

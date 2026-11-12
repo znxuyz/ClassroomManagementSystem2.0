@@ -833,7 +833,11 @@ const Cloud = {
     const snap = await this.db.collection('classes').doc(classId)
       .collection('skilluses')
       .where('uid', '==', uid).where('season', '==', season).get();
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    return snap.docs.map(d => {
+      const v = d.data();
+      return { id: d.id, ...v,
+               at: v.at && v.at.toMillis ? v.at.toMillis() : (v.at || Date.now()) };
+    });
   },
 
   /* 全班的技能使用。老師端看得到誰用了什麼;蜂巢戰紀的護盾也要靠它重播,
@@ -841,7 +845,14 @@ const Cloud = {
   watchSkillUses(classId, season, cb) {
     return this.db.collection('classes').doc(classId)
       .collection('skilluses').where('season', '==', season)
-      .onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+      /* at 是伺服器蓋的 Timestamp,不是數字 —— 轉成毫秒再交出去,
+         呼叫端(例如成長的 24 小時)才能直接拿來比。
+         剛寫進去的那一瞬間 at 會是 null(伺服器還沒回填),用本機時間頂著。 */
+      .onSnapshot(snap => cb(snap.docs.map(d => {
+        const v = d.data();
+        return { id: d.id, ...v,
+                 at: v.at && v.at.toMillis ? v.at.toMillis() : (v.at || Date.now()) };
+      })),
         err => console.warn('[技能] 使用紀錄監聽中斷:', err.message));
   },
 
