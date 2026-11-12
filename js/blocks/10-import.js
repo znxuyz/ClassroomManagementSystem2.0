@@ -430,16 +430,38 @@ const BlockImport = {
   },
 
   /* ---------- 從 .hex 拆出原始碼 ----------
-     MakeCode 把專案的原始碼夾在 .hex 檔裡。拆出來之後走的還是上面那條路
-     —— 夾的就是同一份 main.ts。
+     MakeCode 把整個專案夾在 .hex 檔裡,夾法是這樣的:
 
-     夾法有好幾代,所以這裡不賭單一一種:先找得出 JSON 的話用 JSON,
-     找不到就退回「整個檔案裡撈 main.ts 那一段」。
-     兩種都失敗就老實回 null,讓畫面請老師改用貼上 JavaScript。 */
+       · 檔案是 Intel HEX,每一行 `:LLAAAATT<資料><檢查碼>`
+       · 專案夾在 **TT = 0E** 的那些記錄裡(那是 MakeCode 自己用的型別)
+       · 把那些記錄的資料接起來之後:
+           0~7    魔術數字 41140E2FB82FA2BB
+           8~9    後面那份說明有多長(小端序)
+           10~11  再後面那份壓縮資料有多長
+           12~15  保留
+           之後   說明(JSON)+ 壓縮資料
+       · 說明裡寫著 {"compression":"LZMA","headerSize":…}
+       · 解開之後:前 headerSize 個位元組是專案資訊,
+         剩下的是一份 JSON,裡面才是 main.ts / main.blocks
+
+     驗證方式不是看規格書 —— 是拿老師真的從 MakeCode 下載的那個檔案,
+     一路拆到 main.ts,再和 Python 的 lzma 解出來的結果逐位元組比對。
+
+     拆不出來就回 null,畫面會請老師改用貼上 JavaScript
+     —— 不要留一個「匯入了 0 塊積木」的畫面讓人猜。 */
   fromHex(text) {
     const s = String(text || '');
 
-    // 1) 原始碼有時直接以 JSON 夾在檔尾
+    // 1) Intel HEX 的 0E 記錄(這是 MakeCode 現在的做法)
+    const blob = this.hexBlob(s);
+    if (blob) {
+      try {
+        const src = this.unpackBlob(blob);
+        if (src) return src;
+      } catch (e) { /* 換下一種 */ }
+    }
+
+    // 2) 有些舊版 / 分享出來的檔案直接把 JSON 夾在檔尾
     const jsonHit = /\{[^{}]*"main\.ts"\s*:\s*"/.exec(s);
     if (jsonHit) {
       const tail = s.slice(jsonHit.index);
@@ -450,7 +472,7 @@ const BlockImport = {
       } catch (e) { /* 換下一種 */ }
     }
 
-    // 2) base64 夾層:把看起來像 base64 的長片段解開來找 main.ts
+    // 3) base64 夾層
     const b64 = s.match(/[A-Za-z0-9+/]{100,}={0,2}/g) || [];
     for (const chunk of b64) {
       let dec = '';
@@ -460,6 +482,52 @@ const BlockImport = {
     }
 
     return null;
+  },
+
+  /* 把所有 0E 記錄的資料接起來 */
+  hexBlob(text) {
+    const out = [];
+    const lines = String(text).split(/\r?\n/);
+    for (const line of lines) {
+      if (line.charCodeAt(0) !== 58 || line.length < 11) continue;   // ':'
+      if (line.substr(7, 2).toUpperCase() !== '0E') continue;
+      const len = parseInt(line.substr(1, 2), 16);
+      if (!(len > 0) || line.length < 9 + len * 2) continue;
+      for (let i = 0; i < len; i++) {
+        out.push(parseInt(line.substr(9 + i * 2, 2), 16));
+      }
+    }
+    return out.length ? new Uint8Array(out) : null;
+  },
+
+  SRC_MAGIC: [0x41, 0x14, 0x0E, 0x2F, 0xB8, 0x2F, 0xA2, 0xBB],
+
+  /* 檢查魔術數字 → 讀長度 → 需要的話解壓 → 取出 main.ts */
+  unpackBlob(b) {
+    for (let i = 0; i < 8; i++) if (b[i] !== this.SRC_MAGIC[i]) return null;
+    const hdrLen = b[8] | (b[9] << 8);
+    const txtLen = b[10] | (b[11] << 8);
+    if (!hdrLen || !txtLen || b.length < 16 + hdrLen + txtLen) return null;
+
+    const dec = new TextDecoder('utf-8', { fatal: false });
+    let meta = {};
+    try { meta = JSON.parse(dec.decode(b.subarray(16, 16 + hdrLen))); } catch (e) { return null; }
+
+    let body = b.subarray(16 + hdrLen, 16 + hdrLen + txtLen);
+    if (String(meta.compression || '').toUpperCase() === 'LZMA') {
+      if (typeof LZMA === 'undefined') return null;
+      body = LZMA.decode(body);
+    }
+
+    /* 前 headerSize 個位元組是專案資訊,不是我們要的。
+       後面那段結尾可能補了 0,要先去掉才 parse 得動。 */
+    let rest = body.subarray(Math.max(0, meta.headerSize || 0));
+    let end = rest.length;
+    while (end > 0 && rest[end - 1] === 0) end--;
+    let files = {};
+    try { files = JSON.parse(dec.decode(rest.subarray(0, end))); } catch (e) { return null; }
+
+    return files['main.ts'] ? String(files['main.ts']) : null;
   },
 
   b64(str) {
@@ -553,6 +621,12 @@ const BlockImportUI = {
     this.render();
   },
 
+  usesRandom() {
+    let yes = false;
+    if (this.parsed) walkBlocks(this.parsed.program, b => { if (b.t === 'random') yes = true; });
+    return yes;
+  },
+
   /* 試跑:用轉出來的解答自己當考卷跑一次。
      不會過的話多半是用到了還沒有的積木,那種題目發出去學生永遠做不對。 */
   trial() {
@@ -604,6 +678,14 @@ const BlockImportUI = {
                   onclick="BlockImportUI.setSource(document.getElementById('bkImportSrc').value)"
             >看看轉出來長什麼樣</button>
         </div>
+
+        ${p && this.usesRandom() ? `
+          <div class="bk-import-note" style="margin-top:4px;">
+            這一題用到<strong>隨機數</strong>。判題時亂數是固定的,所以
+            「抽一個、照抽到的顯示」這種寫法,學生用哪一種範圍寫都會過;
+            但如果他<strong>抽的次數和你不一樣</strong>(例如多抽一次重抽),
+            就會被判成不一樣。出這種題目時,敘述裡把「抽幾次」講清楚。
+          </div>` : ''}
 
         ${p ? `
           <div class="bk-import-result ${n && t && t.ok ? 'ok' : 'bad'}">

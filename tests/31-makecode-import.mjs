@@ -14,6 +14,13 @@
    2. 最外層的程式碼要收進「當啟動時」(MakeCode 的最外層就是開機)。
 ============================================ */
 import { loadPlaywright, openApp, prepare, report } from './lib.mjs';
+import { readFileSync } from 'node:fs';
+
+/* 老師真的從 MakeCode 下載的 .hex(猜拳,v9.0.12)。
+   只留下夾著原始碼的那幾行記錄,所以檔案小,但走的是**真的那條路**:
+   Intel HEX 的 0E 記錄 → 魔術數字 → LZMA 解壓 → main.ts。
+   自己造一個假的 .hex 來測等於沒測 —— 格式猜錯的話一樣會過。 */
+const REAL_HEX = readFileSync(new URL('./fixtures/makecode-1019.hex', import.meta.url), 'utf8');
 
 const chromium = await loadPlaywright();
 const { page, errors, close } = await openApp(chromium);
@@ -239,6 +246,84 @@ ok('寫進別班時不會蓋掉人家原本的題目', ui.keptOld === true, ui.o
 ok('建立完就把對話框收起來', ui.closed === true);
 ok('.hex 拆不出來時會明講,不是默默顯示 0 塊',
    /找不到原始碼/.test(ui.hexFail), ui.hexFail);
+
+/* ── 真的 .hex ── */
+const real = await page.evaluate((hex) => {
+  const out = {};
+  const ts = BlockImport.fromHex(hex);
+  out.ts = ts ? ts.slice(0, 60) : null;
+  if (!ts) return out;
+
+  const { program, warnings } = BlockImport.parse(ts);
+  out.warnings = warnings;
+  out.top = program.map(b => b.t);
+  out.blocks = blockCount(program);
+
+  // 真的跑得起來嗎
+  const paper = BlockJudge.compile({ solution: program });
+  out.paperOk = !paper.error;
+  out.self = !paper.error && BlockJudge.runCompiled(paper, program).pass;
+
+  /* ── 不同積木、相同結果 ──
+     把同一支程式換一種寫法:變數改名、repeat 換成 while、
+     else-if 拆成三個獨立的 if。判的是跑出來的畫面,所以這些都該過。 */
+  const deep = x => JSON.parse(JSON.stringify(x));
+  const alt = deep(program);
+  const up = alt.find(b => b.t === 'on_gesture' && b.g === '朝上');
+  const rep = up.body[0];
+  // repeat 5 次 → 用計數器 while
+  up.body[0] = { t: 'set_var', name: 'i', v: 0 };
+  up.body.splice(1, 0, { t: 'while',
+    cond: { t: 'cmp', a: { t: 'var', name: 'i' }, op: '<', b: 5 },
+    body: rep.body.concat([{ t: 'change_var', name: 'i', v: 1 }]) });
+  // 變數改名
+  const rename = (list) => list.forEach(b => {
+    if (!b || typeof b !== 'object') return;
+    if ((b.t === 'set_var' || b.t === 'change_var' || b.t === 'var')
+        && b.name === '猜拳') b.name = 'g';
+    ['v', 'cond', 'a', 'b', 'n', 'from', 'to'].forEach(k => {
+      if (b[k] && typeof b[k] === 'object') rename([b[k]]);
+    });
+    if (b.body) rename(b.body);
+    if (b.elseBody) rename(b.elseBody);
+  });
+  rename(alt);
+  // else-if 攤平成三個 if
+  const ifIdx = up.body.findIndex(b => b.t === 'if');
+  if (ifIdx >= 0) {
+    const a = up.body[ifIdx];
+    const b2 = a.elseBody[0];
+    const flat = [
+      { t: 'if', cond: deep(a.cond), body: deep(a.body) },
+      { t: 'if', cond: deep(b2.cond), body: deep(b2.body) },
+      { t: 'if', cond: { t: 'cmp', a: { t: 'var', name: 'g' }, op: '=', b: 3 },
+        body: deep(b2.elseBody) }
+    ];
+    up.body.splice(ifIdx, 1, ...flat);
+  }
+  out.altBlocks = blockCount(alt);
+  out.alt = !paper.error && BlockJudge.runCompiled(paper, alt).pass;
+
+  // 少做一件事就要被擋下來(不然「什麼都過」等於沒在判)
+  const wrong = deep(program);
+  wrong.find(b => b.t === 'on_gesture' && b.g === '朝下').body = [];
+  out.wrong = !paper.error && BlockJudge.runCompiled(paper, wrong).pass;
+
+  return out;
+}, REAL_HEX);
+
+ok('老師真的下載的 .hex 拆得出 main.ts',
+   /猜拳/.test(real.ts || ''), String(real.ts).split('\n')[0]);
+ok('裡面的程式整支轉得出來,一個看不懂的都沒有',
+   real.warnings && real.warnings.length === 0 && real.blocks >= 20,
+   real.blocks + ' 塊 · ' + (real.warnings || []).join('/'));
+ok('兩個手勢事件都接得上',
+   JSON.stringify(real.top) === '["on_start","on_gesture","on_gesture"]',
+   JSON.stringify(real.top));
+ok('出成考卷、自己跑得過', real.paperOk && real.self === true);
+ok('**換一種寫法也判得過**(while 取代 repeat、變數改名、else-if 拆成三個 if)',
+   real.alt === true, real.blocks + ' 塊 → ' + real.altBlocks + ' 塊');
+ok('但少做一件事就要被擋下來', real.wrong === false);
 
 await close();
 process.exit(report('從 MakeCode 匯入', lines, errors) ? 0 : 1);
