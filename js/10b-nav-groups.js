@@ -65,6 +65,12 @@ const NAV_GROUPS = [
     ]
   },
   {
+    key: 'preview', icon: 'preview', name: '學生模擬',
+    items: [
+      { name: '學生模擬', view: 'preview' }
+    ]
+  },
+  {
     key: 'help', icon: 'help', name: '使用說明',
     items: [
       { name: '教師端', view: 'help', sub: 'helpTeacher' },

@@ -1234,3 +1234,98 @@
 .wall-cell.here { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .45); }
 
 .wall-empty { color: #9fb0c9; text-align: center; padding: 40px; }
+
+/* ============================================
+   學生模擬模式
+   ────────────────────────────────────────────
+   裡面是一個 390 寬的 iframe —— 學生端的 RWD 看的是視窗寬度,
+   硬塞進小框裡會看到「擠在小框裡的電腦版」,那不是學生看到的東西。
+============================================ */
+.pv-bar {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.pv-bar .field { max-width: 190px; }
+
+.pv-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-bottom: 2px;
+}
+
+.pv-tab {
+  font-family: var(--font-body);
+  font-size: 12px;
+  min-height: 28px;
+  padding: 0 11px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--paper-shadow);
+  background: var(--paper);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out);
+}
+
+.pv-tab:hover { border-color: var(--forest); color: var(--forest-deep); }
+
+.pv-tab.on {
+  background: var(--forest);
+  border-color: var(--forest);
+  color: #fff;
+  font-weight: 700;
+}
+
+.pv-note {
+  font-size: var(--t-sub);
+  line-height: 1.8;
+  color: var(--ink-soft);
+  background: color-mix(in srgb, var(--mild-deep) 11%, transparent);
+  border-radius: var(--r-card);
+  padding: var(--pad-sm);
+  margin-bottom: 16px;
+}
+
+.pv-stage {
+  display: flex;
+  justify-content: center;
+  /* 窄螢幕上裝置比視窗還寬:讓這一塊自己捲,不要把整頁撐出去 */
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+/* 手機外框。做得像一台裝置,老師一眼知道「這是學生那一台」 */
+.pv-phone {
+  flex: 0 0 auto;
+  position: relative;
+  /* 專案全域是 border-box:不改回 content-box 的話,
+     外框那 20px 會從 390 裡面扣掉,學生畫面右邊就被切掉一截。 */
+  box-sizing: content-box;
+  border: 10px solid #1d2635;
+  border-radius: 26px;
+  box-shadow: var(--shadow-lg);
+  background: #1d2635;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.pv-phone iframe {
+  display: block;
+  border: none;
+  background: var(--paper);
+}
+
+/* iframe 裡面:沒有老師的框架,整頁就是學生畫面 */
+body.is-preview-frame { background: var(--paper-warm); }
+body.is-preview-frame .student-view { min-height: 100vh; }
+
+/* iframe 裡面:捲軸不要佔掉寬度(佔掉的話最右邊那個分頁會被切掉),
+   登出與重新整理在預覽裡沒有意義,收起來。 */
+body.is-preview-frame { scrollbar-width: none; }
+body.is-preview-frame::-webkit-scrollbar { display: none; }
+body.is-preview-frame .student-header-actions { display: none; }

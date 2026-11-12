@@ -37,5 +37,8 @@ function renderAll() {
 ============================================ */
 
 document.addEventListener('DOMContentLoaded', () => {
+  /* 學生模擬模式:這一份 index.html 是被老師那一頁用 iframe 載進來的,
+     不要去連雲端、不要跑登入流程 —— 資料會由父視窗送進來。 */
+  if (StudentPreviewFrame.isPreview()) { StudentPreviewFrame.boot(); return; }
   Session.boot();
 });

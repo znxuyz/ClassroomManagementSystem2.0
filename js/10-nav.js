@@ -22,6 +22,7 @@ function switchView(name) {
   if (name === 'territory') renderTerritoryView();
   if (name === 'help') renderHelpView();
   if (name === 'blocks') renderBlocksView();
+  if (name === 'preview') renderPreviewView();
   if (name === 'settings') renderSettings();
   if (name === 'rules') { renderRulesEditor(); renderAttendanceAward(); }
 }
