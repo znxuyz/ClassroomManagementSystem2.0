@@ -235,11 +235,13 @@
    等於把那個訊息拿掉。 */
 .bk-blk.is-bool {
   border-radius: 0;
-  clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 50%, 100% 100%,
-                     10px 100%, 0 50%);
+  /* 六角形:**兩邊都往外尖**。
+     右邊做成往內凹的話會變成一個箭頭(旗子),那不是 MakeCode 的形狀。 */
+  clip-path: polygon(9px 0, calc(100% - 9px) 0, 100% 50%,
+                     calc(100% - 9px) 100%, 9px 100%, 0 50%);
 }
 
-.bk-blk.is-bool > .bk-head { padding-left: 14px; padding-right: 14px; }
+.bk-blk.is-bool > .bk-head { padding-left: 13px; padding-right: 13px; }
 
 .bk-head {
   display: flex;
@@ -438,8 +440,8 @@
   padding: 0 12px;
   border: none;
   background: rgba(0, 0, 0, .28);
-  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 50%, 100% 100%,
-                     8px 100%, 0 50%);
+  clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 50%,
+                     calc(100% - 8px) 100%, 8px 100%, 0 50%);
   color: rgba(255, 255, 255, .72);
   font-family: var(--font-body);
   font-size: 11px;
@@ -457,26 +459,35 @@
 .bk-sub .bk-head { padding: 3px 6px; min-height: 26px; font-size: 12px; }
 
 /* ---------- 5×5 的圖案格 ---------- */
+/* 5×5 的格子**沒有自己的底色** —— 直接坐在積木上(照 MakeCode)。
+   以前是黑色的面板(那是真的 micro:bit 的樣子),但放在藍色積木上
+   會變成一塊黑斑,和原版完全不像。 */
 .bk-leds {
   display: inline-grid;
-  grid-template-columns: repeat(5, 14px);
-  gap: 2px;
-  padding: 3px;
-  background: #1a1a1a;
-  border-radius: 4px;
+  grid-template-columns: repeat(5, 15px);
+  gap: 3px;
+  padding: 2px;
+  background: none;
 }
 
+/* 「顯示 指示燈」上的 5×5 格子。
+   照 MakeCode:**沒亮的是比積木深一點的同色**,亮的是白色 ——
+   做成黑底紅點(那是真的 micro:bit 的樣子)在積木上會變成一塊黑斑,
+   和原版完全不像。 */
 .bk-led {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
   border: none;
-  border-radius: 2px;
-  background: #3a3a3a;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, .28);
   cursor: pointer;
   padding: 0;
+  transition: background var(--dur-fast) var(--ease-out);
 }
 
-.bk-led.on { background: #ff5566; box-shadow: 0 0 5px rgba(255, 85, 102, .8); }
+.bk-led:hover { background: rgba(0, 0, 0, .4); }
+.bk-led.on { background: #fff; }
+.bk-led.on:hover { background: rgba(255, 255, 255, .85); }
 
 /* ---------- 唯讀(老師看學生的答案、看參考解答)---------- */
 .bk-editor.is-readonly { grid-template-columns: minmax(0, 1fr); }
@@ -1611,3 +1622,87 @@ select.bk-field { field-sizing: content; }
   border-bottom: 1px dotted rgba(255, 255, 255, .3);
   padding-bottom: 3px;
 }
+
+/* 模擬器上「剛才發出了什麼聲音」。
+   真的有聲音,但聲音一下就過去了 —— 學生要回頭確認「我到底播了什麼」,
+   所以同時用文字留一行。 */
+.sim-sound {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gold);
+  letter-spacing: .04em;
+}
+
+/* ---------- 圖示選單 ----------
+   MakeCode 的「顯示 圖示」不是文字下拉,是一整面的小圖 ——
+   孩子不是靠名字認圖示的,是靠看的。 */
+.bk-iconfield { position: relative; display: inline-flex; }
+
+.bk-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 6px;
+  cursor: pointer;
+}
+
+.bk-iconbtn i { font-style: normal; font-size: 10px; color: var(--ink-muted); }
+
+.bk-mini {
+  display: inline-grid;
+  grid-template-columns: repeat(5, 3px);
+  gap: 1px;
+}
+
+.bk-mini i {
+  width: 3px;
+  height: 3px;
+  border-radius: .5px;
+  background: rgba(0, 0, 0, .22);
+}
+
+.bk-mini i.on { background: var(--ink); }
+
+/* 選單浮在積木上面 —— 蓋住下面的積木沒關係,選完就收起來 */
+.bk-iconmenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  padding: 7px;
+  width: 222px;
+  max-height: 232px;
+  overflow-y: auto;
+  background: var(--c);
+  border-radius: 6px;
+  box-shadow: var(--shadow-lg);
+}
+
+.bk-iconopt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, .14);
+  cursor: pointer;
+}
+
+.bk-iconopt:hover { background: rgba(255, 255, 255, .3); }
+.bk-iconopt.on { background: rgba(255, 255, 255, .95); }
+
+/* 選單裡的小圖:在彩色底上要用白點 */
+.bk-iconmenu .bk-mini i { background: rgba(255, 255, 255, .3); }
+.bk-iconmenu .bk-mini i.on { background: #fff; }
+.bk-iconopt.on .bk-mini i { background: rgba(0, 0, 0, .2); }
+.bk-iconopt.on .bk-mini i.on { background: var(--ink); }
+
+.bk-iconmenu .bk-mini { grid-template-columns: repeat(5, 5px); gap: 1px; }
+.bk-iconmenu .bk-mini i { width: 5px; height: 5px; }

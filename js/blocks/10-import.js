@@ -413,6 +413,45 @@ const BlockImport = {
          (最外層就是開機),但有些人會自己包一層 */
       case 'onStart': return { t: 'on_start', body: body(a[0]) };
 
+      /* ---------- 音效 ---------- */
+      case 'playTone': {
+        /* MakeCode 的 JavaScript 寫的是頻率與毫秒,不是音名與拍數 ——
+           轉回最接近的那一個,不然匯進來會變成一堆看不懂的數字。 */
+        const hz = Number(a[0]) || 262;
+        let best = '中音 C', bd = Infinity;
+        Object.keys(NOTE_HZ).forEach(n => {
+          const d2 = Math.abs(NOTE_HZ[n] - hz);
+          if (d2 < bd) { bd = d2; best = n; }
+        });
+        const ms = Number(a[1]) || 500;
+        let beats = '1 拍', bb = Infinity;
+        Object.keys(BEAT_VALUE).forEach(k => {
+          const d2 = Math.abs(BEAT_VALUE[k] * 500 - ms);
+          if (d2 < bb) { bb = d2; beats = k; }
+        });
+        return { t: 'play_tone', note: best, beats, mode: 'until done' };
+      }
+      case 'ringTone': {
+        const hz = Number(a[0]) || 262;
+        let best = '中音 C', bd = Infinity;
+        Object.keys(NOTE_HZ).forEach(n => {
+          const d2 = Math.abs(NOTE_HZ[n] - hz);
+          if (d2 < bd) { bd = d2; best = n; }
+        });
+        return { t: 'ring_tone', note: best };
+      }
+      case 'rest': return { t: 'rest', beats: '1 拍' };
+      case 'setVolume': return { t: 'set_volume', v: a[0] === undefined ? 127 : a[0] };
+      case 'setTempo': return { t: 'set_tempo', v: a[0] === undefined ? 120 : a[0] };
+      case 'changeTempoBy': return { t: 'change_tempo', v: a[0] === undefined ? 20 : a[0] };
+      case 'stopAllSounds': return { t: 'stop_sound' };
+
+      /* ---------- LED ---------- */
+      case 'plot':   return { t: 'plot', x: a[0], y: a[1] };
+      case 'unplot': return { t: 'unplot', x: a[0], y: a[1] };
+      case 'toggle': return { t: 'toggle_point', x: a[0], y: a[1] };
+      case 'plotBarGraph': return { t: 'bar_graph', v: a[0], hi: a[1] };
+
       /* ---------- 廣播 ---------- */
       case 'setGroup':   return { t: 'radio_group', n: a[0] === undefined ? 1 : a[0] };
       case 'sendNumber': return { t: 'radio_number', v: a[0] === undefined ? 0 : a[0] };
@@ -471,6 +510,9 @@ const BlockImport = {
       case 'map': return { t: 'map', v: a[0], fl: a[1], fh: a[2], tl: a[3], th: a[4] };
       case 'randomBoolean': return { t: 'rand_bool' };
       case 'receivedPacket': return { t: 'radio_strength' };
+      case 'point': return { t: 'point', x: a[0], y: a[1] };
+      case 'volume': return { t: 'volume' };
+      case 'tempo': return { t: 'tempo' };
       default:
         warn(`還沒有「${name}()」這塊積木`);
         return null;

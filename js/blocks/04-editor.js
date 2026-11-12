@@ -417,6 +417,19 @@ const BlockEditor = {
     const act = t.dataset.bk;
     if (this.readonly && act !== 'cursor') return;
 
+    if (act === 'iconopen') {
+      const same = this.iconPick && this.iconPick.id === t.dataset.id;
+      this.iconPick = same ? null : { id: t.dataset.id, arg: t.dataset.arg };
+      this.render();
+      return;
+    }
+    if (act === 'iconset') {
+      const hit = this.find(t.dataset.id);
+      if (hit) hit.block[t.dataset.arg] = t.dataset.icon;
+      this.iconPick = null;
+      this.changed();
+      return;
+    }
     if (act === 'add') {
       this.addFromPalette(t.dataset.t, t.dataset.var, t.dataset.variant);
     }
@@ -564,6 +577,13 @@ const BlockEditor = {
       </div>`;
   },
 
+  /* 5×5 的小預覽(圖示按鈕與選單都用這一份) */
+  miniLeds(grid) {
+    const g = String(grid || LED_BLANK);
+    return `<span class="bk-mini">${Array.from({ length: 25 }, (_, i) =>
+      `<i class="${g[i] === '1' ? 'on' : ''}"></i>`).join('')}</span>`;
+  },
+
   /* ---------- 面板上的那一塊 ----------
      面板上畫的就是**真的那塊積木**(同一支 renderBlock),不是一個寫著
      名字的長方形。理由很實在:孩子是靠形狀認積木的 ——
@@ -658,6 +678,23 @@ const BlockEditor = {
     const a = (d.args || []).find(x => x.name === name);
     if (!a) return '';
     const v = b[name];
+
+    /* 圖示用**圖形選單**,不是文字下拉 —— MakeCode 就是這樣,
+       而且孩子根本不是靠名字認圖示的,是靠看的。 */
+    if (a.type === 'icon') {
+      const open = this.iconPick && this.iconPick.id === b.id;
+      return `<span class="bk-iconfield">
+        <button class="bk-field bk-iconbtn" data-bk="iconopen" data-id="${b.id}"
+                data-arg="${name}" ${this.readonly ? 'disabled' : ''}>
+          ${this.miniLeds(LED_ICONS[v] || LED_BLANK)}<i>▾</i>
+        </button>
+        ${open ? `<span class="bk-iconmenu">${ICON_LIST.map(n => `
+          <button class="bk-iconopt ${n === v ? 'on' : ''}" data-bk="iconset"
+                  data-id="${b.id}" data-arg="${name}" data-icon="${escapeHtml(n)}"
+                  title="${escapeHtml(n)}">${this.miniLeds(LED_ICONS[n])}</button>`
+        ).join('')}</span>` : ''}
+      </span>`;
+    }
 
     if (a.type === 'pick') {
       return `<select class="bk-field" data-bk-field data-id="${b.id}" data-arg="${name}"

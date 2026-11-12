@@ -155,7 +155,8 @@ const BlockJudge = {
         ok: this.sameStep(a, b),
         expect: a.screen, got: b.screen,
         expectFrames: a.frames || [], gotFrames: b.frames || [],
-        expectSent: a.sent || [], gotSent: b.sent || []
+        expectSent: a.sent || [], gotSent: b.sent || [],
+        expectSound: a.sound || [], gotSound: b.sound || []
       };
     });
     const firstFail = steps.findIndex(s => !s.ok);
@@ -177,6 +178,10 @@ const BlockJudge = {
     const pk = list => (list || []).map(p =>
       p.kind + ':' + (p.key || '') + ':' + p.value + '@' + p.group).join('|');
     if (pk(a.sent) !== pk(b.sent)) return false;
+    /* 聲音同理:一首用聲音做出來的題目,只比螢幕等於沒在判。 */
+    const sd = list => (list || []).map(p =>
+      p.kind + ':' + (p.note || p.name || '') + ':' + (p.beats || '')).join('|');
+    if (sd(a.sound) !== sd(b.sound)) return false;
     const fa = (a.frames || []).map(f => f.kind + ':' + f.value).join('|');
     const fb = (b.frames || []).map(f => f.kind + ':' + f.value).join('|');
     return fa === fb;
@@ -202,6 +207,17 @@ const BlockJudge = {
     const ea = sayPk(s.expectSent), ga = sayPk(s.gotSent);
     if (ea !== ga) {
       return `「${s.label}」的時候,應該廣播${ea},但你的程式${ga}。`;
+    }
+
+    const saySound = list => (list || []).length
+      ? (list || []).map(p => p.kind === 'melody' ? '「' + p.name + '」'
+          : p.kind === 'rest' ? '休息 ' + p.beats + ' 拍'
+          : p.kind === 'stop' ? '停止播放'
+          : p.note + ' ' + p.beats + ' 拍').join('、')
+      : '沒有發出聲音';
+    const eb = saySound(s.expectSound), gb = saySound(s.gotSound);
+    if (eb !== gb) {
+      return `「${s.label}」的時候,應該播${eb},但你的程式${gb}。`;
     }
 
     const want = BlockVM.describeScreen(s.expect);

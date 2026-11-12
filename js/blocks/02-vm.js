@@ -97,6 +97,15 @@ const BlockVM = {
          所以「有沒有送對東西」判得出來,不是只看螢幕。 */
       group: 0,
       sent: [],
+      /* 聲音也是「做出來的結果」:這一步發出了什麼音,
+         和螢幕一起記進行為裡,判題時一起比。 */
+      sound: [],
+      volume: 127,
+      tempo: 120,
+      /* 5×5 的畫面。點亮 / 不點亮 / 切換 都是改這一份,
+         「顯示 指示燈」「顯示 圖示」也會把它換掉 ——
+         在真的 micro:bit 上它們本來就是同一塊面板。 */
+      leds: LED_BLANK,
       strength: -42,        // 訊號強度:實機會變,這裡固定,判題才可重現
       frames: [],        // 畫面變過的樣子(連續重複的只記一次)
       handlers,
@@ -113,6 +122,13 @@ const BlockVM = {
     ctx.seed = x;
     const lo = Math.min(from, to), hi = Math.max(from, to);
     return lo + (Math.abs(x) % (hi - lo + 1));
+  },
+
+  /* 換掉 5×5 的畫面。LED 緩衝區與螢幕要一起換 ——
+     只改其中一邊的話,「點亮」之後再問「點的狀態」就會答錯。 */
+  setLeds(ctx, grid) {
+    ctx.leds = String(grid || LED_BLANK);
+    this.setScreen(ctx, { kind: 'leds', value: ctx.leds });
   },
 
   setScreen(ctx, screen) {
@@ -178,6 +194,14 @@ const BlockVM = {
       case 'rand_bool': return this.rand(ctx, 0, 1) === 1;
       case 'pi': return Math.PI;
       case 'radio_strength': return ctx.strength;
+      case 'volume': return ctx.volume;
+      case 'tempo': return ctx.tempo;
+      case 'point': {
+        const x = Math.round(Number(this.evalExpr(e.x, ctx)) || 0);
+        const y = Math.round(Number(this.evalExpr(e.y, ctx)) || 0);
+        if (x < 0 || x > 4 || y < 0 || y > 4) return false;
+        return ctx.leds[y * 5 + x] === '1';
+      }
       case 'mod': {
         const a = Number(this.evalExpr(e.a, ctx)) || 0;
         const b = Number(this.evalExpr(e.b, ctx)) || 0;
@@ -244,19 +268,78 @@ const BlockVM = {
           ctx.time += 600;
           break;
         case 'show_icon':
-          this.setScreen(ctx, { kind: 'leds', value: LED_ICONS[b.icon] || LED_BLANK });
+          this.setLeds(ctx, LED_ICONS[b.icon] || LED_BLANK);
           ctx.time += 400;
           break;
         case 'show_leds':
-          this.setScreen(ctx, { kind: 'leds', value: b.grid || LED_BLANK });
+          this.setLeds(ctx, b.grid || LED_BLANK);
           ctx.time += 400;
           break;
         case 'show_arrow':
-          this.setScreen(ctx, { kind: 'leds', value: LED_ARROWS[b.dir] || LED_BLANK });
+          this.setLeds(ctx, LED_ARROWS[b.dir] || LED_BLANK);
           ctx.time += 400;
           break;
         case 'clear':
+          ctx.leds = LED_BLANK;
           this.setScreen(ctx, this.blankScreen());
+          break;
+
+        /* ---------- LED ---------- */
+        case 'plot':
+        case 'unplot':
+        case 'toggle_point': {
+          const x = Math.round(Number(this.evalExpr(b.x, ctx)) || 0);
+          const y = Math.round(Number(this.evalExpr(b.y, ctx)) || 0);
+          if (x < 0 || x > 4 || y < 0 || y > 4) break;   // 範圍外就什麼都不做
+          const i = y * 5 + x;
+          const on = b.t === 'plot' ? '1'
+            : b.t === 'unplot' ? '0'
+            : (ctx.leds[i] === '1' ? '0' : '1');
+          this.setLeds(ctx, ctx.leds.slice(0, i) + on + ctx.leds.slice(i + 1));
+          break;
+        }
+        case 'bar_graph': {
+          const v = Math.abs(Number(this.evalExpr(b.v, ctx)) || 0);
+          let hi = Math.abs(Number(this.evalExpr(b.hi, ctx)) || 0);
+          if (!hi) hi = Math.max(v, 1);          // 上限 0 = 自己跟著最大值走
+          const cols = Math.max(0, Math.min(25, Math.round(v / hi * 25)));
+          this.setLeds(ctx, '1'.repeat(cols) + '0'.repeat(25 - cols));
+          break;
+        }
+
+        /* ---------- 音效 ---------- */
+        case 'play_tone':
+        case 'ring_tone': {
+          const beats = b.t === 'play_tone' ? (BEAT_VALUE[b.beats] || 1) : 1;
+          ctx.sound.push({ kind: 'tone', note: b.note || '中音 C', beats });
+          if (b.t === 'play_tone' && b.mode !== '背景運行') {
+            ctx.time += Math.round(beats * 60000 / Math.max(1, ctx.tempo));
+          }
+          break;
+        }
+        case 'rest': {
+          const beats = BEAT_VALUE[b.beats] || 1;
+          ctx.sound.push({ kind: 'rest', beats });
+          ctx.time += Math.round(beats * 60000 / Math.max(1, ctx.tempo));
+          break;
+        }
+        case 'play_sound':
+          ctx.sound.push({ kind: 'melody', name: b.name || '喀喀笑' });
+          if (b.mode !== '背景運行') ctx.time += 800;
+          break;
+        case 'stop_sound':
+          ctx.sound.push({ kind: 'stop' });
+          break;
+        case 'set_volume':
+          ctx.volume = Math.max(0, Math.min(255,
+            Math.round(Number(this.evalExpr(b.v, ctx)) || 0)));
+          break;
+        case 'set_tempo':
+          ctx.tempo = Math.max(1, Math.round(Number(this.evalExpr(b.v, ctx)) || 120));
+          break;
+        case 'change_tempo':
+          ctx.tempo = Math.max(1,
+            ctx.tempo + Math.round(Number(this.evalExpr(b.v, ctx)) || 0));
           break;
         case 'pause':
           ctx.time += Math.max(0, Number(this.evalExpr(b.ms, ctx)) || 0);
@@ -380,6 +463,7 @@ const BlockVM = {
   fire(ctx, stepDef) {
     ctx.frames = [];
     ctx.sent = [];
+    ctx.sound = [];
     /* 事件處理器裡的「跳出 / 繼續」如果不在迴圈裡,
        會一路丟到這裡 —— 當作那一段提早結束,不要讓整支程式當掉。 */
     try {
@@ -388,13 +472,15 @@ const BlockVM = {
       if (e !== this._BREAK && e !== this._CONTINUE) throw e;
     }
     this.settle(ctx);
-    return { frames: ctx.frames.slice(), screen: ctx.screen, sent: ctx.sent.slice() };
+    return { frames: ctx.frames.slice(), screen: ctx.screen,
+             sent: ctx.sent.slice(), sound: ctx.sound.slice() };
   },
 
   _fireInner(ctx, stepDef) {
     switch (stepDef.do) {
       case 'start':
         ctx.vars = {};
+        ctx.leds = LED_BLANK;
         ctx.screen = this.blankScreen();
         ctx.handlers.start.forEach(body => this.exec(body, ctx));
         break;

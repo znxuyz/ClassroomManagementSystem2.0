@@ -74,6 +74,41 @@ const GESTURES = ['晃動', '螢幕朝上', '螢幕朝下', 'logo朝上', 'logo�
 
 const GESTURE_ALIAS = { '搖動': '晃動', '朝上': '螢幕朝上', '朝下': '螢幕朝下' };
 
+/* 音高。MakeCode 的下拉其實是一台鋼琴,這裡用名稱 ——
+   名稱和它顯示的一樣,孩子回去用鋼琴選也對得起來。 */
+const NOTES = ['低音 C', '低音 G', '中音 C', '中音 D', '中音 E', '中音 F',
+               '中音 G', '中音 A', '中音 B', '高音 C', '高音 E', '高音 G'];
+
+const NOTE_HZ = {
+  '低音 C': 131, '低音 G': 196, '中音 C': 262, '中音 D': 294, '中音 E': 330,
+  '中音 F': 349, '中音 G': 392, '中音 A': 440, '中音 B': 494,
+  '高音 C': 523, '高音 E': 659, '高音 G': 784
+};
+
+const BEATS = ['1 拍', '1/2 拍', '1/4 拍', '2 拍', '4 拍'];
+
+const BEAT_VALUE = { '1 拍': 1, '1/2 拍': 0.5, '1/4 拍': 0.25, '2 拍': 2, '4 拍': 4 };
+
+/* micro:bit 內建的那幾首(V2)。照 MakeCode 下拉裡的順序與名稱。 */
+const MELODIES = ['喀喀笑', '快樂', '你好', '神秘', '悲傷', '滑翔',
+                  '飛翔', '春天', '閃爍', '打哈欠'];
+
+/* 內建旋律在模擬器上的樣子。
+   不是真的那幾首(那是 micro:bit 韌體裡的),是一段聽得出區別的短句 ——
+   孩子要的是「我選的和剛才那首不一樣」,不是音樂考試。 */
+const MELODY_NOTES = {
+  '喀喀笑': [523, 587, 659, 587, 523],
+  '快樂':   [523, 523, 587, 523, 698, 659],
+  '你好':   [392, 523, 659],
+  '神秘':   [330, 349, 392, 349, 311],
+  '悲傷':   [392, 349, 330, 294],
+  '滑翔':   [659, 587, 523, 494, 440],
+  '飛翔':   [440, 523, 659, 784],
+  '春天':   [523, 587, 659, 698, 784],
+  '閃爍':   [784, 988, 784, 988],
+  '打哈欠': [294, 330, 294, 262]
+};
+
 /* 箭頭的 LED 圖樣,照 MakeCode 的 ArrowNames */
 const LED_ARROWS = {
   '北':   '0010001110101010010000100',
@@ -95,8 +130,7 @@ const BLOCK_DEFS = [
   { t: 'show_leds',   cat: 'basic', kind: 'stmt', label: '顯示 指示燈 ${grid}',
     args: [{ name: 'grid', type: 'leds', def: '0000000000000000000000000' }] },
   { t: 'show_icon',   cat: 'basic', kind: 'stmt', label: '顯示 圖示 ${icon}',
-    args: [{ name: 'icon', type: 'pick', def: '愛心',
-             options: ['愛心', '笑臉', '哭臉', '打勾', '打叉', '箭頭上', '箭頭下'] }] },
+    args: [{ name: 'icon', type: 'icon', def: '愛心' }] },
   { t: 'show_string', cat: 'basic', kind: 'stmt', label: '顯示 文字 ${v}',
     args: [{ name: 'v', type: 'text', def: 'Hello!' }] },
   { t: 'clear',       cat: 'basic', kind: 'stmt', label: '清空 畫面' },
@@ -132,6 +166,47 @@ const BLOCK_DEFS = [
     args: [{ name: 'name', type: 'var', def: '' }, { name: 'v', type: 'num', def: 1 }] },
   { t: 'var',        cat: 'var', kind: 'expr', label: '${name}',
     args: [{ name: 'name', type: 'var', def: '' }] },
+
+  /* ---------- 音效 ----------
+     聲音也是「做出來的結果」,所以每一步發出了什麼音會記進行為裡,
+     判題時和螢幕一起比(見 02-vm.js 的 ctx.sound)。 */
+  { t: 'play_tone', cat: 'music', kind: 'stmt',
+    label: 'play tone ${note} for ${beats} ${mode}',
+    args: [{ name: 'note', type: 'pick', options: NOTES, def: '中音 C' },
+           { name: 'beats', type: 'pick', options: BEATS, def: '1 拍' },
+           { name: 'mode', type: 'pick', options: ['until done', '背景運行'],
+             def: 'until done' }] },
+  { t: 'ring_tone', cat: 'music', kind: 'stmt', label: '演奏 音階 ${note}',
+    args: [{ name: 'note', type: 'pick', options: NOTES, def: '中音 C' }] },
+  { t: 'rest', cat: 'music', kind: 'stmt', label: 'rest for ${beats}',
+    args: [{ name: 'beats', type: 'pick', options: BEATS, def: '1 拍' }] },
+  { t: 'play_sound', cat: 'music', kind: 'stmt', label: 'play ${name} ${mode}',
+    args: [{ name: 'name', type: 'pick', options: MELODIES, def: '喀喀笑' },
+           { name: 'mode', type: 'pick', options: ['until done', '背景運行'],
+             def: 'until done' }] },
+  { t: 'stop_sound', cat: 'music', kind: 'stmt', label: '停止播放所有音效' },
+  { t: 'set_volume', cat: 'music', kind: 'stmt', label: '音量設為 ${v}',
+    args: [{ name: 'v', type: 'num', def: 127 }] },
+  { t: 'volume', cat: 'music', kind: 'expr', label: '音量' },
+  { t: 'set_tempo', cat: 'music', kind: 'stmt', label: '演奏 速度設為 ${v} bpm',
+    args: [{ name: 'v', type: 'num', def: 120 }] },
+  { t: 'change_tempo', cat: 'music', kind: 'stmt', label: '演奏 速度改變 ${v} bpm',
+    args: [{ name: 'v', type: 'num', def: 20 }] },
+  { t: 'tempo', cat: 'music', kind: 'expr', label: '演奏速度 (bpm)' },
+
+  /* ---------- LED ----------
+     點亮 / 不點亮 / 切換 都是改同一塊 5×5 的畫面,
+     所以它們和「顯示 指示燈」共用同一份資料(ctx.leds)。 */
+  { t: 'plot', cat: 'led', kind: 'stmt', label: '點亮 x ${x} y ${y}',
+    args: [{ name: 'x', type: 'num', def: 0 }, { name: 'y', type: 'num', def: 0 }] },
+  { t: 'toggle_point', cat: 'led', kind: 'stmt', label: '點的狀態切換 x ${x} y ${y}',
+    args: [{ name: 'x', type: 'num', def: 0 }, { name: 'y', type: 'num', def: 0 }] },
+  { t: 'unplot', cat: 'led', kind: 'stmt', label: '不點亮 x ${x} y ${y}',
+    args: [{ name: 'x', type: 'num', def: 0 }, { name: 'y', type: 'num', def: 0 }] },
+  { t: 'point', ret: 'bool', cat: 'led', kind: 'expr', label: '點的狀態 x ${x} y ${y}',
+    args: [{ name: 'x', type: 'num', def: 0 }, { name: 'y', type: 'num', def: 0 }] },
+  { t: 'bar_graph', cat: 'led', kind: 'stmt', label: 'plot bar graph of ${v} up to ${hi}',
+    args: [{ name: 'v', type: 'num', def: 0 }, { name: 'hi', type: 'num', def: 0 }] },
 
   /* ---------- 廣播 ----------
      一台 micro:bit **收不到自己發出去的廣播**,所以這一類要有
@@ -237,15 +312,50 @@ BLOCK_DEFS.forEach(d => { if (!BLOCK_BY_T[d.t]) BLOCK_BY_T[d.t] = d; });
 /* 圖示對應到 5×5 的點陣。學生端與判斷都用同一份,
    所以「顯示圖示 愛心」和「顯示 LED(愛心的圖案)」會被判成同一件事 ——
    那本來就是同一個畫面。 */
+/* 圖示。名稱與圖樣照 MakeCode 的 IconNames ——
+   孩子在這裡選「鴨子」,回去用真的 MakeCode 也是「鴨子」。
+   每一列五個字,由上往下五列。 */
 const LED_ICONS = {
   '愛心':   '0101011111111110111000100',
-  '笑臉':   '0101000000100010111000000',
-  '哭臉':   '0101000000000000111001010',
-  '打勾':   '0000000001000100101000010',
+  '小愛心': '0000001010011100010000000',
+  '打勾':   '0000000001000101010001000',
   '打叉':   '1000101010001000101010001',
+  '快樂':   '0000001010000001000101110',
+  '傷心':   '0000001010000000111010001',
+  '困惑':   '0000001010000000101010101',
+  '生氣':   '1000101010000001111110101',
+  '睡著':   '0000011011000000111000000',
+  '驚訝':   '0101000000001000101000100',
+  '傻傻的': '1000100000111110010100111',
+  '極好':   '1111111011000000101001110',
+  '無聊':   '0101000000000010001000100',
+  'T恤':    '1101111111011100111001110',
+  '溜冰鞋': '0001100011111111111101010',
+  '鴨子':   '0110011100011110111000000',
+  '房子':   '0010001110111110111001010',
+  '烏龜':   '0000001110111110101000000',
+  '蝴蝶':   '1101111111001001111111011',
+  '火柴人': '0010011111001000101010001',
+  '鬼':     '0111010101111111111110101',
+  '劍':     '0010000100001000111000100',
+  '長頸鹿': '1100001000010000111001010',
+  '骷髏':   '0111010101111110111001110',
+  '雨傘':   '0111011111001001010001100',
+  '蛇':     '1100011011010100111000000',
   '箭頭上': '0010001110101010010000100',
   '箭頭下': '0010000100101010111000100'
 };
+
+/* 舊資料用的名字。改成 MakeCode 的講法之後要認得回去,
+   否則老師出好的題目會變成一塊空白的畫面。 */
+const ICON_ALIAS = { '笑臉': '快樂', '哭臉': '傷心' };
+
+/* 面板上要列出來的順序(照 MakeCode 的圖示選單) */
+const ICON_LIST = ['愛心', '小愛心', '快樂', '傷心', '困惑', '生氣', '睡著',
+                   '驚訝', '傻傻的', '極好', '無聊', '打勾', '打叉',
+                   'T恤', '溜冰鞋', '鴨子', '房子', '烏龜', '蝴蝶',
+                   '火柴人', '鬼', '劍', '長頸鹿', '骷髏', '雨傘', '蛇',
+                   '箭頭上', '箭頭下'];
 
 /* 空的畫面 */
 const LED_BLANK = '0'.repeat(25);
@@ -266,6 +376,7 @@ function migrateProgram(list) {
     if (b.t === 'on_gesture' || b.t === 'is_gesture') {
       b.g = GESTURE_ALIAS[b.g] || b.g || '晃動';
     }
+    if (b.t === 'show_icon') b.icon = ICON_ALIAS[b.icon] || b.icon || '愛心';
   });
   return list;
 }

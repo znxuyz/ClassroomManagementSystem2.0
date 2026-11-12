@@ -80,6 +80,7 @@ const BlockSim = {
     try {
       const r = BlockVM.fire(me.ctx, stepDef);
       me.error = null;
+      this.hear(r.sound, me.ctx);
       (r.sent || []).forEach(pk => {
         this.devs.forEach((other, j) => {
           if (j === i || other.ctx.group !== pk.group) return;
@@ -124,6 +125,32 @@ const BlockSim = {
       () => '<span class="sim-led"></span>').join('')}</div>`;
   },
 
+  /* ---------- 真的發出聲音 ----------
+     音效那一類如果只是畫面上寫「播了中音 C」,孩子根本不知道對不對。
+     用和蜂巢戰紀同一支發聲器,照音名換成頻率、照速度換成長度。
+     一步裡的好幾個音要**依序**播,不然會疊成一團。 */
+  hear(list, ctx) {
+    if (!list || !list.length || typeof SFX === 'undefined' || !SFX.enabled()) return;
+    const tempo = (ctx && ctx.tempo) || 120;
+    const vol = Math.max(0, Math.min(1, ((ctx && ctx.volume) || 127) / 255)) * 0.22;
+    let at = 0;
+    list.forEach(p => {
+      const sec = ((p.beats || 1) * 60) / tempo;
+      if (p.kind === 'tone') {
+        SFX.tone(NOTE_HZ[p.note] || 262, Math.min(1.2, sec),
+                 { type: 'triangle', delay: at, vol });
+        at += Math.min(1.2, sec);
+      } else if (p.kind === 'rest') {
+        at += Math.min(1.2, sec);
+      } else if (p.kind === 'melody') {
+        (MELODY_NOTES[p.name] || [262, 330, 392]).forEach((f, i) => {
+          SFX.tone(f, 0.16, { type: 'triangle', delay: at + i * 0.17, vol });
+        });
+        at += 0.17 * (MELODY_NOTES[p.name] || [0, 0, 0]).length;
+      }
+    });
+  },
+
   /* 這支程式用到哪些姿勢、哪些引腳 —— 只長出按得到的那幾顆。
      全部列出來的話,一排按鈕裡有一大半按了什麼事都不會發生,
      孩子會以為是自己拼錯了。 */
@@ -139,6 +166,11 @@ const BlockSim = {
 
   renderDevice(i) {
     const d = this.devs[i];
+    const heard = (d.ctx && d.ctx.sound || []).map(p =>
+      p.kind === 'melody' ? '♪ ' + p.name
+        : p.kind === 'rest' ? '𝄽'
+        : p.kind === 'stop' ? '■'
+        : '♪ ' + p.note).join('  ');
     const tr = this.triggers();
     const vars = d.ctx ? Object.keys(d.ctx.vars) : [];
     const two = this.devs.length > 1;
@@ -163,6 +195,7 @@ const BlockSim = {
              data-sim="pin" data-dev="${i}" data-btn="${p}">碰 ${p}</button>`).join('')}
           ${two ? '' : '<button class="btn btn-ghost btn-small" data-sim="start">重新開機</button>'}
         </div>
+        ${heard ? `<div class="sim-sound">${escapeHtml(heard)}</div>` : ''}
         ${d.error ? `<div class="sim-error">${escapeHtml(d.error)}</div>` : ''}
         ${vars.length ? `
           <div class="sim-vars">
