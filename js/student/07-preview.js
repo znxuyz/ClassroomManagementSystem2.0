@@ -116,6 +116,27 @@ const StudentPreviewFrame = {
       if (st) StudentApp.myBlockWork[t.id] = { program: [], stars: st, at: Date.now() };
     });
 
+    /* 蜂巢戰紀的狀態由老師那一端整包送進來 ——
+       它不在班級的 blob 裡(戰況是另外一個集合),不送的話
+       預覽裡永遠看不到那一個分頁,老師會以為是壞的。 */
+    if (typeof TerritoryGame !== 'undefined' && d.territory) {
+      TerritoryGame.config = d.territory.config || null;
+      TerritoryGame.events = d.territory.events || [];
+      TerritoryGame.attempts = [];
+      TerritoryGame.fails = {};
+      TerritoryGame.shielded = new Set();
+      StudentApp.tQuestions = d.territory.questions || [];
+      /* 地圖用事件重算一次,而不是直接用老師那一份 ——
+         重算走的是學生端平常走的那一條路(Territory 的事件重播),
+         所以預覽裡看到的佔領狀況和孩子看到的是同一套算法算出來的。 */
+      if (TerritoryGame.config && typeof TerritoryGame.rebuild === 'function') {
+        try { TerritoryGame.rebuild(); }
+        catch (e) { TerritoryGame.map = d.territory.map || {}; }
+      } else {
+        TerritoryGame.map = d.territory.map || {};
+      }
+    }
+
     StudentApp.bkTask = null;
     StudentApp.activeQuiz = null;
     StudentApp.tab = d.tab || 'pet';
@@ -132,17 +153,25 @@ const StudentPreview = {
   device: 'phone',     // phone | tablet
   ready: false,
 
+  /* 學生在教室裡是用電腦上課的(一人一台),回家才用手機 ——
+     三種都要看得到。電腦那一個比老師的內容區還寬,
+     所以會自動縮到放得下,但**視窗寬度仍然是 1280** ——
+     縮的是顯示,不是版面,所以媒體查詢讀到的還是電腦版。 */
   DEVICES: {
-    phone:  { w: 390, h: 760, name: '手機' },
-    tablet: { w: 768, h: 740, name: '平板' }
+    phone:   { w: 390,  h: 760, name: '手機' },
+    tablet:  { w: 768,  h: 740, name: '平板' },
+    desktop: { w: 1280, h: 760, name: '電腦' }
   },
 
   TABS: [
     { id: 'pet',    name: '守護獸' },
     { id: 'rank',   name: '排行榜' },
-    { id: 'quiz',   name: '測驗' },
-    { id: 'shop',   name: '兌換' },
-    { id: 'blocks', name: '積木挑戰' },
+    { id: 'quiz',   name: '測驗',     need: () => (state.quizzes || []).some(q => q.status === 'open') },
+    { id: 'shop',   name: '兌換',     need: () => (state.shopItems || []).some(i => i.active) },
+    { id: 'war',    name: '蜂巢戰紀', need: () => !!(TerritoryGame.config
+                                                     && TerritoryGame.config.status === 'running') },
+    { id: 'blocks', name: '積木挑戰', need: () => (state.blockTasks || [])
+                                                   .some(t => t.status === 'open') },
     { id: 'help',   name: '說明' }
   ],
 
@@ -180,9 +209,16 @@ const StudentPreview = {
           </select>
         </label>
         <div class="pv-tabs">
-          ${this.TABS.map(t => `
-            <button class="pv-tab ${t.id === this.tab ? 'on' : ''}"
-                    onclick="StudentPreview.setTab('${t.id}')">${t.name}</button>`).join('')}
+          ${this.TABS.map(t => {
+            /* 學生現在根本看不到的分頁要標出來 —— 不標的話老師點進去
+               看到一片空白,會以為是預覽壞了,其實是他還沒開放。 */
+            const live = !t.need || t.need();
+            return `
+            <button class="pv-tab ${t.id === this.tab ? 'on' : ''} ${live ? '' : 'off'}"
+                    title="${live ? '' : '還沒開放,學生現在看不到這一個分頁'}"
+                    onclick="StudentPreview.setTab('${t.id}')">${t.name}${
+                      live ? '' : ' <i>未開放</i>'}</button>`;
+          }).join('')}
         </div>
         <div style="flex:1"></div>
         <button class="btn btn-ghost btn-small" onclick="StudentPreview.reload()">重新載入</button>
@@ -194,7 +230,8 @@ const StudentPreview = {
       </div>
 
       <div class="pv-stage">
-        <div class="pv-phone" style="width:${dev.w}px; height:${dev.h}px;">
+        <div class="pv-phone ${this.device === 'desktop' ? 'is-desktop' : ''}"
+             style="width:${dev.w}px; height:${dev.h}px;">
           <iframe id="pvFrame" title="學生畫面預覽"
                   src="index.html#preview" style="width:${dev.w}px; height:${dev.h}px;"></iframe>
         </div>
@@ -203,18 +240,32 @@ const StudentPreview = {
     this.ready = false;
     const frame = document.getElementById('pvFrame');
     frame.addEventListener('load', () => { this.push(); });
+    this.fit();
+    if (!this._onResize) {
+      this._onResize = () => this.fit();
+      window.addEventListener('resize', this._onResize);
+    }
   },
 
   /* iframe 說它準備好了(或 load 完)就把資料送進去 */
   push() {
     const frame = document.getElementById('pvFrame');
     if (!frame || !frame.contentWindow) return;
+    const T = (typeof TerritoryGame !== 'undefined') ? TerritoryGame : {};
     frame.contentWindow.postMessage({
       type: 'sgp-preview',
       blob: JSON.parse(JSON.stringify(serializeState())),
       classId: state.classId,
       studentId: this.studentId,
-      tab: this.tab
+      tab: this.tab,
+      /* 蜂巢戰紀的戰況不在 blob 裡(它是另一個集合),要另外帶 */
+      territory: {
+        config: T.config ? JSON.parse(JSON.stringify(T.config)) : null,
+        map: T.map ? JSON.parse(JSON.stringify(T.map)) : {},
+        events: (T.events || []).slice(-200),
+        questions: (state.territoryQuestions || []).map(q =>
+          ({ ...q, answer: undefined }))      // 題庫送過去但不送答案
+      }
     }, '*');
   },
 
@@ -237,10 +288,31 @@ const StudentPreview = {
     const phone = document.querySelector('.pv-phone');
     const frame = document.getElementById('pvFrame');
     if (!phone || !frame) return;
+    phone.classList.toggle('is-desktop', d === 'desktop');
+    /* 下拉選單自己要跟著 —— 用程式換裝置時它不會動,
+       老師會看到「選單寫手機、畫面卻是電腦」 */
+    const sel = document.querySelector('.pv-bar select[onchange*="setDevice"]');
+    if (sel && sel.value !== d) sel.value = d;
     phone.style.width = dev.w + 'px';
     phone.style.height = dev.h + 'px';
     frame.style.width = dev.w + 'px';
     frame.style.height = dev.h + 'px';
+    this.fit();
+  },
+
+  /* 放不下就整個縮小。
+     **縮的是顯示,不是版面** —— iframe 的視窗寬度還是 1280,
+     所以裡面讀到的媒體查詢仍然是電腦版。
+     改成「把 iframe 做窄一點」就會變成手機版,那就不是電腦畫面了。 */
+  fit() {
+    const stage = document.querySelector('.pv-stage');
+    const phone = document.querySelector('.pv-phone');
+    if (!stage || !phone) return;
+    const dev = this.DEVICES[this.device];
+    const avail = stage.clientWidth - 24;
+    const k = Math.min(1, avail / (dev.w + 20));
+    phone.style.transform = k < 1 ? `scale(${k.toFixed(3)})` : '';
+    phone.style.marginBottom = k < 1 ? `-${Math.round((dev.h + 20) * (1 - k))}px` : '';
   },
 
   reload() { this.render(); }

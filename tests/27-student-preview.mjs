@@ -40,6 +40,17 @@ await page.evaluate(() => {
       solution: [{ t: 'on_start', body: [{ t: 'set_var', name: 'n', v: 0 },
                                          { t: 'show_number', v: V('n') }] }] }
   ];
+  state.quizzes = [{ id: 'z1', name: '乘法小考', status: 'open',
+                     questions: [{ text: '3×3', options: ['9', '6'], answer: 0, points: 1 }] }];
+  state.territoryQuestions = [1, 2, 3, 4, 5, 6].map(i =>
+    ({ id: 'q' + i, text: '3 × ' + i + ' = ?',
+       options: ['' + (3 * i), '0', '1', '2'], answer: 0, points: 1 }));
+  state.currentGroups = [['s0', 's1', 's2'], ['s3', 's4', 's5'], ['s6', 's7']];
+  TerritoryGame.config = Territory.createConfig(state.currentGroups, {
+    shape: 'hex', radius: 3, seed: 7, threshold: 3, battleSeconds: 90,
+    answerSeconds: 30, wrongPenalty: 0, penaltyFloor: 0, maxSwaps: 0,
+    cooldownWrong: 0, cooldownSeconds: 0, stageMode: 'all', stageSeconds: 300 });
+  TerritoryGame.events = [];
   showApp();
   navGoItem('preview', 'preview', '');
 });
@@ -97,6 +108,34 @@ const stars = await frame().evaluate(() =>
 ok('關卡上的星星是這位學生真正的進度',
    stars[0] === '★★★', stars.join(' / '));
 
+/* 全功能都要看得到:測驗、兌換、蜂巢戰紀都要畫得出來。
+   只能看守護獸那一頁的預覽,老師還是得去借學生帳號。 */
+const seen = {};
+for (const t of ['quiz', 'shop', 'war']) {
+  await page.evaluate(x => StudentPreview.setTab(x), t);
+  await page.waitForTimeout(450);
+  seen[t] = await frame().evaluate(() => ({
+    txt: (document.querySelector('.student-content') || document.body).innerText,
+    cells: document.querySelectorAll('.tg-cell, polygon').length
+  }));
+}
+ok('測驗那一頁看得到開放中的考卷', /開始作答/.test(seen.quiz.txt));
+ok('兌換那一頁看得到上架的獎品', /免寫一次作業/.test(seen.shop.txt));
+ok('蜂巢戰紀那一頁的地圖畫得出來(不是空白的框)',
+   seen.war.cells > 10, seen.war.cells + ' 格');
+
+/* 學生看不到的分頁要標「未開放」—— 不標的話老師點進去看到空白
+   會以為預覽壞了,其實是他還沒開放 */
+const offTabs = await page.evaluate(() => {
+  state.shopItems.forEach(i => { i.active = false; });
+  StudentPreview.render();
+  return [...document.querySelectorAll('.pv-tab')]
+    .filter(b => b.classList.contains('off')).map(b => b.textContent.trim());
+});
+ok('學生還看不到的分頁會標「未開放」',
+   offTabs.some(t => t.startsWith('兌換')), offTabs.join(' / '));
+await page.waitForTimeout(1200);
+
 // ── 預覽裡寫不進東西 ──
 const writes = await frame().evaluate(async () => {
   const r = {};
@@ -117,6 +156,20 @@ const sized = await page.evaluate(() => {
   return Math.round(p.getBoundingClientRect().width);
 });
 ok('可以切成平板的寬度', sized >= 768, sized + 'px');
+
+/* 電腦版:孩子在教室是一人一台電腦。
+   框會縮到放得下,但 **iframe 的視窗寬度必須還是 1280** ——
+   改成把 iframe 做窄一點,裡面就會變成手機版,那就不是電腦畫面了。 */
+await page.evaluate(() => StudentPreview.setDevice('desktop'));
+await page.waitForTimeout(400);
+const desk = await page.evaluate(() => {
+  const p = document.querySelector('.pv-phone');
+  return { css: Math.round(p.getBoundingClientRect().width),
+           scaled: !!p.style.transform };
+});
+const innerW = await frame().evaluate(() => window.innerWidth);
+ok('電腦版的學生畫面讀到的還是電腦寬度(縮的是顯示,不是版面)',
+   innerW === 1280, innerW + 'px · 框 ' + desk.css + 'px');
 
 /* 外框是 content-box:專案全域是 border-box,不改回來的話
    外框那 20px 會從裡面扣掉,學生畫面右邊會被切一截 */

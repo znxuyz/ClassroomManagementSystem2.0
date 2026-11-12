@@ -1329,3 +1329,25 @@ body.is-preview-frame .student-view { min-height: 100vh; }
 body.is-preview-frame { scrollbar-width: none; }
 body.is-preview-frame::-webkit-scrollbar { display: none; }
 body.is-preview-frame .student-header-actions { display: none; }
+
+/* 電腦尺寸比老師的內容區還寬,所以整個縮小 —— 縮的是顯示,
+   iframe 的視窗寬度還是 1280,裡面讀到的仍然是電腦版的媒體查詢。 */
+.pv-phone {
+  transform-origin: top center;
+  transition: transform var(--dur) var(--ease-out);
+}
+
+/* 電腦不是一台手機,不要畫成圓角機身 */
+.pv-phone.is-desktop {
+  border-width: 8px;
+  border-radius: 10px;
+}
+
+/* 學生現在看不到的分頁 */
+.pv-tab.off { opacity: .55; }
+
+.pv-tab.off i {
+  font-style: normal;
+  font-size: 10px;
+  opacity: .8;
+}
