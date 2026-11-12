@@ -437,6 +437,21 @@ const Cloud = {
       });
   },
 
+  /* 🔁 重來:改掉已經交出去的那幾題。
+     answersFirst 一定要原樣帶回去 —— 那是第一次交卷的答案,
+     老師結算時要靠它比「哪一次比較好」。安全規則也會驗這一條,
+     所以把它拿掉的那種更新會被擋下來。 */
+  async redoAnswers(classId, quizId, uid, payload) {
+    await this.db.collection('classes').doc(classId)
+      .collection('submissions').doc(`${quizId}__${uid}`)
+      .update({
+        answers: payload.answers,
+        answersFirst: payload.answersFirst,
+        redoUse: payload.useId,
+        redoAt: Date.now()
+      });
+  },
+
   async getMySubmission(classId, quizId, uid) {
     const snap = await this.db.collection('classes').doc(classId)
       .collection('submissions').doc(`${quizId}__${uid}`).get();

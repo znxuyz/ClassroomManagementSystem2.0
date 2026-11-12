@@ -609,7 +609,20 @@ service cloud.firestore {
             && get(/databases/$(database)/documents/classes/$(classId)).data.teacherUid == request.auth.uid;
         }
 
-        allow create, update: if isMine();
+        /* 🔁 重來:交出去之後還能改,但只能走這一條路 ——
+           第一次交卷的那一份(answersFirst)一定要原樣留著,
+           老師結算時要靠它比「哪一次比較好」、以及「改了幾題」。
+           把它拿掉或改掉的更新會被擋下來,所以「交完再偷偷改成全對」
+           這條路是封的。
+           可以改幾題、改了算不算,一律由老師那一端決定(見 effectiveAnswers)
+           —— 規則只負責把原始那一份釘住。 */
+        function keepsFirst() {
+          return request.resource.data.answersFirst ==
+                 resource.data.get('answersFirst', resource.data.answers);
+        }
+
+        allow create: if isMine();
+        allow update: if isMine() && keepsFirst();
         allow read: if isClassTeacher()
                     || (signedIn() && resource.data.uid == request.auth.uid);
         allow delete: if isClassTeacher();

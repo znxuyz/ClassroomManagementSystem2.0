@@ -30,6 +30,7 @@ Object.assign(StudentApp, {
     this.activeQuiz = null;
     this.draftAnswers = {};
     this.cutMap = {};
+    this.redo = null;
     this.qPicked = null;
     // 逐題搶答離開時把進度更新回列表,不然還是顯示舊的題數
     if (quiz && quiz.scoreMode === 'perQuestion') {
@@ -226,6 +227,8 @@ Object.assign(StudentApp, {
           <span class="student-question-num">${i + 1}</span>${escapeHtml(q.text)}
         </div>
 
+        ${this.redo && this.redoLocked(q.id)
+          ? '<div class="student-note">這一題不能再改了(重來的題數用完了)</div>' : ''}
         ${q.type === 'choice' ? this.cutButton(quiz, q) : ''}
         ${q.type === 'choice' ? this.optionOrder(quiz.id, q).map((oi, pos) =>
           this.cutOf(q.id).includes(oi) ? `
@@ -233,8 +236,10 @@ Object.assign(StudentApp, {
             <span class="student-option-letter">${'ABCD'[pos]}</span>
             <span>${escapeHtml(q.options[oi])}</span>
           </label>` : `
-          <label class="student-option">
+          <label class="student-option ${this.draftAnswers[q.id] === oi ? 'picked' : ''}">
             <input type="radio" name="sq_${q.id}" value="${oi}"
+                   ${this.draftAnswers[q.id] === oi ? 'checked' : ''}
+                   ${this.redo && this.redoLocked(q.id) ? 'disabled' : ''}
                    onchange="StudentApp.setAnswer('${q.id}', ${oi})" />
             <span class="student-option-letter">${'ABCD'[pos]}</span>
             <span>${escapeHtml(q.options[oi])}</span>
@@ -264,8 +269,11 @@ Object.assign(StudentApp, {
       <main class="student-main">
         ${questions}
         <button class="btn btn-primary btn-block btn-large" id="submitQuizBtn"
-                onclick="StudentApp.submit()">交 卷</button>
-        <div class="student-note">交卷後無法修改,請確認每題都作答了。</div>
+                onclick="StudentApp.${this.redo ? 'sendRedo' : 'submit'}()">${
+                  this.redo ? '送出修改' : '交 卷'}</button>
+        <div class="student-note">${this.redo
+          ? `🔁 重來中:最多改 ${this.redo.left} 題,只會算比較好的那一次。`
+          : '交卷後無法修改,請確認每題都作答了。'}</div>
       </main>
     `;
   },
@@ -344,6 +352,82 @@ Object.assign(StudentApp, {
       this.render();
     } catch (e) {
       toast(this.skillError(e));
+    }
+  },
+
+  /* ---------- 🔁 重來 ----------
+     交卷之後、老師結算之前,挑幾題重答。
+
+     幾個刻意的決定:
+       · 第一次交的那一份(answersFirst)原樣帶著 —— 老師結算時要靠它
+         比「哪一次比較好」,安全規則也會驗這一條。
+       · 畫面上只讓他改**技能強度**那麼多題,改滿了其他題就鎖起來。
+         真正算數的仍然是老師那一端(effectiveAnswers),這裡只是先講清楚。
+       · 只取比較好的那一次 —— 不這樣的話沒有人敢用。 */
+  async openRedo(quizId) {
+    const quiz = this.quizzes.find(q => q.id === quizId);
+    if (!quiz || !this.canUse('quiz_redo')) { toast('重來現在用不了'); return; }
+    const sub = this.submissions[quizId]
+      || await Cloud.getMySubmission(this.classInfo.classId, quizId, Cloud.uid);
+    if (!sub) { toast('找不到你的作答'); return; }
+
+    const n = this.skillPower('quiz_redo') || 1;
+    if (!confirm(`挑 ${n} 題重答嗎?\n\n`
+      + `· 只會取比較好的那一次,改完反而錯了就算原本那次\n`
+      + `· 最多改 ${n} 題,改完要再送出一次\n\n用了就不能收回。`)) return;
+
+    try {
+      this.redoUseId = await this.spendSkill('quiz_redo', quizId);
+    } catch (e) {
+      toast(this.skillError(e));
+      return;
+    }
+    this.redo = {
+      quizId,
+      left: n,
+      first: sub.answersFirst || sub.answers || {},
+      base: sub.answers || {}
+    };
+    this.activeQuiz = quiz;
+    this.draftAnswers = { ...(sub.answers || {}) };
+    this.restoreCuts(quiz);
+    this.render();
+  },
+
+  /* 這一題在重來模式下改得了嗎 */
+  redoLocked(qid) {
+    const r = this.redo;
+    if (!r) return false;
+    const changed = Object.keys(this.draftAnswers).filter(k =>
+      JSON.stringify(this.draftAnswers[k]) !== JSON.stringify(r.base[k]));
+    return changed.length >= r.left && !changed.includes(qid);
+  },
+
+  async sendRedo() {
+    const r = this.redo;
+    const quiz = this.activeQuiz;
+    if (!r || !quiz) return;
+    const changed = quiz.questions.filter(q =>
+      JSON.stringify(this.draftAnswers[q.id]) !== JSON.stringify(r.base[q.id]));
+    if (!changed.length) { toast('還沒有改任何一題'); return; }
+    if (changed.length > r.left) { toast(`最多只能改 ${r.left} 題`); return; }
+
+    const btn = document.getElementById('submitQuizBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '送出中…'; }
+    try {
+      await Cloud.redoAnswers(this.classInfo.classId, quiz.id, Cloud.uid, {
+        answers: this.draftAnswers,
+        answersFirst: r.first,
+        useId: this.redoUseId || ''
+      });
+      toast(`🔁 改了 ${changed.length} 題。只會算比較好的那一次`);
+      this.redo = null;
+      this.activeQuiz = null;
+      await this.refresh();
+    } catch (e) {
+      console.error(e);
+      toast('送不出去:' + e.message);
+      if (btn) { btn.disabled = false; btn.textContent = '送出修改'; }
     }
   },
 

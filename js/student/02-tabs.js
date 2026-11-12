@@ -238,8 +238,16 @@ Object.assign(StudentApp, {
                       answered > 0 ? `繼續作答 (${answered}/${q.questions.length})` : '開始作答'
                     }</button>`;
       } else if (done) {
+        /* 🔁 重來:交卷之後、老師結算之前,挑幾題重答。
+           逐題搶答沒有「重答」這回事(一題一份、只能建立不能改),
+           所以只給一般測驗用。 */
+        const canRedo = !race && this.canUse('quiz_redo') && q.status === 'open';
         action = `<span class="student-quiz-done">✓ ${race ? '已答完' : '已交卷'}${
-          waiting ? '<br><small>' + formatSettleAt(q.settleAt) + ' 公布</small>' : ''}</span>`;
+          waiting ? '<br><small>' + formatSettleAt(q.settleAt) + ' 公布</small>' : ''}${
+          canRedo ? `<br><button class="btn btn-ghost btn-small" style="margin-top:6px;"
+                       onclick="StudentApp.openRedo('${q.id}')"
+                       title="挑 ${this.skillPower('quiz_redo')} 題重答,只取比較好的那一次"
+                       >🔁 重來(剩 ${this.skillLeft('quiz_redo')})</button>` : ''}</span>`;
       } else if (q.status !== 'open') {
         action = '<span class="student-quiz-done">已結束</span>';
       } else {

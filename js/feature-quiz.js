@@ -316,12 +316,15 @@ async function runCollect(quiz, quizId, silent) {
   }
 
   // 先全部批改,才能排名次
-  const graded = submissions.map(sub => ({
-    sub,
-    student: state.students.find(s => s.id === sub.studentId),
-    score: gradeSubmission(quiz, sub.answers || {}),
-    marks: markSubmission(quiz, sub.answers || {})
-  })).filter(g => g.student);
+  const graded = submissions.map(sub => {
+    const ans = effectiveAnswers(quiz, sub);
+    return {
+      sub,
+      student: state.students.find(s => s.id === sub.studentId),
+      score: gradeSubmission(quiz, ans),
+      marks: markSubmission(quiz, ans)
+    };
+  }).filter(g => g.student);
 
   // 名次:答對多的在前,同分則先交卷的在前。
   // orderAt 用伺服器時間,不受學生裝置時鐘影響。
@@ -693,6 +696,41 @@ const QuizWatch = {
     }
   }
 };
+
+/* ---------- 🔁 重來 ----------
+   學生交卷後改過的那幾題,在這一端決定算不算。
+
+   規則很簡單,但每一條都是必要的:
+     · 要有一筆 quiz_redo 的技能紀錄(在伺服器上,改前端生不出來)
+     · 最多只能改「技能強度」那麼多題 —— 多改的一律退回原本的答案
+     · **只取比較好的那一次**:改完反而錯了,就算原本那次。
+       不這樣的話沒有人敢用這個技能。
+
+   answersFirst 是第一次交卷的那一份,由學生端在重來時原樣保留;
+   沒有它(舊的作答、或有人把它拿掉)就直接用現在這一份,
+   等於沒有重來 —— 這條路不會讓人多拿分。 */
+function effectiveAnswers(quiz, sub) {
+  const now = sub.answers || {};
+  const first = sub.answersFirst;
+  if (!first) return now;
+
+  const use = (typeof SkillAdmin !== 'undefined' && SkillAdmin.on())
+    ? SkillAdmin.usedOn(sub.studentId, 'quiz_redo', quiz.id) : null;
+  if (!use) return first;          // 沒有技能紀錄:改過的一律不算
+
+  const allow = Math.max(0, use.power || 0);
+  const out = { ...first };
+  let used = 0;
+  quiz.questions.forEach(q => {
+    const a = first[q.id], b = now[q.id];
+    if (JSON.stringify(a) === JSON.stringify(b)) return;
+    if (used >= allow) return;     // 超過可改題數的,退回原本的答案
+    used++;
+    // 只取比較好的那一次 —— 改完反而錯了就不算
+    if (isAnswerCorrect(q, b) || !isAnswerCorrect(q, a)) out[q.id] = b;
+  });
+  return out;
+}
 
 /* 逐題批改,回傳一串 '1'(對) / '0'(錯) / '-'(沒作答)。
    存進學生的成績紀錄後,學生自己看得到每一題的對錯,
