@@ -211,7 +211,10 @@ service cloud.firestore {
             && handUse().ref == request.resource.data.get('attackId', '')
           ) ? handUse().power : 0;
         }
-        function swapLimit() { return cfg().get('maxSwaps', 3) + handBonus(); }
+        /* 換題上限。**沒設就是 0** —— 換題是「巧手」那個技能的能力,
+           老師要開放給全班才填大於 0 的數字。
+           預設 3 的話,沒買技能的孩子照樣能換,技能就白做了。 */
+        function swapLimit() { return cfg().get('maxSwaps', 0) + handBonus(); }
         function coolN() { return cfg().get('cooldownWrong', 0); }
         function coolSec() { return cfg().get('cooldownSeconds', 0); }
 
@@ -221,10 +224,13 @@ service cloud.firestore {
           && request.resource.data.at == request.time
           && request.resource.data.groupIdx == cfg().memberGroup[request.resource.data.studentId]
           && cfg().status == 'running'
-          // 老師關掉冷卻(連錯題數或秒數設 0)就不檢查這條鏈
+          /* 這條鏈**一律要檢查**。
+             以前是「老師關掉冷卻就不檢查」,但換題次數也掛在這條鏈上 ——
+             等於只要把冷卻關掉,換題上限就一起失效,沒買巧手的孩子
+             想換幾次就換幾次。冷卻可以關,次數上限不能跟著關。
+             真正跟著冷卻開關走的只有「要不要等那幾秒」,在下面那一段。 */
           && (
-               coolN() <= 0 || coolSec() <= 0
-               || (
+               (
                     /* 鏈必須是連號的:第 n 筆的前一筆只能是 {uid}_{n-1}。
                        不准跳號,所以「把 prev 填空、假裝自己是第一筆」
                        這招只有在真的第一筆(seq=1)時才成立,
@@ -261,9 +267,12 @@ service cloud.firestore {
                                         ? attemptId
                                         : prevDoc().get('attackId', ''))
                              )
-                          // 連錯數踩到倍數就得等滿冷卻時間
+                          /* 連錯數踩到倍數就得等滿冷卻時間。
+                             老師把冷卻關掉(題數或秒數設 0)時跳過這一段 ——
+                             但上面那幾條(連號、連錯數、換題次數)照樣要過。 */
                           && (
-                               request.resource.data.streak == 0
+                               coolN() <= 0 || coolSec() <= 0
+                               || request.resource.data.streak == 0
                                || request.resource.data.streak % coolN() != 0
                                || request.time >= prevDoc().at + duration.value(coolSec(), 's')
                                /* 守護獸的「靜心」技能:附上一筆有效的技能使用紀錄

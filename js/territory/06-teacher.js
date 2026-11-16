@@ -198,6 +198,14 @@ function renderTerritoryBoard() {
       ${c.status === 'running'
         ? '<button class="btn btn-ghost btn-small" onclick="endTerritoryGame()">結束這一局</button>' : ''}
       ${typeof SFX !== 'undefined' ? sfxToggleHtml() : ''}
+      ${c.status === 'running' && (c.maxSwaps || 0) > 0 ? `
+        <div class="tg-swap-warn">
+          這一局<strong>全班都能換題(每次攻擊 ${c.maxSwaps} 次)</strong>——
+          換題現在是「✋ 巧手」那個技能的能力,這一局是在改成技能之前開的,
+          所以還留著舊的設定。
+          <button class="btn btn-ghost btn-small" onclick="swapsToSkillOnly()">
+            改成只有巧手能換</button>
+        </div>` : ''}
     </div>
     ${_liveSettingsOpen ? renderLiveSettings(c) : ''}
     ${/* 排名蓋在地圖上了(renderMapHud),這裡不再重複一份 */''}
@@ -257,8 +265,8 @@ function renderLiveSettings(c) {
       <div class="tg-live-row">
         <label>可換題</label>
         <input type="number" id="lsSwaps" class="rule-editor-input" style="width:80px;"
-               value="${c.maxSwaps === undefined ? 3 : c.maxSwaps}" min="0" max="5" />
-        <label>次(難度降一階)</label>
+               value="${Math.max(0, c.maxSwaps || 0)}" min="0" max="5" />
+        <label>次(0 = 只有巧手能換)</label>
 
         <label style="margin-left:10px;">連錯</label>
         <input type="number" id="lsCoolN" class="rule-editor-input" style="width:80px;"
@@ -291,6 +299,23 @@ function renderLiveSettings(c) {
         改動從現在開始算。
       </div>
     </div>`;
+}
+
+/* 把這一局的換題次數歸零 —— 換題就只剩「✋ 巧手」那一條路。
+   做成一顆按鈕而不是自動改:老師也可能是故意開放給全班的,
+   不該替他決定。 */
+async function swapsToSkillOnly() {
+  const c = TerritoryGame.config;
+  if (!c) return;
+  if (!confirm('把這一局的「可換題」改成 0 嗎?\n\n'
+    + '改完之後,只有學會「✋ 巧手」的孩子能換題。\n'
+    + '已經打下來的地不受影響。')) return;
+  try {
+    await Cloud.saveTerritoryConfig(state.classId, { ...c, maxSwaps: 0 });
+    toast('✦ 換題已改成只有巧手能用');
+  } catch (e) {
+    toast('改不了:' + e.message);
+  }
 }
 
 async function applyLiveSettings() {

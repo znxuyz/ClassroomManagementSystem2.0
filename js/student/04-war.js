@@ -21,7 +21,7 @@ Object.assign(StudentApp, {
   tAttemptId: null,
   tLastAttempt: null,     // 我最後一筆嘗試 { id, seq, questionId, streak, at } 連錯冷卻用
   tCooldownTimer: null,
-  tSwapsLeft: 3,
+  tSwapsLeft: 0,      // 沒學巧手、老師也沒開放的話就是 0
   tSwapping: false,
   tOpening: false,
   tDeadline: 0,
@@ -114,7 +114,7 @@ Object.assign(StudentApp, {
     const nextAt = Territory.nextStageAt(c);
     const pen = c.wrongPenalty || 0;
     const floor = c.penaltyFloor || 0;
-    const maxSwaps = c.maxSwaps === undefined ? 3 : c.maxSwaps;
+    const maxSwaps = Math.max(0, c.maxSwaps || 0);
     const coolN = c.cooldownWrong || 0;
     const coolSec = c.cooldownSeconds || 0;
     const coolLeft = this.cooldownLeftMs();
@@ -194,7 +194,9 @@ Object.assign(StudentApp, {
           <strong>${coolN}</strong> 題要等 <strong>${coolSec}</strong> 秒才能再出手,
           答對一次就歸零(換題不算答錯)。</span><br>` : ''}
         ${maxSwaps > 0 ? `遇到<strong>還沒教過</strong>的題目可以<strong>換題</strong>,
-          每次攻擊最多 ${maxSwaps} 次 —— 換到的題目難度與分數都降一階。<br>` : ''}
+          每次攻擊最多 ${maxSwaps} 次 —— 換到的題目難度與分數都降一階。<br>`
+          : this.owns('war_hand') ? `遇到<strong>還沒教過</strong>的題目,
+          用<strong>✋ 巧手</strong>就可以換題 —— 換到的題目難度與分數都降一階。<br>` : ''}
         灰色是尚未開放的區域,★ 是各組基地,不能被攻佔。
       </div>`;
   },
@@ -361,8 +363,8 @@ Object.assign(StudentApp, {
       ((TerritoryGame.config || {}).cooldownWrong > 0
         && (TerritoryGame.config || {}).cooldownSeconds > 0
         ? `· 連續答錯 ${TerritoryGame.config.cooldownWrong} 題要等 ${TerritoryGame.config.cooldownSeconds} 秒才能再出手\n` : '') +
-      (((TerritoryGame.config || {}).maxSwaps ?? 3) > 0
-        ? `· 沒學過的題目可以換題(最多 ${(TerritoryGame.config || {}).maxSwaps ?? 3} 次),難度與分數降一階\n` : '') +
+      (((TerritoryGame.config || {}).maxSwaps || 0) > 0
+        ? `· 沒學過的題目可以換題(最多 ${(TerritoryGame.config || {}).maxSwaps || 0} 次),難度與分數降一階\n` : '') +
       '\n準備好了就按確定')) return;
 
     const q = pool[Math.floor(Math.random() * pool.length)];
@@ -425,8 +427,9 @@ Object.assign(StudentApp, {
     }
 
     this.tOpening = false;
-    this.tSwapsLeft = (TerritoryGame.config || {}).maxSwaps;
-    if (this.tSwapsLeft === undefined) this.tSwapsLeft = 3;
+    /* 老師沒開放就是 0 —— 要換題得先用「✋ 巧手」。
+       這裡預設 3 的話,沒買技能的孩子一樣有三次,技能就白做了。 */
+    this.tSwapsLeft = Math.max(0, (TerritoryGame.config || {}).maxSwaps || 0);
     this.tTargetHex = hexKey;
     this.tQuestion = q;
     this.shuffleOptions(q);

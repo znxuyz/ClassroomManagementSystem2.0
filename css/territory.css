@@ -890,3 +890,20 @@
 }
 
 .war-cooldown-bar.is-closed .war-cooldown-icon { animation: none; }
+
+/* 舊的一局還留著「全班都能換題」的設定時,在狀態列下面提醒一次。
+   不自動改掉 —— 老師也可能是故意開放給全班的,不該替他決定。 */
+.tg-swap-warn {
+  flex: 1 0 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 9px 13px;
+  border: 1px solid rgba(201, 162, 39, 0.45);
+  border-radius: var(--control-r);
+  background: color-mix(in srgb, var(--gold) 12%, transparent);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.7;
+}
