@@ -83,13 +83,13 @@ export default [
   await page.evaluate(() => StudentApp.bkCheck());
   await sleep(3800);
 
-  await cap('「搖動第 1 次之後,螢幕上應該是 1,但你的程式是 0」—— 講得出哪一步、差在哪');
+  await cap('「晃動第 1 次之後,螢幕上應該是 1,但你的程式是 0」—— 講得出哪一步、差在哪');
   await sleep(4000);
 
   await cap('補上缺的那兩塊,再檢查一次');
   await page.evaluate(() => {
     BlockEditor.program.push(
-      { id: 'd5', t: 'on_gesture', g: '搖動', body: [
+      { id: 'd5', t: 'on_gesture', g: '晃動', body: [
         { id: 'd6', t: 'change_var', name: '步數', v: 1 },
         { id: 'd7', t: 'show_number', v: { id: 'd8', t: 'var', name: '步數' } }] },
       { id: 'd9', t: 'on_button', btn: 'A+B', body: [

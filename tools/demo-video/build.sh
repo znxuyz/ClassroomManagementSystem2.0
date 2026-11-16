@@ -42,7 +42,15 @@ echo "── 3/6 片尾 ──"
 mkdir -p "$OUT/txt"
 printf '%s' '守護獸學園' > "$OUT/txt/t0.txt"
 printf '%s' '純前端 + Firebase · 沒有伺服器要維護' > "$OUT/txt/t1.txt"
-printf '%s' '每一次改版都跑 27 套 · 590 多項自動測試' > "$OUT/txt/t2.txt"
+# 測試數量現場數,不要寫死 —— 寫死的話改版之後片尾就會說謊。
+# 套數直接數檔案;項數從上一次跑完的結果抓,抓不到就不提項數
+# (說「36 套」是真的,說「590 多項」在改版之後就不是了)。
+SUITES=$(ls tests/[0-9]*.mjs | wc -l | tr -d ' ')
+CHECKS=$(awk '{s+=$1} END {if (s>0) printf "%d", int(s/10)*10}' \
+  <(grep -hoE '[0-9]+ 項通過' "$OUT/tests.log" 2>/dev/null | grep -oE '^[0-9]+') 2>/dev/null || true)
+T2="每一次改版都跑 ${SUITES} 套自動測試"
+[ -n "$CHECKS" ] && T2="每一次改版都跑 ${SUITES} 套 · ${CHECKS} 多項自動測試"
+printf '%s' "$T2" > "$OUT/txt/t2.txt"
 printf '%s' '守護獸都是台灣特有種' > "$OUT/txt/t3.txt"
 printf '%s' '牠們是這片土地上比我們先住的居民' > "$OUT/txt/t4.txt"
 
@@ -74,7 +82,7 @@ ffmpeg -v error -y -i "$OUT/video.mp4" -i "$OUT/bgm.wav" \
 # 完整字幕:學生端那一段要往後推一整段老師端的長度,片尾另外補上
 A_DUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$OUT/a.mp4")
 B_DUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$OUT/b.mp4")
-$PY - "$OUT" "$A_DUR" "$B_DUR" <<'PYEOF'
+$PY - "$OUT" "$A_DUR" "$B_DUR" "$T2" <<'PYEOF'
 import sys, json, pathlib
 out, shift = pathlib.Path(sys.argv[1]), float(sys.argv[2]) * 1000
 outro_at = shift + float(sys.argv[3]) * 1000
@@ -93,7 +101,7 @@ for part, off in (('teacher', 0), ('student', shift)):
 
 # 片尾那幾句是用 ffmpeg 畫上去的,字幕檔也要有(不然聽障或翻譯的人會漏掉)
 for a, b, t in [(0.3, 5.2, '純前端 + Firebase,沒有伺服器要維護'),
-                (5.4, 9.0, '每一次改版都跑 27 套、590 多項自動測試'),
+                (5.4, 9.0, sys.argv[4]),
                 (9.0, 14.0, '守護獸都是台灣特有種 —— 牠們是這片土地上比我們先住的居民')]:
     subs.append((outro_at + a * 1000, outro_at + b * 1000, t))
 
