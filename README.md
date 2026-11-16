@@ -8,10 +8,11 @@
 
 ## 🎬 四分鐘看完
 
-https://github.com/znxuyz/class/raw/main/docs/demo.mp4
+[![點一下播放介紹影片](docs/demo-poster.jpg)](https://github.com/znxuyz/ClassroomManagementSystem2.0/blob/main/docs/demo.mp4)
 
-> 看不到播放器的話:[直接下載 docs/demo.mp4](docs/demo.mp4) ·
-> [字幕檔 docs/demo.srt](docs/demo.srt)
+**▶ 點上面那張圖**,GitHub 會直接開播放器(4 分 13 秒,有字幕與配樂)。
+也可以[下載 mp4](https://github.com/znxuyz/ClassroomManagementSystem2.0/raw/main/docs/demo.mp4)
+或拿[字幕檔](docs/demo.srt)。
 
 這支影片**是用真的程式錄出來的** —— 畫面上每一個反應都是系統自己跑出來的,
 不是動畫也不是截圖拼接。前半段是老師端(電腦),後半段是學生端(手機)。
