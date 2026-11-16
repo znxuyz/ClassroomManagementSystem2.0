@@ -8,13 +8,10 @@
 
 ## 🎬 四分鐘看完
 
-<video src="https://znxuyz.github.io/ClassroomManagementSystem2.0/docs/demo.mp4"
-       poster="https://znxuyz.github.io/ClassroomManagementSystem2.0/docs/demo-poster.jpg"
-       controls muted playsinline width="880">
-  <a href="https://github.com/znxuyz/ClassroomManagementSystem2.0/blob/main/docs/demo.mp4"><img src="docs/demo-poster.jpg" alt="點一下播放介紹影片" width="880"></a>
-</video>
+[![守護獸學園 · 功能介紹](docs/preview.gif)](https://github.com/znxuyz/ClassroomManagementSystem2.0/blob/main/docs/demo.mp4)
 
-4 分 13 秒,有字幕與配樂。也可以
+上面這段在首頁**自己會動**(13 秒循環:老師加分 → 學生的守護獸 → 積木冒險)。
+點下去看完整的 **4 分 13 秒**介紹,有字幕與配樂;也可以
 [下載 mp4](https://github.com/znxuyz/ClassroomManagementSystem2.0/raw/main/docs/demo.mp4)
 或拿[字幕檔](docs/demo.srt)。
 

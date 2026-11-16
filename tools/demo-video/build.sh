@@ -73,7 +73,7 @@ echo "   影片長度 ${DUR} 秒"
 echo "── 5/6 配樂 ──"
 $PY tools/demo-video/music.py "$OUT/bgm.wav" "$DUR"
 
-echo "── 6/6 混音輸出 ──"
+echo "── 6/7 混音輸出 ──"
 ffmpeg -v error -y -i "$OUT/video.mp4" -i "$OUT/bgm.wav" \
   -c:v copy -c:a aac -b:a 160k -shortest \
   -metadata title="守護獸學園 — 功能介紹" \
@@ -114,3 +114,26 @@ PYEOF
 
 ls -la "$OUT/守護獸學園-功能介紹.mp4"
 echo "完成:$OUT/守護獸學園-功能介紹.mp4"
+
+# ---------------------------------------------
+#  首頁用的預覽動畫
+#  ─────────────────────────────────────────────
+#  GitHub 的 README **會把 <video> 整個濾掉**(連裡面的後備內容一起),
+#  所以首頁上唯一能「自己動」的東西只有圖片。
+#  剪三段各 4.5 秒接成一張 13 秒的 GIF:老師加分 → 學生守護獸 → 積木冒險。
+#  720 寬、10fps、128 色,大約 800KB —— 放在 README 最上面不會拖慢開啟。
+# ---------------------------------------------
+echo "── 7/7 首頁預覽動畫 ──"
+G="$OUT/gif"; mkdir -p "$G"
+i=0
+for seg in "29 4.5" "164 4.5" "203 4.5"; do
+  set -- $seg
+  i=$((i + 1))
+  ffmpeg -v error -y -ss "$1" -t "$2" -i "$OUT/守護獸學園-功能介紹.mp4" -an "$G/p$i.mp4"
+done
+printf "file '%s'\nfile '%s'\nfile '%s'\n" "$G/p1.mp4" "$G/p2.mp4" "$G/p3.mp4" > "$G/l.txt"
+ffmpeg -v error -y -f concat -safe 0 -i "$G/l.txt" -c copy "$G/cat.mp4"
+ffmpeg -v error -y -i "$G/cat.mp4" -vf "fps=10,scale=720:-2:flags=lanczos,\
+split[a][b];[a]palettegen=max_colors=128[p];[b][p]paletteuse=dither=bayer:bayer_scale=3" \
+  -loop 0 "$OUT/preview.gif"
+ls -l "$OUT/preview.gif" | awk '{printf "   preview.gif %.0f KB\n", $5/1024}'
