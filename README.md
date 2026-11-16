@@ -8,10 +8,14 @@
 
 ## 🎬 四分鐘看完
 
-[![點一下播放介紹影片](docs/demo-poster.jpg)](https://github.com/znxuyz/ClassroomManagementSystem2.0/blob/main/docs/demo.mp4)
+<video src="https://znxuyz.github.io/ClassroomManagementSystem2.0/docs/demo.mp4"
+       poster="https://znxuyz.github.io/ClassroomManagementSystem2.0/docs/demo-poster.jpg"
+       controls muted playsinline width="880">
+  <a href="https://github.com/znxuyz/ClassroomManagementSystem2.0/blob/main/docs/demo.mp4"><img src="docs/demo-poster.jpg" alt="點一下播放介紹影片" width="880"></a>
+</video>
 
-**▶ 點上面那張圖**,GitHub 會直接開播放器(4 分 13 秒,有字幕與配樂)。
-也可以[下載 mp4](https://github.com/znxuyz/ClassroomManagementSystem2.0/raw/main/docs/demo.mp4)
+4 分 13 秒,有字幕與配樂。也可以
+[下載 mp4](https://github.com/znxuyz/ClassroomManagementSystem2.0/raw/main/docs/demo.mp4)
 或拿[字幕檔](docs/demo.srt)。
 
 這支影片**是用真的程式錄出來的** —— 畫面上每一個反應都是系統自己跑出來的,
