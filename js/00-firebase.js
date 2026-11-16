@@ -319,6 +319,9 @@ const Cloud = {
       pointsPerQuestion: quiz.pointsPerQuestion,
       scoreMode: quiz.scoreMode || 'all',
       topN: quiz.topN || 0,
+      /* 結算時間也要給學生 —— 少了它,學生交完卷只看到「已交卷」,
+         不知道什麼時候會公布,就會一直來問老師。 */
+      settleAt: quiz.settleAt || 0,
       status: 'open',
       publishedAt: Date.now(),
       questions: quiz.questions.map(q => ({
@@ -331,6 +334,19 @@ const Cloud = {
     };
     await this.db.collection('classes').doc(classId)
       .collection('quizzes').doc(quiz.id).set(forStudents);
+  },
+
+  /* 改測驗的設定(名稱、截止日、每題分數、統一結算時間)。
+     **只動這幾個欄位** —— 題目與答案不從這裡走,
+     免得一個改設定的動作不小心把整份題目覆寫掉。
+     課堂進度調整時最常改的就是結算時間。 */
+  async updateQuizMeta(classId, quizId, patch) {
+    const allow = ['title', 'dueDate', 'pointsPerQuestion', 'settleAt'];
+    const out = {};
+    allow.forEach(k => { if (patch[k] !== undefined) out[k] = patch[k]; });
+    if (!Object.keys(out).length) return;
+    await this.db.collection('classes').doc(classId)
+      .collection('quizzes').doc(quizId).update(out);
   },
 
   async setQuizStatus(classId, quizId, status) {

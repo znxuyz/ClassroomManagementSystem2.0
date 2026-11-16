@@ -557,6 +557,133 @@ async function settleNow(quizId) {
   renderQuizList();
 }
 
+/* ============================================
+   改測驗的設定
+   ────────────────────────────────────────────
+   課堂進度會變:原本說禮拜一公布,結果那一節改上別的,
+   結算時間就得往後挪。沒有這個功能的話,老師只能刪掉重出一份 ——
+   學生已經交的作答就跟著不見了。
+
+   能改的只有「不會讓已經交的答案失效」的那幾項:
+     名稱、截止日、每題分數、統一結算時間
+   **計分方式開放之後就不給改** —— 逐題搶答和一般測驗在學生端是
+   兩條不同的作答流程、答案也存在不同的地方,中途換掉的話
+   已經交的那些會變成讀不到。要換就結束這一份、另外開一份。
+============================================ */
+let _editingQuizMeta = null;
+
+function toggleQuizSettings(quizId) {
+  _editingQuizMeta = (_editingQuizMeta === quizId) ? null : quizId;
+  renderQuizList();
+}
+
+function renderQuizSettings(quiz) {
+  const live = quiz.status !== 'draft';
+  const d = quiz.settleAt ? new Date(quiz.settleAt) : null;
+  const p = n => String(n).padStart(2, '0');
+  const dateVal = d ? `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}` : '';
+  const hourVal = d ? p(d.getHours()) : '00';
+  const minVal = d ? p(d.getMinutes()) : '00';
+  const hours = Array.from({ length: 24 }, (_, i) =>
+    `<option value="${p(i)}" ${p(i) === hourVal ? 'selected' : ''}>${p(i)}${
+      i === 0 ? ' 半夜' : i === 12 ? ' 中午' : ''}</option>`).join('');
+  const mins = Array.from({ length: 60 }, (_, i) =>
+    `<option value="${p(i)}" ${p(i) === minVal ? 'selected' : ''}>${p(i)}</option>`).join('');
+
+  return `
+    <div class="quiz-settings">
+      <div class="quiz-settings-title">改這份測驗的設定</div>
+      <div class="field-row">
+        <label class="field grow">
+          <span class="field-label">測驗名稱</span>
+          <input type="text" id="qs_title_${quiz.id}" class="rule-editor-input"
+                 value="${escapeHtml(quiz.title)}" />
+        </label>
+        <label class="field mid">
+          <span class="field-label">截止日期</span>
+          <input type="date" id="qs_due_${quiz.id}" class="rule-editor-input"
+                 value="${escapeHtml(quiz.dueDate || '')}" />
+        </label>
+        <label class="field narrow">
+          <span class="field-label">每題分數</span>
+          <input type="number" id="qs_pts_${quiz.id}" class="rule-editor-input"
+                 min="0" max="20" value="${quiz.pointsPerQuestion === undefined
+                   ? 1 : quiz.pointsPerQuestion}" />
+        </label>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <span class="field-label">統一結算時間(日期留空 = 交完就能收)</span>
+          <span class="quiz-settle-row">
+            <input type="date" id="qs_sdate_${quiz.id}" class="rule-editor-input"
+                   value="${dateVal}" />
+            <select id="qs_shour_${quiz.id}" class="rule-editor-input">${hours}</select>
+            <span>時</span>
+            <select id="qs_smin_${quiz.id}" class="rule-editor-input">${mins}</select>
+            <span>分</span>
+          </span>
+        </div>
+        <div style="flex:1"></div>
+        <button class="btn btn-ghost btn-small"
+                onclick="toggleQuizSettings('${quiz.id}')">取消</button>
+        <button class="btn btn-primary btn-small"
+                onclick="saveQuizSettings('${quiz.id}')">儲存</button>
+      </div>
+      <div class="quiz-settings-note">
+        ${live ? '這份已經開放了,<strong>計分方式不能改</strong> —— '
+               + '逐題搶答和一般測驗在學生端是兩條不同的作答流程,'
+               + '中途換掉的話,已經交的答案會讀不到。要換就結束這一份、另外開一份。<br>'
+               : ''}
+        改完會同步到學生那邊;<strong>已經結算發出去的分數不會變動</strong>。
+        把結算時間往後挪,等於「先別公布」,學生會看到新的公布時間。
+      </div>
+    </div>`;
+}
+
+async function saveQuizSettings(quizId) {
+  const quiz = getQuiz(quizId);
+  if (!quiz) return;
+  const val = id => (document.getElementById(id + '_' + quizId) || {}).value;
+
+  const title = (val('qs_title') || '').trim();
+  if (!title) { toast('測驗名稱不能是空的'); return; }
+
+  const date = val('qs_sdate');
+  const settleAt = date
+    ? new Date(`${date}T${val('qs_shour') || '00'}:${val('qs_smin') || '00'}`).getTime()
+    : 0;
+
+  /* 已經結算過、又把時間往後挪 —— 提醒一次就好,不擋。
+     老師可能就是要「再收一次後面補交的」。 */
+  if (quiz.settledDone && settleAt > Date.now()
+      && !confirm('這份已經結算過了,把結算時間往後挪不會把分數收回來。\n\n'
+                  + '要繼續嗎?')) return;
+
+  quiz.title = title;
+  quiz.dueDate = val('qs_due') || '';
+  quiz.pointsPerQuestion = Math.max(0, parseInt(val('qs_pts'), 10) || 0);
+  quiz.settleAt = settleAt;
+  /* 時間往後挪就等於「還沒結算」,否則提前結算過的那一份
+     會一直停在「已結算」,新的時間到了也不會再收。 */
+  if (settleAt > Date.now()) quiz.settledDone = false;
+
+  _editingQuizMeta = null;
+  save();
+
+  if (quiz.status !== 'draft' && isCloudMode()) {
+    try {
+      await Cloud.updateQuizMeta(state.classId, quiz.id, quiz);
+      toast('✦ 已更新,學生那邊也看得到新的時間');
+    } catch (e) {
+      console.error(e);
+      toast('雲端沒更新到:' + e.message + '(老師端已存)');
+    }
+  } else {
+    toast('✦ 已更新');
+  }
+  renderQuizList();
+}
+
 function scoreModeLabel(quiz) {
   if (quiz.scoreMode === 'perQuestion') {
     return `<strong>逐題搶答 · 每題前 ${quiz.topN} 名</strong>`;
@@ -834,9 +961,14 @@ function renderQuizList() {
           ${quiz.status === 'closed'
             ? `<button class="btn btn-primary btn-small" onclick="collectQuizResults('${quiz.id}')">收回成績</button>`
             : ''}
+          <button class="btn btn-ghost btn-small"
+                  onclick="toggleQuizSettings('${quiz.id}')"
+                  title="改名稱、截止日、每題分數、統一結算時間">設定</button>
           <button class="btn btn-ghost btn-small" onclick="deleteQuiz('${quiz.id}')">刪除</button>
         </div>
       </div>
+
+      ${_editingQuizMeta === quiz.id ? renderQuizSettings(quiz) : ''}
 
       ${quiz.status === 'open' ? `<div id="liveBoard_${quiz.id}" class="quiz-live-board"></div>` : ''}
       ${quiz.status === 'draft' ? renderQuizEditor(quiz) : renderQuizResults(quiz)}

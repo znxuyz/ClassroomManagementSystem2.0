@@ -400,3 +400,41 @@
 }
 
 .quiz-cut-btn { margin: 4px 0 8px; }
+
+/* ---------- 改測驗的設定 ----------
+   課堂進度會變,最常改的是結算時間。面板直接長在那張卡裡,
+   不另開一個對話框 —— 老師要邊看「已交幾人」邊決定要不要延。 */
+.quiz-settings {
+  margin: 10px 0 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--paper-shadow);
+  border-radius: var(--r-tile);
+  background: var(--paper-warm);
+}
+
+.quiz-settings-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+
+.quiz-settings-note {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--ink-muted);
+}
+
+/* 日期 + 時 + 分 排成一行,共用一個標題 ——
+   三個欄位各給一個標題的話,「統一結算日期」那一串會把格子擠到被切掉。 */
+.quiz-settle-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.quiz-settle-row input[type="date"] { width: 160px; flex: none; }
+.quiz-settle-row select { width: auto; flex: none; }
+.quiz-settle-row span { font-size: 12px; color: var(--ink-soft); }
