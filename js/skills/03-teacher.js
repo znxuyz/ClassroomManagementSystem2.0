@@ -177,17 +177,23 @@ function skillBoardHtml() {
   const onShelf = PET_SKILLS.filter(s =>
     state.shopItems.some(i => i.id === SkillEngine.fruitId(s.id))).length;
 
-  // 四階效果總表:一眼看完哪一階能用什麼、多強
-  const rows = PET_SKILLS.map(sk => `
+  /* 四階效果總表:一眼看完哪一階能用什麼、多強。
+     照領域分段 —— 十八個技能平鋪的話,老師要找「測驗那幾個」
+     得一行一行讀。分段用的順序和商店同一份(SKILL_AREA_ORDER)。 */
+  const rows = groupByArea(PET_SKILLS, sk => sk.area).map(g => `
+    <tr class="skill-tb-group">
+      <td colspan="6">${g.info.icon} ${escapeHtml(g.info.name)}</td>
+    </tr>
+    ${g.items.map(sk => `
     <tr>
       <td class="skill-tb-name">${skillIconHtml(sk, 26)} ${escapeHtml(sk.name)}
-        <small>${SKILL_AREAS[sk.area].name}</small></td>
+        <small>${escapeHtml(sk.short || '')}</small></td>
       ${sk.levels.map(lv => `
         <td class="${lv.n > 0 ? '' : 'skill-tb-off'}">
           ${lv.n > 0 ? escapeHtml(lv.text).replace(',每週', '<br>每週') : '—'}
         </td>`).join('')}
       <td class="skill-tb-price">${sk.price} 點</td>
-    </tr>`).join('');
+    </tr>`).join('')}`).join('');
 
   const counts = [0, 1, 2, 3].map(i =>
     state.students.filter(s => PetEngine.getStage(s.totalPoints || 0) === i).length);

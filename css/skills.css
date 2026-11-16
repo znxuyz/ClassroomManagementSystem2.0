@@ -369,3 +369,14 @@
   font-weight: 600;
   white-space: nowrap;
 }
+
+/* 技能總表照領域分段 —— 十八個技能平鋪的話,
+   老師要找「測驗那幾個」得一行一行讀。 */
+.skill-tb-group td {
+  padding: 9px 10px 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  background: var(--paper-warm);
+  border-top: 1px solid var(--paper-shadow);
+}

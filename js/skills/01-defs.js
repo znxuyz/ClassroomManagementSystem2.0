@@ -266,6 +266,24 @@ const PET_SKILLS = [
 const SKILL_ICON_DIR = 'assets/skill/';
 let SKILL_ICON_MISSING = {};        // 載入失敗的記在這裡,之後直接用 emoji
 
+/* 技能分區的順序。商店(學生端與老師端)、技能總表、說明都用這一份 ——
+   四個地方各寫一份的話,加一個新領域就會有三個地方忘了改,
+   而「老師看到的順序和學生看到的不一樣」是最難發現的那種錯。 */
+const SKILL_AREA_ORDER = ['war', 'quiz', 'blocks', 'pet', 'shop'];
+
+/* 把一串技能(或技能果實)照領域分組,空的領域不會出現。
+   key 用來從每一筆取出領域名稱 —— 技能本身是 s.area,
+   商店的果實要先換成技能再取。 */
+function groupByArea(list, areaOf) {
+  const by = {};
+  (list || []).forEach(it => {
+    const a = areaOf(it) || 'shop';
+    (by[a] = by[a] || []).push(it);
+  });
+  return SKILL_AREA_ORDER.filter(a => by[a] && by[a].length)
+    .map(a => ({ area: a, info: SKILL_AREAS[a], items: by[a] }));
+}
+
 const SKILL_AREAS = {
   war:    { name: '蜂巢戰紀', icon: '🗺️' },
   quiz:   { name: '測驗',     icon: '📝' },

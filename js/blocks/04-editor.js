@@ -608,17 +608,6 @@ const BlockEditor = {
     return html.replace(/\sdata-(id|bk|arg|index|which)="[^"]*"/g, '');
   },
 
-  /* 面板上只給一個「大概長這樣」的名字,插槽用底線代替。
-     (目前只有測試與說明會用到,畫面上已經改成畫真的積木) */
-  labelPreview(d) {
-    return escapeHtml(d.label.replace(/\$\{(\w+)\}/g, (m, k) => {
-      const a = (d.args || []).find(x => x.name === k);
-      if (a && a.type === 'pick') return a.def;
-      if (a && a.type === 'leds') return '▦';
-      return '◻';
-    }));
-  },
-
   renderList(list, parentId, which) {
     const items = (list || []).map((b, i) => `
       ${this.renderCursor(parentId, which, i)}

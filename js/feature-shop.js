@@ -204,7 +204,42 @@ function renderShopItems() {
     return;
   }
 
-  el.innerHTML = `<div class="shop-item-grid">` + state.shopItems.map(item => {
+  el.innerHTML = renderShopGroups(state.shopItems, shopItemCard);
+}
+
+/* 照「在哪裡用得到」把技能果實分區,一般獎品放最前面。
+   十七顆果實平鋪成一長條時,老師要調某一區的價錢得一顆一顆找。
+   學生端用的是同一套分法(見 StudentApp.shopFruitGroups)——
+   兩邊看到的順序一樣,老師講「第二區那顆」學生才找得到。 */
+function renderShopGroups(items, card) {
+  const isFruit = id => typeof SkillEngine !== 'undefined' && SkillEngine.isFruit(id);
+  const normal = items.filter(i => !isFruit(i.id));
+  const fruits = items.filter(i => isFruit(i.id));
+
+  const groups = groupByArea(fruits, it => {
+    const sk = SkillEngine.skillOfFruit(it.id);
+    return sk && sk.area;
+  });
+
+  const grid = list => `<div class="shop-item-grid">${list.map(card).join('')}</div>`;
+
+  return `
+    ${normal.length ? `
+      ${groups.length ? '<div class="shop-group-title">🎁 一般獎品</div>' : ''}
+      ${grid(normal)}` : ''}
+    ${groups.length ? `
+      <div class="shop-group-title">✦ 技能果實
+        <small>學生買一次就永久擁有,守護獸每進化一階就更強</small></div>
+      ${groups.map(g => `
+        <div class="shop-subgroup">
+          <div class="shop-subtitle">${g.info.icon} ${escapeHtml(g.info.name)}
+            <span>${g.items.length} 顆</span></div>
+          ${grid(g.items)}
+        </div>`).join('')}` : ''}`;
+}
+
+/* 一張獎品卡(老師端)。平常長得像一件獎品,按了「編輯」才變成表單。 */
+function shopItemCard(item) {
     const out = item.stock !== null && item.stock <= 0;
     /* 技能果實用技能自己的圖,不要用 emoji 欄位。
        學生端本來就是這樣畫的,只有老師端這邊還停在「一格 emoji 輸入框」——
@@ -299,7 +334,6 @@ function renderShopItems() {
           <button class="btn btn-primary btn-small" onclick="editShopItem(null)">完成</button>
         </div>
       </div>`;
-  }).join('') + `</div>`;
 }
 
 /* ============================================

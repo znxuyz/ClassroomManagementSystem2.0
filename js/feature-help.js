@@ -657,14 +657,16 @@ function skillTableForHelp() {
         <span>技能</span>
         ${STAGE_NAMES.map(n => `<span>${n}</span>`).join('')}
       </div>
-      ${PET_SKILLS.map(sk => `
+      ${groupByArea(PET_SKILLS, sk => sk.area).map(g => `
+        <div class="help-skill-group">${g.info.icon} ${escapeHtml(g.info.name)}</div>
+        ${g.items.map(sk => `
         <div class="help-skill-row">
           <span class="help-skill-name">${sk.icon} ${escapeHtml(sk.name)}
-            <small>${SKILL_AREAS[sk.area].name}</small></span>
+            <small>${escapeHtml(sk.short || '')}</small></span>
           ${sk.levels.map(lv => `<span class="${lv.n > 0 ? '' : 'is-off'}">${
             lv.n > 0 ? escapeHtml(lv.text).replace(',每週 ', '<br>每週 ') : '—'
           }</span>`).join('')}
-        </div>`).join('')}
+        </div>`).join('')}`).join('')}
     </div>`;
 }
 

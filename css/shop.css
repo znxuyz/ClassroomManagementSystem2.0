@@ -742,3 +742,85 @@
 }
 
 .prize-balance-star strong { font-size: 24px; }
+
+/* ---------- 商店分區 ----------
+   十七顆技能果實平鋪成一長條的時候,孩子要一顆一顆讀說明才知道
+   哪一顆跟蜂巢戰紀有關。分區之後他可以直接看自己想變強的那一區。 */
+.prize-group-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 22px 0 10px;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.prize-group-title:first-child { margin-top: 0; }
+
+.prize-group-title small {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  line-height: 1.6;
+}
+
+.prize-subgroup { margin-bottom: 14px; }
+
+/* 小標用「一條色線 + 名字」,不要再用一個大標題 ——
+   兩層標題一樣大的話,孩子分不出哪一層包著哪一層。 */
+.prize-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  padding-left: 9px;
+  border-left: 3px solid var(--gold);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 520px) {
+  .prize-group-title { font-size: 16px; flex-direction: column; gap: 2px; }
+}
+
+/* 老師端的獎品管理用和學生端同一套分區 ——
+   兩邊順序一樣,老師講「技能果實第二區那顆」學生才找得到。 */
+.shop-group-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 20px 0 10px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.shop-group-title:first-child { margin-top: 0; }
+
+.shop-group-title small {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+
+.shop-subgroup { margin-bottom: 12px; }
+
+.shop-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  padding-left: 9px;
+  border-left: 3px solid var(--gold);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.shop-subtitle span { font-weight: 500; color: var(--ink-muted); font-size: 11px; }

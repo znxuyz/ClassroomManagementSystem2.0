@@ -357,81 +357,107 @@ Object.assign(StudentApp, {
     return Math.max(0, (me.starsEarned || 0) - (me.starSpent || 0));
   },
 
+  /* ---------- 一張獎品卡 ----------
+     抽成一支是因為下面要分好幾區畫(一般獎品、各領域的技能果實),
+     每一區複製一份的話,改價錢顯示、改按鈕狀態就得改好幾個地方。 */
+  prizeCard(item, env) {
+    const soldOut = item.stock !== null && item.stock <= 0;
+    const waiting = env.pending.includes(item.id);
+    /* 雙貨幣:老師可以只填一種價錢。
+       兩種都填就兩顆按鈕,買得起哪一種就亮哪一種。 */
+    const byPoint = Number(item.price) > 0 || !(Number(item.starPrice) > 0);
+    const byStar = Number(item.starPrice) > 0;
+    const tooPoor = byPoint && env.points < item.price;
+    const tooFew = byStar && env.stars < item.starPrice;
+    // 技能果實用技能自己的圖示(帶統一外框),其他獎品照舊用 emoji
+    const fruitOf = SkillEngine.skillOfFruit(item.id);
+    /* 已經有的果實不能再買。按下去本來就會被擋,但按鈕該先變灰 ——
+       讓學生按了才被拒絕是很差的體驗 */
+    const owned = !!fruitOf && SkillEngine.owns(this.student, fruitOf.id);
+    // 兩種都付不起才算真的買不起
+    const broke = (!byPoint || tooPoor) && (!byStar || tooFew);
+    const disabled = soldOut || broke || waiting || owned;
+
+    return `
+      <div class="prize-card ${disabled ? 'disabled' : ''} ${fruitOf ? 'is-fruit' : ''}">
+        <div class="prize-icon">${fruitOf
+          ? skillIconHtml(fruitOf, 56)
+          : escapeHtml(item.icon || '🎁')}</div>
+        <div class="prize-body">
+          <div class="prize-name">${escapeHtml(item.name)}</div>
+          ${item.description
+            ? `<div class="prize-desc">${escapeHtml(item.description)}</div>` : ''}
+          <div class="prize-meta">
+            ${byPoint ? `<span class="prize-price">${item.price} 點</span>` : ''}
+            ${byStar ? `<span class="prize-price is-star">★ ${item.starPrice}</span>` : ''}
+            ${item.stock !== null
+              ? `<span class="prize-stock">${soldOut ? '已兌完' : '剩 ' + item.stock + ' 份'}</span>`
+              : ''}
+          </div>
+        </div>
+        ${owned || waiting || soldOut || broke ? `
+        <button class="btn btn-accent btn-small" disabled>
+          ${owned ? '已擁有' : waiting ? '處理中' : soldOut ? '已兌完'
+            : byPoint && byStar
+              ? `還差 ${Math.min(item.price - env.points, item.starPrice - env.stars)}`
+              : byStar ? `還差 ${item.starPrice - env.stars} ★`
+                       : `還差 ${item.price - env.points} 點`}
+        </button>` : `
+        <div class="prize-pay">
+          ${byPoint ? `<button class="btn btn-accent btn-small" ${tooPoor ? 'disabled' : ''}
+                  onclick="StudentApp.buy('${item.id}','point')"
+                  >${tooPoor ? `還差 ${item.price - env.points} 點`
+                      : byStar ? `${item.price} 點` : '兌換'}</button>` : ''}
+          ${byStar ? `<button class="btn btn-small btn-star" ${tooFew ? 'disabled' : ''}
+                  onclick="StudentApp.buy('${item.id}','star')"
+                  >${tooFew ? `還差 ${item.starPrice} ★` : `★ ${item.starPrice}`}</button>` : ''}
+        </div>`}
+      </div>`;
+  },
+
   renderShopTab() {
     const items = (this.shopItems || []).filter(i => i.active);
     const points = this.student ? this.student.currentPoints : 0;
     const stars = this.myStars();
+    const env = { points, stars,
+      pending: (this.myPurchases || [])
+        .filter(p => p.status === 'pending').map(p => p.itemId) };
 
-    const pendingIds = (this.myPurchases || [])
-      .filter(p => p.status === 'pending')
-      .map(p => p.itemId);
-
-    const cards = items.length === 0
-      ? this.pageEmpty('🎁', '老師還沒上架任何獎品',
-          '獎品上架之後,就可以用可用積分來換。')
-      : items.map(item => {
-          const soldOut  = item.stock !== null && item.stock <= 0;
-          const waiting  = pendingIds.includes(item.id);
-          /* 雙貨幣:老師可以只填一種價錢。
-             兩種都填就兩顆按鈕,買得起哪一種就亮哪一種。 */
-          const byPoint = Number(item.price) > 0 || !(Number(item.starPrice) > 0);
-          const byStar  = Number(item.starPrice) > 0;
-          const tooPoor = byPoint && points < item.price;
-          const tooFew  = byStar && stars < item.starPrice;
-          // 技能果實用技能自己的圖示(帶統一外框),其他獎品照舊用 emoji
-          const fruitOf = SkillEngine.skillOfFruit(item.id);
-          // 已經有的果實不能再買。按下去本來就會被擋,但按鈕該先變灰 ——
-          // 讓學生按了才被拒絕是很差的體驗
-          const owned = !!fruitOf && SkillEngine.owns(this.student, fruitOf.id);
-          // 兩種都付不起才算真的買不起
-          const broke = (!byPoint || tooPoor) && (!byStar || tooFew);
-          const disabled = soldOut || broke || waiting || owned;
-
-          return `
-          <div class="prize-card ${disabled ? 'disabled' : ''} ${fruitOf ? 'is-fruit' : ''}">
-            <div class="prize-icon">${fruitOf
-              ? skillIconHtml(fruitOf, 56)
-              : escapeHtml(item.icon || '🎁')}</div>
-            <div class="prize-body">
-              <div class="prize-name">${escapeHtml(item.name)}</div>
-              ${item.description
-                ? `<div class="prize-desc">${escapeHtml(item.description)}</div>` : ''}
-              <div class="prize-meta">
-                ${byPoint ? `<span class="prize-price">${item.price} 點</span>` : ''}
-                ${byStar ? `<span class="prize-price is-star">★ ${item.starPrice}</span>` : ''}
-                ${item.stock !== null
-                  ? `<span class="prize-stock">${soldOut ? '已兌完' : '剩 ' + item.stock + ' 份'}</span>`
-                  : ''}
-              </div>
-            </div>
-            ${owned || waiting || soldOut || broke ? `
-            <button class="btn btn-accent btn-small" disabled>
-              ${owned ? '已擁有' : waiting ? '處理中' : soldOut ? '已兌完'
-                : byPoint && byStar
-                  ? `還差 ${Math.min(item.price - points, item.starPrice - stars)}`
-                  : byStar ? `還差 ${item.starPrice - stars} ★`
-                           : `還差 ${item.price - points} 點`}
-            </button>` : `
-            <div class="prize-pay">
-              ${byPoint ? `<button class="btn btn-accent btn-small" ${tooPoor ? 'disabled' : ''}
-                      onclick="StudentApp.buy('${item.id}','point')"
-                      >${tooPoor ? `還差 ${item.price - points} 點` : byStar ? `${item.price} 點` : '兌換'}</button>` : ''}
-              ${byStar ? `<button class="btn btn-small btn-star" ${tooFew ? 'disabled' : ''}
-                      onclick="StudentApp.buy('${item.id}','star')"
-                      >${tooFew ? `還差 ${item.starPrice} ★` : `★ ${item.starPrice}`}</button>` : ''}
-            </div>`}
-          </div>`;
-        }).join('');
-
-    return `
+    const balance = `
       <div class="prize-balance">
         <span>我的可用積分</span>
         <strong>${points}</strong>
         ${(this.student && this.student.starsEarned)
           ? `<span class="prize-balance-star" title="積木冒險拿到的星星,也可以在這裡花掉">
                <span>星星</span><strong>★ ${stars}</strong></span>` : ''}
-      </div>
-      <div class="prize-grid">${cards}</div>
+      </div>`;
+
+    if (items.length === 0) {
+      return balance + this.pageEmpty('🎁', '老師還沒上架任何獎品',
+        '獎品上架之後,就可以用可用積分來換。');
+    }
+
+    const fruits = items.filter(i => SkillEngine.isFruit(i.id));
+    const normal = items.filter(i => !SkillEngine.isFruit(i.id));
+    const groups = groupByArea(fruits, it => {
+      const sk = SkillEngine.skillOfFruit(it.id);
+      return sk && sk.area;
+    });
+
+    return `
+      ${balance}
+      ${normal.length ? `
+        ${groups.length ? '<div class="prize-group-title">🎁 獎品</div>' : ''}
+        <div class="prize-grid">${normal.map(i => this.prizeCard(i, env)).join('')}</div>`
+        : ''}
+      ${groups.length ? `
+        <div class="prize-group-title">✦ 技能果實<small>買一次就永久擁有,
+          守護獸每進化一階就更強</small></div>
+        ${groups.map(g => `
+          <div class="prize-subgroup">
+            <div class="prize-subtitle">${g.info.icon} ${escapeHtml(g.info.name)}</div>
+            <div class="prize-grid">${g.items.map(i => this.prizeCard(i, env)).join('')}</div>
+          </div>`).join('')}` : ''}
       ${this.renderMyPurchases()}`;
   },
 

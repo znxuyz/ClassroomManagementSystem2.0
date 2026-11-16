@@ -21,6 +21,12 @@ await prepare(page);
 const lines = [];
 const ok = (n, c, e) => lines.push((c ? '✓ ' : '✗ ') + n + (e ? ' — ' + e : ''));
 
+/* 順序表在瀏覽器裡,這邊留一份一樣的做對照 ——
+   兩邊都從程式抓的話,程式改錯了測試也跟著錯。 */
+const SKILL_AREA_ORDER_FOR_TEST = ['war', 'quiz', 'blocks', 'pet', 'shop'];
+const AREA_NAME = { war: '蜂巢戰紀', quiz: '測驗', blocks: '積木冒險',
+                    pet: '守護獸', shop: '商店' };
+
 const r = await page.evaluate(() => {
   const out = {};
   __apply(__fixture({ students: 4, historyPer: 0, questions: 4 }));
@@ -161,6 +167,55 @@ ok('過了 24 小時就失效', r.growExpired[0] === 104 && r.growExpired[1] ===
    r.growExpired.join(' / '));
 ok('扣分不會被放大', r.growNeg[0] === 100 && r.growNeg[1] === 96,
    r.growNeg.join(' / '));
+
+/* ── 技能果實照「在哪裡用得到」分區 ──
+   十八顆果實平鋪成一長條的時候,孩子要一顆一顆讀說明才知道
+   哪一顆跟蜂巢戰紀有關。老師端和學生端**必須是同一套順序** ——
+   不一樣的話,老師講「第二區那顆」學生會找錯。 */
+const g = await page.evaluate(() => {
+  const out = {};
+  state.skills = { enabled: true, weeks: 1 };
+  state.shopItems = [
+    { id: 'p1', name: '小點心', icon: '🍪', price: 20, stock: null, active: true },
+    ...PET_SKILLS.map(sk => ({ id: SkillEngine.fruitId(sk.id), name: sk.name + '果實',
+      icon: sk.icon, price: sk.price, stock: null, active: true }))
+  ];
+
+  // 每一個技能的領域都要在順序表裡 —— 漏掉的那一區會整個不見
+  out.orphan = PET_SKILLS.filter(sk => !SKILL_AREA_ORDER.includes(sk.area))
+    .map(sk => sk.id);
+  out.areasHaveNames = SKILL_AREA_ORDER.every(a => SKILL_AREAS[a] && SKILL_AREAS[a].name);
+
+  const areaOf = it => (SkillEngine.skillOfFruit(it.id) || {}).area;
+  const fruits = state.shopItems.filter(i => SkillEngine.isFruit(i.id));
+  out.student = groupByArea(fruits, areaOf).map(x => x.area);
+  /* 從老師端畫出來的 HTML 裡抓小標 —— 只看 shop-subtitle 那幾塊,
+     整份 HTML 去比對的話,說明文字裡的「守護獸」會被當成一區。 */
+  const html = renderShopGroups(state.shopItems, () => '');
+  const box = document.createElement('div');
+  box.innerHTML = html;
+  out.teacherOrder = [...box.querySelectorAll('.shop-subtitle')]
+    .map(e => e.childNodes[0].textContent.trim().replace(/^\S+\s*/, ''));
+
+  // 分出來的顆數要等於全部(沒有人被漏掉)
+  out.total = groupByArea(fruits, areaOf)
+    .reduce((n, x) => n + x.items.length, 0);
+  out.fruitCount = fruits.length;
+  return out;
+});
+
+ok('每一個技能的領域都在順序表裡(漏掉的那一區會整個不見)',
+   g.orphan.length === 0, g.orphan.join('/'));
+ok('每一區都有名字與圖示', g.areasHaveNames === true);
+ok('學生端照 SKILL_AREA_ORDER 分區',
+   JSON.stringify(g.student) === JSON.stringify(
+     SKILL_AREA_ORDER_FOR_TEST.filter(a => g.student.includes(a))),
+   g.student.join(' / '));
+ok('老師端和學生端是同一套順序',
+   g.teacherOrder.join() === g.student.map(a => AREA_NAME[a]).join(),
+   g.teacherOrder.join(' / '));
+ok('分區之後一顆果實都沒漏掉',
+   g.total === g.fruitCount, g.total + ' / ' + g.fruitCount);
 
 await close();
 process.exit(report('十個新技能', lines, errors) ? 0 : 1);

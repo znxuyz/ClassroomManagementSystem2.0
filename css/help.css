@@ -304,3 +304,14 @@
     align-items: start;
   }
 }
+
+/* 說明裡那張四階效果表也照領域分段(和技能總表、商店同一套順序) */
+.help-skill-group {
+  padding: 9px 4px 3px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  border-top: 1px solid var(--paper-shadow);
+}
+
+.help-skill-group:first-of-type { border-top: none; }
