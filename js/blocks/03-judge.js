@@ -137,7 +137,52 @@ const BlockJudge = {
       ? task.script : this.scriptFor(task.solution);
     const run = BlockVM.runScript(task.solution || [], script);
     if (run.error) return { script, expect: null, error: run.error };
-    return { script, expect: run.trace, error: null };
+    return { script, expect: run.trace, error: null, drawFree: !!task.drawFree };
+  },
+
+  /* ---------- 圖案自己畫 ----------
+     「剪刀石頭布」這種題目,孩子一定得自己拿 LED 畫三張圖 ——
+     而每個人畫出來的剪刀都不一樣。比對點陣的話,只有跟老師畫得
+     一模一樣的那一個會過,其他全錯,那題目就沒辦法出了。
+
+     但也不能完全不管:「三種情況都顯示同一張」或「什麼都不畫」
+     要擋得下來,否則這一題等於沒在考。
+
+     所以比的不是「畫成什麼樣」,是**用得一不一致**:
+       · 老師的答案在 A 情況顯示圖 X,學生在 A 情況顯示的那張叫 Y
+         —— 之後只要老師是 X,學生就必須也是 Y(同一種情況畫同一張)
+       · 不同的 X 不能對到同一個 Y(不同情況要畫不一樣的)
+       · Y 至少要亮 3 顆燈(空白或一個點不算一張圖)
+     這三條合起來,就是「你可以自己畫,但要畫得有意義」。
+
+     對應表是**整份作品共用一份**,不是一步一步各自判 ——
+     不然學生可以第 2 步用這張當剪刀、第 5 步又拿同一張當石頭。 */
+  MIN_LIT: 3,
+
+  drawCtx(paper) {
+    return { on: !!(paper && paper.drawFree), map: {}, used: {}, why: null };
+  },
+
+  /* 一張畫面算不算對得上。ctx 帶著「圖案自己畫」的對應表。 */
+  screenMatch(a, b, ctx) {
+    if (!ctx || !ctx.on) return BlockVM.screenEq(a, b);
+    if (!a || !b) return a === b;
+    if (a.kind !== b.kind) return false;
+    if (a.kind !== 'leds') return BlockVM.screenEq(a, b);
+
+    const x = String(a.value), y = String(b.value);
+    if ((y.match(/1/g) || []).length < this.MIN_LIT) {
+      ctx.why = 'too-empty';
+      return false;
+    }
+    if (ctx.map[x] === undefined && ctx.used[y] === undefined) {
+      ctx.map[x] = y; ctx.used[y] = x;
+      return true;
+    }
+    if (ctx.map[x] === y) return true;
+    // 同一種情況畫了兩張不一樣的 / 兩種情況畫成同一張
+    ctx.why = ctx.map[x] !== undefined ? 'inconsistent' : 'duplicate';
+    return false;
   },
 
   /* 用考卷判一份作品 */
@@ -148,11 +193,16 @@ const BlockJudge = {
     const got = BlockVM.runScript(program || [], paper.script);
     if (got.error) return { pass: false, steps: [], error: got.error };
 
+    /* 「圖案自己畫」的對應表整份共用,所以在這裡建一份傳下去 */
+    const ctx = this.drawCtx(paper);
     const steps = paper.script.map((s, i) => {
       const a = paper.expect[i] || {}, b = got.trace[i] || {};
+      ctx.why = null;
+      const ok = this.sameStep(a, b, ctx);
       return {
         label: s.label || ('第 ' + (i + 1) + ' 步'),
-        ok: this.sameStep(a, b),
+        ok,
+        drawWhy: ok ? null : ctx.why,
         expect: a.screen, got: b.screen,
         expectFrames: a.frames || [], gotFrames: b.frames || [],
         expectSent: a.sent || [], gotSent: b.sent || [],
@@ -160,7 +210,8 @@ const BlockJudge = {
       };
     });
     const firstFail = steps.findIndex(s => !s.ok);
-    return { pass: firstFail < 0, steps, firstFail, error: null };
+    return { pass: firstFail < 0, steps, firstFail, error: null,
+             drawFree: !!(paper && paper.drawFree) };
   },
 
   /* 老師端的捷徑:直接用題目判(會先編譯一次) */
@@ -171,8 +222,8 @@ const BlockJudge = {
   /* 一個步驟算不算一樣。
      看兩件事:這一步中間閃過哪些畫面、以及最後停在哪一張。
      只比「最後那一張」的話,會把「會閃爍的」和「不會閃的」判成一樣。 */
-  sameStep(a, b) {
-    if (!BlockVM.screenEq(a.screen, b.screen)) return false;
+  sameStep(a, b, ctx) {
+    if (!this.screenMatch(a.screen, b.screen, ctx)) return false;
     /* 發出去的廣播也算「做出來的結果」—— 只看螢幕的話,
        「該廣播卻沒廣播」會被判成對的,那一題就等於沒在考廣播。 */
     const pk = list => (list || []).map(p =>
@@ -182,9 +233,14 @@ const BlockJudge = {
     const sd = list => (list || []).map(p =>
       p.kind + ':' + (p.note || p.name || '') + ':' + (p.beats || '')).join('|');
     if (sd(a.sound) !== sd(b.sound)) return false;
-    const fa = (a.frames || []).map(f => f.kind + ':' + f.value).join('|');
-    const fb = (b.frames || []).map(f => f.kind + ':' + f.value).join('|');
-    return fa === fb;
+    /* 中間閃過的畫面也要一張一張比(「圖案自己畫」時同樣走對應表)——
+       只比最後停在哪一張的話,會把「會閃爍的」和「不會閃的」判成一樣。 */
+    const fa = a.frames || [], fb = b.frames || [];
+    if (fa.length !== fb.length) return false;
+    for (let i = 0; i < fa.length; i++) {
+      if (!this.screenMatch(fa[i], fb[i], ctx)) return false;
+    }
+    return true;
   },
 
   /* ---------- 講人話 ---------- */
@@ -196,6 +252,21 @@ const BlockJudge = {
 
     const s = result.steps[result.firstFail];
     if (!s) return '還沒通過,再檢查看看。';
+
+    /* 「圖案自己畫」的那幾種錯要講清楚是**怎麼**不對 ——
+       說「螢幕上應該是圖案,但你的是圖案」等於什麼都沒說。 */
+    if (s.drawWhy === 'too-empty') {
+      return `「${s.label}」的時候要顯示一個圖案 —— `
+           + `至少亮 ${this.MIN_LIT} 顆燈,空白或只有一個點不算。`;
+    }
+    if (s.drawWhy === 'inconsistent') {
+      return `「${s.label}」的圖案和你前面畫的不一樣 —— `
+           + `同一種情況每次都要顯示同一張圖。`;
+    }
+    if (s.drawWhy === 'duplicate') {
+      return `「${s.label}」顯示的圖案,和另一種情況畫成同一張了 —— `
+           + `不同的情況要看得出差別。`;
+    }
 
     /* 廣播沒送對的時候,講廣播 —— 螢幕一樣但廣播不一樣的話,
        只講螢幕會讓孩子完全找不到問題在哪。 */

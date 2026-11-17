@@ -43,6 +43,9 @@ const BlockTasks = {
       hints: [],              // 最多三條,學生卡住可以換(換了少一顆星)
       starLimit: 0,           // 第三顆星的積木數上限,0 = 用「解答 + 2」
       free: false,            // true = 不必過前一關就能挑戰
+      /* true = LED 圖案讓學生自己畫:比的不是畫成什麼樣,
+         而是「同一種情況畫同一張、不同情況畫不一樣的」(見 BlockJudge) */
+      drawFree: false,
       status: 'draft',
       createdAt: Date.now()
     };
@@ -314,7 +317,23 @@ const BlockTasks = {
               onchange="BlockTasks.setField('${t.id}', 'free', this.checked)" />
             隨時可挑戰(不必先過前一關)
           </label>
+          <label class="bk-free"
+                 title="剪刀石頭布那種題目用得到:每個孩子畫出來的剪刀都不一樣">
+            <input type="checkbox" ${t.drawFree ? 'checked' : ''}
+              onchange="BlockTasks.setField('${t.id}', 'drawFree', this.checked)" />
+            LED 圖案讓學生自己畫
+          </label>
         </div>
+
+        ${t.drawFree ? `
+          <div class="bk-hint-line" style="margin-top:8px;">
+            <strong>圖案自己畫</strong>:比的不是畫成什麼樣,是<strong>用得一不一致</strong>
+            —— 同一種情況每次顯示同一張、不同情況要畫不一樣的、每張至少亮
+            ${BlockJudge.MIN_LIT} 顆燈。所以「三種都顯示同一張」或「什麼都不畫」
+            還是會被擋下來。<br>
+            你自己的解答照樣要畫(它決定了「有哪幾種情況」),
+            但學生不必畫得和你一樣。
+          </div>` : ''}
       </div>`;
   },
 
@@ -416,6 +435,7 @@ Object.assign(BlockTasks, {
            但那只是一個數字,看不出答案長什麼樣子。 */
         starLimitPublic: starBlockLimit(t),
         free: !!t.free,
+        drawFree: !!t.drawFree,
         script: paper.script, expect: paper.expect
       };
     }).filter(p => p.expect);

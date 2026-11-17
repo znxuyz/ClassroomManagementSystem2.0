@@ -1706,3 +1706,15 @@ select.bk-field { field-sizing: content; }
 
 .bk-iconmenu .bk-mini { grid-template-columns: repeat(5, 5px); gap: 1px; }
 .bk-iconmenu .bk-mini i { width: 5px; height: 5px; }
+
+/* 「圖案自己畫」的題目,規則要寫在題目底下 ——
+   孩子畫完被判錯才知道有這條規則,會覺得系統在刁難他。 */
+.bk-stu-draw-note {
+  margin: 8px 0 0;
+  padding: 9px 12px;
+  border-radius: var(--r-tile);
+  background: color-mix(in srgb, var(--gold) 14%, transparent);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.8;
+}

@@ -254,6 +254,12 @@ Object.assign(StudentApp, {
         <div class="bk-stu-title">${escapeHtml(t.name)}</div>
       </div>
       <div class="bk-stu-spec-box">${escapeHtml(t.spec || '')}</div>
+      ${t.drawFree ? `
+        <div class="bk-stu-draw-note">
+          🎨 <strong>圖案自己畫</strong>:不用和老師畫得一樣。但<strong>同一種情況
+          每次要顯示同一張</strong>,<strong>不同情況要畫得看得出差別</strong>,
+          而且每張至少亮 ${BlockJudge.MIN_LIT} 顆燈。
+        </div>` : ''}
 
       <div class="bk-stu-grid">
         <div class="bk-stu-sim">
