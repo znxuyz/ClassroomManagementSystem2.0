@@ -1718,3 +1718,22 @@ select.bk-field { field-sizing: content; }
   font-size: 12px;
   line-height: 1.8;
 }
+
+/* 「否則如果」那幾列。和「否則」同一層(不縮排)——
+   縮排的話,四層條件會把積木推到畫面外,而 MakeCode 是平的。 */
+.bk-else.is-elif {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 5px 10px 5px 14px;
+}
+
+.bk-plus.is-wide {
+  width: auto;
+  padding: 0 9px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.bk-else.is-add { display: flex; align-items: center; gap: 6px; }

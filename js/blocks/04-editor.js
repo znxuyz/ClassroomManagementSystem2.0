@@ -433,6 +433,8 @@ const BlockEditor = {
     if (act === 'add') {
       this.addFromPalette(t.dataset.t, t.dataset.var, t.dataset.variant);
     }
+    if (act === 'addelif') { this.addElif(t.dataset.id); return; }
+    if (act === 'delelif') { this.dropElif(t.dataset.id); return; }
     if (act === 'addelse') {
       const hit = this.find(t.dataset.id);
       if (hit && !hit.block.elseBody) { hit.block.elseBody = []; this.changed(); }
@@ -625,6 +627,64 @@ const BlockEditor = {
       data-index="${index}">${on ? '放這裡 ▸' : ''}</button>`;
   },
 
+  /* ---------- 「否則如果」這一串 ----------
+     MakeCode 的「如果」可以一直按 ⊕ 加「否則如果」。
+
+     資料結構**刻意不動**:一串 if / 否則如果 / 否則,存的就是
+     一層一層包起來的 if(第二層放在第一層的 elseBody 裡)——
+     這和 MakeCode 的 JavaScript 輸出完全一樣,直譯器、判題、匯入
+     全部都已經會跑了,不必為了畫面改資料。
+
+     要改的只有「怎麼畫」:遇到「elseBody 裡剛好只有一塊 if」就不要
+     往裡面縮排畫,而是拉平成同一層的一列「否則如果」。
+     孩子看到的就和原版一樣。
+
+     回傳 [最外層, 第二層, …],最後一塊的 elseBody 若不是接著一串
+     if,那就是真正的「否則」。 */
+  elifChain(b) {
+    const chain = [b];
+    let cur = b;
+    while (cur.elseBody && cur.elseBody.length === 1
+           && cur.elseBody[0] && cur.elseBody[0].t === 'if') {
+      cur = cur.elseBody[0];
+      chain.push(cur);
+    }
+    return chain;
+  },
+
+  /* 這一列「否則如果」拿掉。
+     把它的 elseBody(後面那幾列)接到上一層,整串才不會跟著不見。 */
+  dropElif(id) {
+    const hit = this.find(id);
+    if (!hit || !hit.parent) return;
+    const me = hit.block;
+    if ((me.body || []).length
+        && !confirm('這一列「否則如果」裡面還有積木,拿掉的話那些會一起不見。確定嗎?')) return;
+    if (me.elseBody && me.elseBody.length) hit.parent.elseBody = me.elseBody;
+    else delete hit.parent.elseBody;
+    this.cursor = null;
+    this.changed();
+  },
+
+  /* 加一列「否則如果」。
+     加在整串的最後面,但要排在真正的「否則」**前面** ——
+     「否則」後面不可能再有條件,那是這種積木的規則。 */
+  addElif(id) {
+    const hit = this.find(id);
+    if (!hit) return;
+    const chain = this.elifChain(hit.block);
+    const last = chain[chain.length - 1];
+    const tail = last.elseBody;          // 真正的「否則」(可能沒有)
+    const blk = this.makeBlock('if');
+    /* 原本就有「否則」的話要留著,而且要排在新的這一列後面。
+       只在「裡面有東西」時才留的話,空的「否則」會被吃掉
+       —— 老師明明選了帶否則的那一塊,按個 ⊕ 它就不見了。 */
+    if (tail) blk.elseBody = tail;
+    last.elseBody = [blk];
+    this.cursor = { parentId: blk.id, list: 'body', index: 0 };
+    this.changed();
+  },
+
   renderBlock(b) {
     const d = blockDef(b.t);
     if (!d) return '';
@@ -649,18 +709,47 @@ const BlockEditor = {
            data-id="${b.id}" style="--c:${cat.color}">
         <div class="bk-head">${label}${tools}</div>
         ${d.body ? `<div class="bk-body">${this.renderList(b.body, b.id, 'body')}</div>` : ''}
-        ${d.else && b.elseBody ? `
-          <div class="bk-else">否則${this.readonly || this.preview ? '' : `
-            <button class="bk-plus" data-bk="delelse" data-id="${b.id}"
-                    title="拿掉「否則」">⊖</button>`}</div>
-          <div class="bk-body">${this.renderList(b.elseBody, b.id, 'elseBody')}</div>` : ''}
-        ${d.else && !b.elseBody && !this.readonly && !this.preview ? `
-          <div class="bk-else is-add">
-            <button class="bk-plus" data-bk="addelse" data-id="${b.id}"
-                    title="加上「否則」">⊕</button>
-          </div>` : ''}
+        ${d.else ? this.renderElse(b) : ''}
         ${d.body ? '<div class="bk-foot"></div>' : ''}
       </div>`;
+  },
+
+  /* 「如果」底下那幾列:否則如果 × N、否則、⊕。
+     整串畫在同一塊積木裡(不縮排),所以看起來和 MakeCode 一樣。 */
+  renderElse(b) {
+    const chain = this.elifChain(b);
+    const last = chain[chain.length - 1];
+    const live = !this.readonly && !this.preview;
+    const ifDef = blockDef('if');
+
+    // 第二層之後的每一塊,畫成一列「否則如果 ⬚ 那麼」
+    const rows = chain.slice(1).map(e => `
+      <div class="bk-else is-elif">
+        否則如果 ${this.renderArg(e, ifDef, 'cond')} 那麼${live ? `
+        <button class="bk-plus" data-bk="delelif" data-id="${e.id}"
+                title="拿掉這一列">⊖</button>` : ''}
+      </div>
+      <div class="bk-body">${this.renderList(e.body, e.id, 'body')}</div>`).join('');
+
+    /* 最後那一塊的 elseBody 如果不是「又一串 if」,它就是真正的「否則」。
+       (是一串 if 的話,上面那個迴圈已經把它畫成「否則如果」了。) */
+    const hasElse = !!last.elseBody;
+    const elseRow = hasElse ? `
+      <div class="bk-else">否則${live ? `
+        <button class="bk-plus" data-bk="delelse" data-id="${last.id}"
+                title="拿掉「否則」">⊖</button>` : ''}</div>
+      <div class="bk-body">${this.renderList(last.elseBody, last.id, 'elseBody')}</div>` : '';
+
+    const addRow = live ? `
+      <div class="bk-else is-add">
+        <button class="bk-plus" data-bk="addelif" data-id="${b.id}"
+                title="加一列「否則如果」">⊕</button>
+        ${hasElse ? '' : `
+          <button class="bk-plus is-wide" data-bk="addelse" data-id="${last.id}"
+                  title="加上最後的「否則」">⊕ 否則</button>`}
+      </div>` : '';
+
+    return rows + elseRow + addRow;
   },
 
   renderArg(b, d, name) {

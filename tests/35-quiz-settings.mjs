@@ -27,7 +27,15 @@ await prepare(page);
 const lines = [];
 const ok = (n, c, e) => lines.push((c ? '✓ ' : '✗ ') + n + (e ? ' — ' + e : ''));
 
-const r = await page.evaluate(async () => {
+/* 日期用「相對今天」算,不要寫死 ——
+   寫死的話,日子一過那個時間就變成過去,
+   「往後挪等於還沒結算」那一條會莫名其妙開始失敗(踩過)。 */
+const p2 = n => String(n).padStart(2, '0');
+const ymd = d => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+const day = n => ymd(new Date(Date.now() + n * 86400000));
+const DUE = day(1), OLD = day(2), NEW = day(5);
+
+const r = await page.evaluate(async ({ DUE, OLD, NEW }) => {
   const out = {};
   window.__apply(window.__fixture({ students: 8, historyPer: 1, questions: 0 }));
   window.confirm = () => true;
@@ -46,8 +54,8 @@ const r = await page.evaluate(async () => {
 
   const base = {
     id: 'z1', title: '1109-1116', status: 'open', scoreMode: 'all',
-    pointsPerQuestion: 2, dueDate: '2026-11-16',
-    settleAt: new Date('2026-11-17T00:00').getTime(),
+    pointsPerQuestion: 2, dueDate: DUE,
+    settleAt: new Date(OLD + 'T00:00').getTime(),
     settledDone: true,
     questions: [{ id: 'q1', type: 'choice', text: '3×3',
                   options: ['9', '6'], answer: 0 }]
@@ -71,7 +79,7 @@ const r = await page.evaluate(async () => {
 
   // 往後挪三天、改名字
   document.getElementById('qs_title_z1').value = '1109-1120';
-  document.getElementById('qs_sdate_z1').value = '2026-11-20';
+  document.getElementById('qs_sdate_z1').value = NEW;
   document.getElementById('qs_shour_z1').value = '08';
   document.getElementById('qs_smin_z1').value = '30';
   await saveQuizSettings('z1');
@@ -106,7 +114,7 @@ const r = await page.evaluate(async () => {
     ? Object.keys(published[0]).includes('settleAt') : false;
 
   return out;
-});
+}, { DUE, OLD, NEW });
 
 /* 發布給學生的那一份是在 Cloud.publishQuiz 裡組的。
    測試裡那一支被換成了假的,所以直接讀原始檔 —— 要驗的是
@@ -118,12 +126,12 @@ const forStudents = cloudSrc.slice(cloudSrc.indexOf('const forStudents = {'),
 
 ok('每一張測驗卡上都有「設定」', r.hasBtn === true);
 ok('打開之後帶的是現在的值,不是空白',
-   r.prefill[0] === '1109-1116' && r.prefill[1] === '2026-11-17'
+   r.prefill[0] === '1109-1116' && r.prefill[1] === OLD
    && r.prefill[2] === '00', r.prefill.join(' / '));
 ok('已經開放的那一份會寫明「計分方式不能改」', r.lockNote === true);
 
 ok('改完名稱與結算時間都存下來了',
-   r.saved.title === '1109-1120' && r.saved.when === '2026-11-20 08:30',
+   r.saved.title === '1109-1120' && r.saved.when === NEW + ' 08:30',
    r.saved.title + ' · ' + r.saved.when);
 ok('往後挪就等於「還沒結算」,新時間到了才會再收',
    r.saved.settledDone === false);
