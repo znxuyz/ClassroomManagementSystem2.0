@@ -436,7 +436,11 @@ Object.assign(BlockTasks, {
         starLimitPublic: starBlockLimit(t),
         free: !!t.free,
         drawFree: !!t.drawFree,
-        script: paper.script, expect: paper.expect
+        /* expectAll / seeds 也要發下去 —— 學生端若只拿到一種亂數,
+           他會看到「過了、三顆星」,老師這邊重判卻不過(少寫的那一支
+           在別的亂數下才會被考到)。兩邊判的東西必須是同一份。 */
+        script: paper.script, expect: paper.expect,
+        expectAll: paper.expectAll, seeds: paper.seeds
       };
     }).filter(p => p.expect);
   },
@@ -445,6 +449,14 @@ Object.assign(BlockTasks, {
     if (!isCloudMode()) return;
     const payload = { tasks: this.papers(), at: Date.now() };
     const sig = JSON.stringify(payload.tasks);
+    /* Firestore 一份文件上限 1 MiB。用到亂數又畫很多圖的題目,一題就可能
+       三十幾 KB —— 開放太多題會頂到上限,而那時候的錯誤訊息看不出原因。
+       先擋在這裡,並直接說該怎麼辦。 */
+    if (sig.length > 700 * 1024) {
+      toast('開放中的題目太多,考卷包超過 700KB 了 —— 先把幾題收回草稿');
+      console.warn('[積木冒險] 考卷包 ' + Math.round(sig.length / 1024) + 'KB,接近 1MiB 上限');
+      return;
+    }
     if (sig === this._lastPublished) return;
     try {
       await Cloud.publishBlockTasks(state.classId, payload);

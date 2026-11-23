@@ -39,6 +39,8 @@ function vmError(code, msg) {
 }
 
 const BlockVM = {
+  DEFAULT_SEED: 20260101,
+
   /* 空白畫面的樣子 */
   blankScreen() { return { kind: 'blank' }; },
 
@@ -57,7 +59,7 @@ const BlockVM = {
 
   /* ---------- 執行環境 ---------- */
 
-  newCtx(program) {
+  newCtx(program, seed) {
     const handlers = { start: [], forever: [], button: {}, gesture: {}, pin: {},
                        radio: { number: [], string: [], value: [] } };
     migrateProgram(program || []);
@@ -111,7 +113,10 @@ const BlockVM = {
       handlers,
       /* 隨機數要可以重現,不然同一支程式判兩次會得到不同結果。
          用固定種子的簡單亂數就夠了。 */
-      seed: 20260101
+      /* 亂數要可以重現,不然同一支程式判兩次會得到不同結果。
+         判題時會換幾個不同的種子各跑一遍(見 BlockJudge.SEEDS)——
+         只用一個種子的話,抽不到的那一支永遠不會被考到。 */
+      seed: seed || 20260101
     };
   },
 
@@ -529,8 +534,8 @@ const BlockVM = {
     }
   },
 
-  runScript(program, script) {
-    const ctx = this.newCtx(program);
+  runScript(program, script, seed) {
+    const ctx = this.newCtx(program, seed);
     const trace = [];
     let error = null;
 

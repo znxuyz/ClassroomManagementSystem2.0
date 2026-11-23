@@ -13,6 +13,15 @@
    所以這一套盯兩件事:
    1. 畫面上真的是平的幾列,而且 ⊕ ⊖ 加得掉也減得掉
    2. **跑起來的結果**和一層一層嵌的完全一樣(資料沒被畫面帶壞)
+
+   後半段釘的是另一件事:**同一個功能用哪一種寫法都算對**。
+   「如果、如果、如果」、「如果 否則{如果 否則}」、「如果 否則如果 否則」——
+   只要跑出來的畫面一樣就要過。判題本來就是比行為,所以這些現在就會過;
+   釘起來是為了以後改 sameStep / frames 時不會默默把它弄壞。
+
+   但有一條界線要同時釘住:**條件之間不互斥的時候,拆開就真的不一樣**
+   (「>5」和「>3」拆成兩個如果,6 會把兩支都跑過一遍)。
+   那不是寫法不同,是做出來的事不同,本來就該被擋。
 ============================================ */
 import { loadPlaywright, openApp, prepare, report } from './lib.mjs';
 
@@ -123,6 +132,112 @@ ok('畫面拉平不會動到資料(value() 吐出來的樹原封不動)',
    r.treeKept === true);
 ok('「if → 否則如果 → 否則」認得出是兩塊 if 串在一起,最後掛一個否則',
    r.flatRows === 2 && r.tailIsElse === true, r.flatRows + ' 塊');
+
+/* ============================================
+   同一個功能,換哪一種寫法都算對
+============================================ */
+const shapes = await page.evaluate(() => {
+  const out = {};
+  const V = n => ({ t: 'var', name: n });
+  const show = n => ({ t: 'show_number', v: n });
+  const eq = n => ({ t: 'cmp', a: V('n'), op: '=', b: n });
+  const draw = { t: 'set_var', name: 'n', v: { t: 'random', from: 1, to: 3 } };
+  const wrap = body => [{ t: 'on_gesture', g: '晃動', body: [draw, ...body] }];
+
+  // 三種寫法,同一個功能:抽 1~3,照抽到的顯示 1 / 2 / 3
+  const 鏈 = wrap([{ t: 'if', cond: eq(1), body: [show(1)],
+    elseBody: [{ t: 'if', cond: eq(2), body: [show(2)], elseBody: [show(3)] }] }]);
+  const 三個如果 = wrap([{ t: 'if', cond: eq(1), body: [show(1)] },
+                         { t: 'if', cond: eq(2), body: [show(2)] },
+                         { t: 'if', cond: eq(3), body: [show(3)] }]);
+  const 全部嵌起來 = wrap([{ t: 'if', cond: eq(1), body: [show(1)],
+    elseBody: [{ t: 'if', cond: eq(2), body: [show(2)],
+      elseBody: [{ t: 'if', cond: eq(3), body: [show(3)] }] }] }]);
+  const 倒過來寫 = wrap([{ t: 'if', cond: eq(3), body: [show(3)] },
+                         { t: 'if', cond: eq(2), body: [show(2)] },
+                         { t: 'if', cond: eq(1), body: [show(1)] }]);
+
+  // 老師用鏈出題 → 其他三種都要過
+  const byChain = BlockJudge.compile({ solution: 鏈 });
+  out.鏈收三個如果 = BlockJudge.runCompiled(byChain, 三個如果).pass;
+  out.鏈收全部嵌起來 = BlockJudge.runCompiled(byChain, 全部嵌起來).pass;
+  out.鏈收倒過來寫 = BlockJudge.runCompiled(byChain, 倒過來寫).pass;
+
+  // 反過來:老師用三個如果出題 → 鏈也要過
+  const byIfs = BlockJudge.compile({ solution: 三個如果 });
+  out.三個如果收鏈 = BlockJudge.runCompiled(byIfs, 鏈).pass;
+
+  // 真的做錯事還是要擋:先多顯示一個 9(畫面會多閃一下)
+  const 多顯示 = wrap([show(9), { t: 'if', cond: eq(1), body: [show(1)] },
+                       { t: 'if', cond: eq(2), body: [show(2)] },
+                       { t: 'if', cond: eq(3), body: [show(3)] }]);
+  out.多閃一下 = BlockJudge.runCompiled(byChain, 多顯示).pass;
+
+  // 少一支就不行
+  const 少一支 = wrap([{ t: 'if', cond: eq(1), body: [show(1)] },
+                       { t: 'if', cond: eq(2), body: [show(2)] }]);
+  out.少一支 = BlockJudge.runCompiled(byChain, 少一支).pass;
+
+  /* ── 界線:條件不互斥的時候,拆開是真的不一樣 ──
+     「>5」和「>3」:n=6 時鏈只走第一支(100),
+     拆成兩個如果會兩支都跑,最後停在 50。 */
+  const gt = n => ({ t: 'cmp', a: V('n'), op: '>', b: n });
+  const w2 = body => [{ t: 'on_button', btn: 'A',
+                        body: [{ t: 'set_var', name: 'n', v: 6 }, ...body] }];
+  const 鏈2 = w2([{ t: 'if', cond: gt(5), body: [show(100)],
+                    elseBody: [{ t: 'if', cond: gt(3), body: [show(50)] }] }]);
+  const 拆開2 = w2([{ t: 'if', cond: gt(5), body: [show(100)] },
+                    { t: 'if', cond: gt(3), body: [show(50)] }]);
+  const p2 = BlockJudge.compile({ solution: 鏈2 });
+  const r2 = BlockJudge.runCompiled(p2, 拆開2);
+  out.不互斥拆開 = r2.pass;
+  out.不互斥說明 = BlockJudge.explain(r2);
+  out.不互斥畫面 = [
+    BlockVM.describeScreen(p2.expect.find(e => e.screen.kind === 'number').screen),
+    BlockVM.describeScreen(BlockJudge.compile({ solution: 拆開2 })
+      .expect.find(e => e.screen.kind === 'number').screen)
+  ];
+  /* ── 亂數題目要換幾種亂數各跑一遍 ──
+     只跑一種的話,「抽到 3 才會走到」的那一支整場都沒被考到,
+     少寫一支的作品就會矇混過關。 */
+  out.亂數題跑幾輪 = (byChain.expectAll || []).length;
+  out.亂數題劇本長度 = byChain.script.length;
+  const 看過的畫面 = new Set();
+  (byChain.expectAll || []).forEach(tr => tr.forEach(e => {
+    if (e.screen && e.screen.kind === 'number') 看過的畫面.add(e.screen.value); }));
+  out.三支都被考到 = 看過的畫面.size;
+
+  // 沒用到亂數的題目維持原樣(不要讓每一題的考卷都大三倍)
+  const 不用亂數 = BlockJudge.compile({
+    solution: [{ t: 'on_start', body: [show(7)] }] });
+  out.不用亂數有expectAll = !!不用亂數.expectAll;
+  out.不用亂數劇本長度 = 不用亂數.script.length;
+
+  return out;
+});
+
+ok('老師用「否則如果」出題,學生用**三個獨立的如果**也算對',
+   shapes.鏈收三個如果 === true);
+ok('學生**全部嵌起來**寫也算對', shapes.鏈收全部嵌起來 === true);
+ok('學生把三支**順序倒過來**寫也算對', shapes.鏈收倒過來寫 === true);
+ok('反過來:老師用三個如果出題,學生用鏈也算對', shapes.三個如果收鏈 === true);
+
+ok('但畫面多閃一下就不算對(那是真的做了別的事)', shapes.多閃一下 === false);
+ok('少做一支也不算對', shapes.少一支 === false);
+
+ok('**條件不互斥時,拆開是真的不一樣**,要擋下來',
+   shapes.不互斥拆開 === false,
+   '鏈停在 ' + shapes.不互斥畫面[0] + ',拆開停在 ' + shapes.不互斥畫面[1]);
+ok('而且講得出差在哪', /應該是 100/.test(shapes.不互斥說明), shapes.不互斥說明);
+
+ok('用到亂數的題目會換幾種亂數各跑一遍',
+   shapes.亂數題跑幾輪 === 3, shapes.亂數題跑幾輪 + ' 輪');
+ok('而且劇本會拉長,三支都考得到',
+   shapes.亂數題劇本長度 >= 10 && shapes.三支都被考到 === 3,
+   shapes.亂數題劇本長度 + ' 步 · 考到 ' + shapes.三支都被考到 + ' 支');
+ok('沒用到亂數的題目維持原樣(考卷不會平白大三倍)',
+   shapes.不用亂數有expectAll === false && shapes.不用亂數劇本長度 <= 3,
+   shapes.不用亂數劇本長度 + ' 步');
 
 await close();
 process.exit(report('否則如果可以一直加', lines, errors) ? 0 : 1);

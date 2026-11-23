@@ -23,6 +23,21 @@ const BlockJudge = {
   /* ---------- 自動排劇本 ----------
      依照參考解答用到的事件決定要測什麼。老師不必自己想測試案例 ——
      他只要把答案拼出來。 */
+  /* 這支程式有沒有用到亂數 */
+  usesRandom(solution) {
+    let yes = false;
+    walkBlocks(solution || [], b => {
+      if (b.t === 'random' || b.t === 'rand_bool') yes = true;
+    });
+    return yes;
+  },
+
+  /* 判題時要跑幾種亂數。
+     只跑一種的話,「抽到 3 才會走到」的那一支可能整場都沒被考到 ——
+     少寫一支的作品就會矇混過關(剪刀石頭布那種題目最明顯)。
+     換幾個種子各跑一遍,每一遍都要對。 */
+  SEEDS: [20260101, 77003, 915277],
+
   scriptFor(solution) {
     migrateProgram(solution || []);
     const used = { start: false, forever: false, btn: {}, gesture: {}, pin: {}, radio: {} };
@@ -41,9 +56,12 @@ const BlockJudge = {
     const script = [{ do: 'start', label: '開機' }];
 
     /* 每一種事件各做幾次 —— 做兩次以上才看得出「有沒有累加」,
-       只做一次的話「設為 1」和「加 1」會長得一模一樣。 */
+       只做一次的話「設為 1」和「加 1」會長得一模一樣。
+       用到亂數的題目要多做幾次:抽 1~3 的話,只做三次很可能有一支
+       整場都沒抽到,那一支寫錯(或根本沒寫)就考不出來。 */
+    const times = this.usesRandom(solution) ? 8 : 3;
     Object.keys(used.gesture).forEach(g => {
-      for (let i = 1; i <= 3; i++) {
+      for (let i = 1; i <= times; i++) {
         script.push({ do: 'gesture', g, label: g + '第 ' + i + ' 次' });
       }
     });
@@ -135,9 +153,21 @@ const BlockJudge = {
   compile(task) {
     const script = (task.script && task.script.length)
       ? task.script : this.scriptFor(task.solution);
-    const run = BlockVM.runScript(task.solution || [], script);
-    if (run.error) return { script, expect: null, error: run.error };
-    return { script, expect: run.trace, error: null, drawFree: !!task.drawFree };
+    const seeds = this.usesRandom(task.solution) ? this.SEEDS : [this.SEEDS[0]];
+    const runs = [];
+    for (const seed of seeds) {
+      const run = BlockVM.runScript(task.solution || [], script, seed);
+      if (run.error) return { script, expect: null, error: run.error };
+      runs.push(run.trace);
+    }
+    /* expect 保留成「第一種亂數的那一份」—— 舊版的學生端只看得懂這個欄位,
+       快取還沒更新的分頁照樣判得動(發分一律在老師端重判,所以不會算錯)。 */
+    const paper = { script, expect: runs[0], seeds,
+                    error: null, drawFree: !!task.drawFree };
+    /* 只有一種亂數時不要再存一份一樣的 —— 這份考卷要發給全班下載,
+       沒用到亂數的題目沒有理由大一倍。 */
+    if (runs.length > 1) paper.expectAll = runs;
+    return paper;
   },
 
   /* ---------- 圖案自己畫 ----------
@@ -190,13 +220,32 @@ const BlockJudge = {
     if (!paper || paper.error || !paper.expect) {
       return { pass: false, steps: [], error: (paper && paper.error) || null, badTask: true };
     }
-    const got = BlockVM.runScript(program || [], paper.script);
-    if (got.error) return { pass: false, steps: [], error: got.error };
-
-    /* 「圖案自己畫」的對應表整份共用,所以在這裡建一份傳下去 */
+    /* 「圖案自己畫」的對應表**整份共用**(含所有亂數)——
+       每一種亂數各建一份的話,學生可以在不同的亂數下畫不同的圖。 */
     const ctx = this.drawCtx(paper);
-    const steps = paper.script.map((s, i) => {
-      const a = paper.expect[i] || {}, b = got.trace[i] || {};
+    const expects = paper.expectAll || [paper.expect];
+    const seeds = paper.seeds || [BlockVM.DEFAULT_SEED];
+
+    /* 每一種亂數都要跑過、都要對。回報的是**第一個沒過的那一輪** ——
+       講一輪就夠了,三輪的錯一起倒給孩子看只會更難懂。 */
+    let steps = null;
+    for (let k = 0; k < expects.length; k++) {
+      const got = BlockVM.runScript(program || [], paper.script, seeds[k]);
+      if (got.error) return { pass: false, steps: [], error: got.error };
+      const round = this.roundSteps(paper, expects[k], got.trace, ctx);
+      if (!steps || round.some(s => !s.ok)) steps = round;
+      if (round.some(s => !s.ok)) break;
+    }
+
+    const firstFail = steps.findIndex(s => !s.ok);
+    return { pass: firstFail < 0, steps, firstFail, error: null,
+             drawFree: !!(paper && paper.drawFree) };
+  },
+
+  /* 一輪(一種亂數)跑出來的每一步對不對 */
+  roundSteps(paper, expect, trace, ctx) {
+    return paper.script.map((s, i) => {
+      const a = expect[i] || {}, b = trace[i] || {};
       ctx.why = null;
       const ok = this.sameStep(a, b, ctx);
       return {
@@ -209,9 +258,6 @@ const BlockJudge = {
         expectSound: a.sound || [], gotSound: b.sound || []
       };
     });
-    const firstFail = steps.findIndex(s => !s.ok);
-    return { pass: firstFail < 0, steps, firstFail, error: null,
-             drawFree: !!(paper && paper.drawFree) };
   },
 
   /* 老師端的捷徑:直接用題目判(會先編譯一次) */
