@@ -942,7 +942,7 @@
       <div class="ai-banner">
         <div class="ai-banner-content">
           <div class="ai-banner-title">AI 教師助手</div>
-          <div class="ai-banner-subtitle">CLAUDE × CLASSROOM · 評語生成、訊息潤飾、行為分析</div>
+          <div class="ai-banner-subtitle">AI × CLASSROOM · 評語生成、訊息潤飾、行為分析</div>
         </div>
         <div class="ai-status" id="aiStatus">
           <span class="ai-status-dot disconnected"></span>
@@ -953,10 +953,16 @@
       <!-- 未設定 API Key 的引導 -->
       <div id="aiKeySetupBox" class="ai-key-setup" style="display:none;">
         <div class="ai-key-setup-icon">🔑</div>
-        <div class="ai-key-setup-title">尚未設定 Anthropic API Key</div>
+        <div class="ai-key-setup-title">尚未設定 API Key</div>
         <div class="ai-key-setup-desc">
-          AI 功能需要連接 Anthropic 的 Claude 模型。請先到 <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> 申請 API Key,然後在「設定」頁面貼上。<br><br>
-          API 用量採用量計費(每次評語生成約 NT$0.1-0.3 元)。最低充值 USD $5(約 NT$160),可使用很久。
+          AI 功能要接一家的模型,兩種都可以:<br><br>
+          <strong>Gemini(Google)· 免費</strong> —— 用學校的 Google 帳號到
+          <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a>
+          申請,不必付錢也不必綁信用卡。想先試試看就選這個。<br><br>
+          <strong>Claude(Anthropic)· 要充值</strong> —— 到
+          <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>
+          申請,最低充值 USD $5(約 NT$160),一個學期通常用不完。評語與行為分析的品質比較好。<br><br>
+          申請完到「系統設定 → 外觀與 AI」貼上就可以用了。
         </div>
         <button class="btn btn-primary" onclick="switchView('settings')">前往設定填入 Key →</button>
       </div>
@@ -1331,6 +1337,18 @@
 
       <div class="panel-card api-key-section" style="margin-top: 16px;">
         <div class="panel-title">AI 助手 · API Key 設定</div>
+
+        <div class="field-row" style="margin-bottom:10px;">
+          <label class="field grow">
+            <span class="field-label">用哪一家的 AI</span>
+            <select id="aiProviderSelect" class="setup-input" onchange="saveAiProvider()">
+              <option value="gemini">Gemini(Google)· 免費</option>
+              <option value="claude">Claude(Anthropic)· 要充值</option>
+            </select>
+          </label>
+          <div class="api-key-hint" id="aiProviderNote" style="flex:2 1 320px;"></div>
+        </div>
+
         <div class="api-key-input-row">
           <label class="field grow">
             <span class="field-label">API Key</span>
@@ -1342,14 +1360,17 @@
           <button class="btn btn-ghost btn-small" onclick="testApiKey()">測試連線</button>
         </div>
         <div class="api-key-hint">
-          ✦ 請至 <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> 申請 API Key,最低充值 USD $5(約 NT$160)。<br>
-          ✦ <strong>安全提示</strong>:Key 只存於本機瀏覽器,不會上傳雲端。在公用電腦使用後請按「清除 API Key」。<br>
+          ✦ 到 <a id="aiConsoleLink" href="https://aistudio.google.com/apikey" target="_blank">申請頁面</a>
+            拿一把金鑰,貼進上面那一格。<span id="aiProviderCost"></span><br>
+          ✦ <strong>安全提示</strong>:Key 只存在這台電腦的瀏覽器裡,不會上傳雲端
+            (這個系統沒有後端,所有請求都是你的瀏覽器直接發出去的)。
+            公用電腦用完請按「清除 API Key」。<br>
+          ✦ 兩家的金鑰<strong>分開存</strong>,切換不會把另一把弄丟。<br>
           ✦ 模型選擇:
-          <select id="aiModelSelect" class="setup-input" style="display:inline-block; width: 280px; margin-left: 8px;" onchange="saveAiModel()">
-            <option value="claude-sonnet-5">Sonnet 5(推薦,評語/分析品質佳)</option>
-            <option value="claude-haiku-4-5">Haiku 4.5(便宜快速,日常用)</option>
-            <option value="claude-opus-5">Opus 5(最強,重要報告用)</option>
+          <select id="aiModelSelect" class="setup-input" style="display:inline-block; width: 300px; margin-left: 8px;" onchange="saveAiModel()">
           </select>
+          <button class="btn btn-ghost btn-small" id="aiLoadModelsBtn"
+                  onclick="loadAiModels()" style="margin-left:6px;">載入可用型號</button>
           <button class="btn btn-ghost btn-small" onclick="clearApiKey()" style="color: var(--sick-ink); margin-left: 8px;">清除 API Key</button>
         </div>
       </div>

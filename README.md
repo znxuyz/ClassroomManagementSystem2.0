@@ -279,7 +279,19 @@ const PET_SPECIES = [
 
 ## 🤖 AI 功能說明
 
-需要自備 Anthropic API Key。三個功能:
+需要自備 API Key,**兩家擇一**(在「系統設定 → 外觀與 AI」切換,金鑰分開存):
+
+| | Gemini(Google) | Claude(Anthropic) |
+|---|---|---|
+| 申請 | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) · 用學校的 Google 帳號 | [console.anthropic.com](https://console.anthropic.com) |
+| 費用 | **免費**,不必綁信用卡(有每分鐘/每天的額度上限) | 最低充值 USD $5(約 NT$160) |
+| 適合 | 先試試看、平常用 | 評語與行為分析要更細緻時 |
+
+兩家都是**從瀏覽器直接呼叫**(這個系統沒有後端),金鑰只存在老師自己那台電腦的
+localStorage。Gemini 的可用型號是**跟 Google 問出來的**,不是寫死在程式裡 ——
+型號改名時系統會自己換一個再試,不會丟一句看不懂的 404 給老師。
+
+三個功能:
 
 **評語生成** — 輸入學生 + 觀察關鍵字 → 系統自動帶入該生的寵物狀態、近兩週積分、主要得分理由給 AI → 產出三種風格的評語草稿(溫暖具體 / 著重成長 / 精簡專業)。
 

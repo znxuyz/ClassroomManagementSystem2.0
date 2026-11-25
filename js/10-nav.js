@@ -104,7 +104,8 @@ function renderAiView() {
   
   const statusEl = document.getElementById('aiStatus');
   if (hasKey) {
-    statusEl.innerHTML = '<span class="ai-status-dot connected"></span><span>已連接 · ' + AI.getModel() + '</span>';
+    statusEl.innerHTML = '<span class="ai-status-dot connected"></span><span>已連接 · '
+      + escapeHtml(AI.cfg().name) + ' · ' + escapeHtml(AI.getModel()) + '</span>';
   } else {
     statusEl.innerHTML = '<span class="ai-status-dot disconnected"></span><span>未設定 API Key</span>';
   }

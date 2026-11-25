@@ -608,7 +608,12 @@ const HELP = {
           '樣式和守護獸的圖都包在檔案裡,用 LINE 或 email 傳出去就好。' +
           '你在「導師評語」打的字也會一起帶進去。',
         '<strong>評語生成 / 行為觀察分析</strong>:設定好 AI 助手之後,可以依實際紀錄產生評語草稿。' +
-          '報表裡的「導師評語」欄位可以直接點進去改。'
+          '報表裡的「導師評語」欄位可以直接點進去改。',
+        'AI 可以接<strong>兩家</strong>,在「系統設定 → 外觀與 AI」選:' +
+          '<strong>Gemini(Google)是免費的</strong>,用學校的 Google 帳號到 ' +
+          'aistudio.google.com/apikey 申請就好,不必付錢也不必綁信用卡;' +
+          'Claude(Anthropic)要先充值,但評語與行為分析寫得比較細。' +
+          '兩家的金鑰<strong>分開存</strong>,切來切去不會把另一把弄丟。'
       ]
     },
     {

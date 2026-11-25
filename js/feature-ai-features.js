@@ -1,15 +1,81 @@
 /* ============================================
    設定頁 - API Key 管理
 ============================================ */
+/* AI 那一頁的狀態列/引導區要跟著變 —— 但那一頁可能根本還沒畫出來
+   (老師現在在設定頁),所以先確認元素在不在。 */
+function refreshAiStatus() {
+  if (document.getElementById('aiKeySetupBox')) renderAiView();
+}
+
 function loadApiKeyToUI() {
+  const p = AI.getProvider();
+  const cfg = AI.cfg(p);
+
+  const sel = document.getElementById('aiProviderSelect');
+  if (sel) sel.value = p;
+
   const input = document.getElementById('apiKeyInput');
-  const select = document.getElementById('aiModelSelect');
   if (input) {
-    input.value = AI.getKey();
+    input.value = AI.getKey(p);
     input.type = 'password';
+    input.placeholder = cfg.keyHint;
   }
-  if (select) {
-    select.value = AI.getModel();
+
+  const note = document.getElementById('aiProviderNote');
+  if (note) note.innerHTML = (cfg.free ? '✦ <strong>免費</strong>:' : '✦ ') + escapeHtml(cfg.note);
+
+  const link = document.getElementById('aiConsoleLink');
+  if (link) { link.href = cfg.console; link.textContent = cfg.consoleName; }
+
+  const cost = document.getElementById('aiProviderCost');
+  if (cost) {
+    cost.textContent = cfg.free
+      ? '不必付錢,也不必綁信用卡。'
+      : '最低充值 USD $5(約 NT$160),一個學期通常用不完。';
+  }
+
+  const btn = document.getElementById('aiLoadModelsBtn');
+  // 只有 Gemini 問得到型號清單;Claude 的就是那三個
+  if (btn) btn.style.display = (p === 'gemini') ? '' : 'none';
+
+  renderAiModelOptions();
+}
+
+function renderAiModelOptions() {
+  const select = document.getElementById('aiModelSelect');
+  if (!select) return;
+  const p = AI.getProvider();
+  const list = AI.getModelList(p);
+  const cur = AI.getModel(p);
+  /* 目前選的那個若不在清單裡(例如老師手動改過、或 Google 收掉了某個型號),
+     還是要列出來 —— 不然下拉會顯示別的型號,但實際用的是另一個。 */
+  const all = list.some(m => m.id === cur) ? list : [{ id: cur, name: cur }].concat(list);
+  select.innerHTML = all.map(m =>
+    `<option value="${escapeHtml(m.id)}" ${m.id === cur ? 'selected' : ''}
+      >${escapeHtml(m.name)}</option>`).join('');
+}
+
+function saveAiProvider() {
+  const sel = document.getElementById('aiProviderSelect');
+  AI.setProvider(sel.value);
+  loadApiKeyToUI();
+  refreshAiStatus();
+  toast('已切換為 ' + AI.cfg().name + (AI.hasKey() ? '' : ' —— 還要貼上金鑰'));
+}
+
+async function loadAiModels() {
+  if (!AI.hasKey()) {
+    const typed = (document.getElementById('apiKeyInput').value || '').trim();
+    if (!typed) { toast('請先貼上 API Key'); return; }
+    AI.setKey(typed);
+  }
+  toast('查詢可用型號中…');
+  try {
+    const list = await AI.fetchModels();
+    renderAiModelOptions();
+    toast('✦ 找到 ' + list.length + ' 個可用型號');
+  } catch (e) {
+    toast(e.message === 'NO_KEY' ? '請先貼上 API Key' : '查不到型號:' + e.message);
   }
 }
 
@@ -20,18 +86,34 @@ function saveApiKey() {
     toast('請輸入 API Key');
     return;
   }
-  if (!key.startsWith('sk-')) {
-    if (!confirm('這個 Key 看起來不像 Anthropic 的格式(應該以 sk- 開頭),確定要儲存嗎?')) return;
+  const cfg = AI.cfg();
+  if (cfg.keyPrefix && !key.startsWith(cfg.keyPrefix)) {
+    if (!confirm('這個 Key 看起來不像' + cfg.name + '的格式(應該以 '
+                 + cfg.keyPrefix + ' 開頭),確定要儲存嗎?')) return;
   }
   AI.setKey(key);
   toast('API Key 已儲存');
+  refreshAiStatus();
+
+  /* Gemini:存完順手問一次現在有哪些型號可以用。
+     內建的預設值總有一天會被改掉,問過一次就不會踩到。
+     問不到也不要擋著 —— 真的要用的時候還會自己再試一次。 */
+  if (AI.getProvider() === 'gemini') {
+    AI.fetchModels().then(list => {
+      if (!list.length) return;
+      if (!list.some(m => m.id === AI.getModel())) AI.setModel(list[0].id);
+      renderAiModelOptions();
+      toast('✦ 已連上,可用型號 ' + list.length + ' 個');
+    }).catch(() => { /* 等真的要用的時候再說 */ });
+  }
 }
 
 function clearApiKey() {
-  if (!confirm('確定清除 API Key?清除後 AI 功能將無法使用。')) return;
+  if (!confirm('確定清除「' + AI.cfg().name + '」的 API Key?清除後 AI 功能將無法使用。')) return;
   AI.clearKey();
   document.getElementById('apiKeyInput').value = '';
   toast('API Key 已清除');
+  refreshAiStatus();
 }
 
 function toggleApiKeyVisibility() {
