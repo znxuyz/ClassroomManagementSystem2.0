@@ -151,6 +151,12 @@ function listSkillFruits() {
          (這一段也讓更新前就上架的果實補得到星星價。) */
       if (cur.starPrice === undefined) {
         cur.starPrice = f.starPrice;
+        cur.starAuto = true;
+        touched = true;
+      } else if (cur.starAuto && cur.starPrice !== f.starPrice) {
+        /* 系統算的那幾顆:換算方式改了就跟著改(例如從五分之一改成
+           三分之一)。老師手動改過的會把 starAuto 清掉,不會走到這裡。 */
+        cur.starPrice = f.starPrice;
         touched = true;
       }
       if (touched) updated.push(f.name);

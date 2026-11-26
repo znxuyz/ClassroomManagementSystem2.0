@@ -247,7 +247,20 @@ const BlockJudge = {
     return paper.script.map((s, i) => {
       const a = expect[i] || {}, b = trace[i] || {};
       ctx.why = null;
-      const ok = this.sameStep(a, b, ctx);
+      /* ── 「圖案自己畫」的題目不比開機那一瞬間 ──
+         剪刀石頭布的老師解答常寫成「當啟動時 變數設為 0」,
+         於是「否則」那一支在還沒搖之前就先把布顯示出來了。
+         學生如果寫成「如果1 / 否則如果2 / 否則如果3」(沒有光禿禿的否則),
+         開機時什麼都不顯示 —— 搖下去之後三種情況明明都對,卻會卡在第一步。
+
+         這一種題目考的是「哪一種情況畫哪一張」,不是「開機時螢幕上有什麼」,
+         所以開機那一步不算。想考開機畫面的題目不要勾「圖案自己畫」。
+
+         但只有在**後面還有別的步驟**時才跳過 —— 整題就只有「當啟動時」
+         的話,跳過等於整題不判了。 */
+      const skipBoot = paper.drawFree && s.do === 'start'
+        && paper.script.length > 1;
+      const ok = skipBoot ? true : this.sameStep(a, b, ctx);
       return {
         label: s.label || ('第 ' + (i + 1) + ' 步'),
         ok,
@@ -282,6 +295,10 @@ const BlockJudge = {
     /* 中間閃過的畫面也要一張一張比(「圖案自己畫」時同樣走對應表)——
        只比最後停在哪一張的話,會把「會閃爍的」和「不會閃的」判成一樣。 */
     const fa = a.frames || [], fb = b.frames || [];
+    /* 「圖案自己畫」的題目只比「這一步停在哪一張」。
+       中間閃過幾張會跟著開機時螢幕上有什麼而變 —— 而那一題根本不考
+       開機畫面(見 roundSteps),比下去只會讓一堆對的作品卡在無關的地方。 */
+    if (ctx && ctx.on) return true;
     if (fa.length !== fb.length) return false;
     for (let i = 0; i < fa.length; i++) {
       if (!this.screenMatch(fa[i], fb[i], ctx)) return false;

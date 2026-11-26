@@ -143,6 +143,9 @@ function updateShopItem(itemId, field, value) {
     const n = value === '' ? 0 : parseInt(value);
     if (isNaN(n) || n < 0) return;
     item[field] = n;
+    /* 老師親手改過的星星價不再是「系統算的」——
+       之後換算方式再怎麼改,都不會把這一顆蓋回去。 */
+    if (field === 'starPrice') item.starAuto = false;
   } else if (field === 'stock') {
     item.stock = value === '' ? null : Math.max(0, parseInt(value) || 0);
   } else {

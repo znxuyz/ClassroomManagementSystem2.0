@@ -117,8 +117,37 @@ const d = await page.evaluate(() => {
   const X = g('10001/01010/00100/01010/10001');
   const Y = g('00100/01110/11111/01110/00100');
   const Z = g('11111/11111/00000/11111/11111');
+  /* 老師實際的寫法:當啟動時 變數設為 0。
+     於是「否則」那一支在還沒搖之前就先把布顯示出來了。
+     學生寫成三個並列的「否則如果」(沒有光禿禿的否則)開機時什麼都不顯示
+     —— 搖下去之後三種情況明明都對,不可以卡在開機那一步。 */
+  const init = { t: 'on_start', body: [
+    { t: 'set_var', name: 'n', v: { t: 'num', v: 0 } } ] };
+  const withElse = (a, b, c) => [ init, mk(a, b, c)[0], mk(a, b, c)[1] ];
+  const threeIfs = (a, b, c) => [ init, mk(a, b, c)[0],
+    { t: 'forever', body: [
+      { t: 'if', cond: eq(1), body: [a], elseBody: [
+        { t: 'if', cond: eq(2), body: [b], elseBody: [
+          { t: 'if', cond: eq(3), body: [c] } ] } ] } ] } ];
+
+  const paper0 = BlockJudge.compile({ id: 't0', drawFree: true,
+    solution: withElse(show(A), show(B), show(C)) });
+  const t0 = p => {
+    const res = BlockJudge.runCompiled(paper0, p);
+    return { pass: res.pass, msg: BlockJudge.explain(res) };
+  };
+
   return {
     seeds: paper.seeds.length,
+    初值0_照老師寫: t0(withElse(show(A), show(B), show(C))),
+    初值0_三個否則如果: t0(threeIfs(
+      show(g('10001/01010/00100/01010/10001')),
+      show(g('00100/01110/11111/01110/00100')),
+      show(g('11111/11111/00000/11111/11111')))),
+    初值0_少一支: t0(threeIfs(
+      show(g('10001/01010/00100/01010/10001')),
+      show(g('00100/01110/11111/01110/00100')),
+      show(g('00100/01110/11111/01110/00100')))),
     same: t(mk(show(A), show(B), show(C))),
     mine: t(mk(show(X), show(Y), show(Z))),
     dup: t(mk(show(X), show(X), show(X))),
@@ -146,6 +175,13 @@ ok('只寫了一支(漏掉兩種情況)要擋下來', d.missing.pass === false);
 ok('而且要講「這一種情況是不是還沒寫」,不是「畫面變化的過程不一樣」',
    /還沒寫|沒有換圖/.test(d.missing.msg)
    && !/畫面變化的過程/.test(d.missing.msg), d.missing.msg);
+
+ok('老師寫「當啟動時 變數設為 0」,他自己的解答當然要過',
+   d.初值0_照老師寫.pass === true, d.初值0_照老師寫.msg);
+ok('學生改用三個並列的「否則如果」,開機時什麼都不顯示,一樣要算對',
+   d.初值0_三個否則如果.pass === true, d.初值0_三個否則如果.msg);
+ok('但真的漏掉一種情況還是要擋下來(不是整題放水)',
+   d.初值0_少一支.pass === false, d.初值0_少一支.msg);
 
 await close();
 process.exit(report('編輯區不重畫 · 圖案自己畫的講法', lines, errors) ? 0 : 1);

@@ -383,6 +383,9 @@ const SkillEngine = {
       icon: s.icon,
       price: s.price,
       starPrice: this.fruitStarPrice(s),
+      /* 這個價錢是系統算的,不是老師定的 —— 之後換算方式改了,
+         這一類才跟著變;老師自己改過的那幾顆不會被蓋掉。 */
+      starAuto: true,
       stock: null,                 // 不限量:每個人本來就只能買一次
       description: this.fruitDescription(s),
       active: true,
@@ -391,15 +394,13 @@ const SkillEngine = {
   },
 
   /* 果實的星星價。
-     星星比積分稀有得多(一題最多三顆,一學期十題也才三十顆),
-     所以不能照積分價直接換算 —— 大概五分之一、最少三顆。
-     30 分的果實 = 6 顆星 ≈ 兩題拿滿星,認真做積木冒險的孩子
-     一個學期換得到三四顆,不會太廉價也不會遙不可及。
+     星星比積分稀有得多(一題最多三顆),所以不能照積分價直接換算 ——
+     取積分價的三分之一、最少三顆。30 分的果實 = 10 顆星 ≈ 四題拿滿星。
 
      老師覺得不合適可以在商店直接改;**改過就不會再被蓋掉**
      (見 listSkillFruits),填 0 就是這一顆不收星星。 */
   fruitStarPrice(skill) {
-    return Math.max(3, Math.round((skill.price || 20) / 5));
+    return Math.max(3, Math.round((skill.price || 20) / 3));
   },
 
   owns(student, skillId) {

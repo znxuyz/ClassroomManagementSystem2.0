@@ -181,16 +181,29 @@ const f = await page.evaluate(() => {
 
   /* 老師改過的價格不可以被「再按一次上架」蓋掉 ——
      包括「設成 0 = 這一顆不收星星」,那是一個決定,不是沒填。 */
-  fruits()[1].starPrice = 99;
-  fruits()[2].starPrice = 0;
+  /* 走老師真的會走的那條路(商店那一格),不是直接改資料 ——
+     「這是老師自己定的」就是在那裡記下來的。 */
+  updateShopItem(fruits()[1].id, 'starPrice', '99');
+  updateShopItem(fruits()[2].id, 'starPrice', '0');
   listSkillFruits();
   out.老師改的價還在 = fruits()[1].starPrice === 99;
   out.設成0沒被填回去 = fruits()[2].starPrice === 0;
 
   // 舊班級:上架在這個功能之前,果實沒有星星價 —— 再按一次要補得上
   delete fruits()[3].starPrice;
+  delete fruits()[3].starAuto;
   listSkillFruits();
   out.舊的補得上 = Number(fruits()[3].starPrice) > 0;
+
+  /* 換算方式改了(五分之一 → 三分之一),系統算的那幾顆要跟著改,
+     老師自己定的不動。不然老師得一顆一顆重打。 */
+  const auto = fruits().find(x => x.starAuto && x.price >= 30);
+  const autoId = auto.id;
+  auto.starPrice = 1;
+  listSkillFruits();
+  const after = fruits().find(x => x.id === autoId);
+  out.系統算的會跟著改 = [after.starPrice, Math.round(after.price / 3)];
+  out.老師定的仍然不動 = fruits()[1].starPrice === 99;
 
   return out;
 });
@@ -211,6 +224,10 @@ ok('老師改過的星星價不會被「再按一次上架」蓋掉', f.老師�
 ok('設成 0(這一顆不收星星)也是一個決定,不會被填回去',
    f.設成0沒被填回去 === true);
 ok('更新前就上架的果實,再按一次補得上星星價', f.舊的補得上 === true);
+ok('換算方式改了,系統算的那幾顆會跟著改',
+   f.系統算的會跟著改[0] === f.系統算的會跟著改[1],
+   f.系統算的會跟著改.join(' / '));
+ok('但老師自己定的那一顆照樣不動', f.老師定的仍然不動 === true);
 
 await close();
 process.exit(report('星星帳本與雙貨幣商店', lines, errors) ? 0 : 1);
