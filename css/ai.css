@@ -253,3 +253,16 @@
   line-height: 1.7;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
+
+/* 型號下拉:桌機想寬一點(型號名字很長),手機不能撐破版面。
+   寫死 width 會在 390px 把整頁推到橫向捲動(踩過)。 */
+.ai-model-select {
+  display: inline-block;
+  width: 360px;
+  max-width: 100%;
+  margin-left: 8px;
+}
+
+@media (max-width: 520px) {
+  .ai-model-select { width: 100%; margin-left: 0; margin-top: 4px; }
+}
