@@ -337,6 +337,25 @@ const BlockJudge = {
       return `「${s.label}」的時候,應該播${eb},但你的程式${gb}。`;
     }
 
+    /* 「圖案自己畫」的題目,兩邊都只是「圖案」—— 說「應該是圖案,
+       但你的是圖案」等於什麼都沒說。這種題目通常是漏了一種情況
+       (剪刀石頭布只寫了兩支),所以直接用「顯示了幾張」來講。 */
+    if (result.drawFree) {
+      const ec = (s.expectFrames || []).length, gc = (s.gotFrames || []).length;
+      const blank = x => !x || x.kind === 'blank'
+        || (x.kind === 'leds' && !String(x.value || '').includes('1'));
+      if (ec > gc) {
+        return `「${s.label}」的時候應該要顯示一張圖,`
+             + (gc === 0 && blank(s.got)
+                 ? '但你的程式什麼都沒顯示 —— 這一種情況是不是還沒寫?'
+                 : '但你的程式沒有換圖 —— 這一種情況是不是和別的情況共用了?');
+      }
+      if (gc > ec) {
+        return `「${s.label}」的時候你的程式多顯示了東西 —— `
+             + `檢查看看是不是有一種情況被重複做到了。`;
+      }
+    }
+
     const want = BlockVM.describeScreen(s.expect);
     const got  = BlockVM.describeScreen(s.got);
     if (want === got) {

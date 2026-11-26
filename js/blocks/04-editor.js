@@ -87,9 +87,13 @@ const BlockEditor = {
     return strip(this.program);
   },
 
-  changed() {
+  /* 改了東西。
+     quiet = true 代表「畫面上已經是對的了,不用重畫」——
+     點指示燈、在格子裡打字都屬於這一種:整塊工作區重畫一次,
+     捲動位置會跳掉、游標會不見,連點二十五顆燈會卡到沒辦法用。 */
+  changed(quiet) {
     this.vars = [...new Set(this.vars.concat(blockVars(this.program)))];
-    this.render();
+    if (!quiet) this.render();
     if (this.onChange) this.onChange(this.value());
   },
 
@@ -473,7 +477,10 @@ const BlockEditor = {
       const g = (hit.block.grid || LED_BLANK).split('');
       g[i] = g[i] === '1' ? '0' : '1';
       hit.block.grid = g.join('');
-      this.changed();
+      /* 自己把那一顆燈切掉就好 —— 重畫整個工作區的話,
+         畫一張圖要點十幾下,每一下都跳一次,根本沒辦法畫。 */
+      t.classList.toggle('on', g[i] === '1');
+      this.changed(true);
     }
     e.stopPropagation();
   },
@@ -490,12 +497,25 @@ const BlockEditor = {
     if (type === 'num' || type === 'rawnum') v = Number(v) || 0;
     if (type === 'var' && v === '__new__') { this.addVar(); return; }
     hit.block[arg] = v;
-    this.changed();
+    /* 在格子裡打字、選音階之類的:畫面上那一格已經是新的值了。
+       重畫會讓游標跳掉,連著改兩格會很難打。
+       變數名稱不一樣 —— 別的下拉也要跟著多一個選項,那就得重畫。 */
+    this.changed(type !== 'var');
+    if (type !== 'var') this.fitFields();
   },
 
   /* ---------- 畫面 ---------- */
   render() {
     if (!this.el) return;
+    /* 重畫之前先把捲動位置記下來。
+       工作區往下拉了之後放一塊積木,畫面又彈回最上面 —— 那會讓人以為
+       積木放丟了,得重新捲下去找。左邊那一排積木也一樣。 */
+    const keep = [];
+    this.el.querySelectorAll('.bk-work, .bk-chips').forEach(n => {
+      if (n.scrollTop || n.scrollLeft) {
+        keep.push([n.className, n.scrollTop, n.scrollLeft]);
+      }
+    });
     this.el.innerHTML = `
       <div class="bk-editor ${this.readonly ? 'is-readonly' : ''}">
         ${this.readonly ? '' : this.renderPalette()}
@@ -503,6 +523,10 @@ const BlockEditor = {
           ${this.renderList(this.program, null, 'body')}
         </div>
       </div>`;
+    keep.forEach(([cls, top, left]) => {
+      const n = this.el.querySelector('.' + cls.trim().split(/\s+/).join('.'));
+      if (n) { n.scrollTop = top; n.scrollLeft = left; }
+    });
     this.fitFields();
   },
 

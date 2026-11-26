@@ -387,9 +387,13 @@ Object.assign(StudentApp, {
           <div class="prize-name">${escapeHtml(item.name)}</div>
           ${item.description
             ? `<div class="prize-desc">${escapeHtml(item.description)}</div>` : ''}
+          ${/* 兩種幣都能買的時候,兩顆按鈕上寫的就是兩個價錢 ——
+                 下面再寫一次會變成同一張卡上出現兩組「30 點 ★ 6」。 */''}
           <div class="prize-meta">
-            ${byPoint ? `<span class="prize-price">${item.price} 點</span>` : ''}
-            ${byStar ? `<span class="prize-price is-star">★ ${item.starPrice}</span>` : ''}
+            ${byPoint && !(byStar && !disabled)
+              ? `<span class="prize-price">${item.price} 點</span>` : ''}
+            ${byStar && !(byPoint && !disabled)
+              ? `<span class="prize-price is-star">★ ${item.starPrice}</span>` : ''}
             ${item.stock !== null
               ? `<span class="prize-stock">${soldOut ? '已兌完' : '剩 ' + item.stock + ' 份'}</span>`
               : ''}

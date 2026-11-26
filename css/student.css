@@ -93,6 +93,19 @@
   align-items: start;
 }
 
+/* 獎品格子同一列要一樣高。
+   技能果實的說明有四行階段效果,長短差很多 —— 照內容各自縮的話,
+   同一排會高高低低像沒排好,而且兌換鈕的位置每一張都不同。 */
+.prize-grid { align-items: stretch; }
+.prize-grid .prize-card { height: 100%; margin-bottom: 0; }
+/* 價錢壓在卡片底部,同一排才會對齊成一條線 */
+.prize-grid .prize-body {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+}
+.prize-grid .prize-meta { margin-top: auto; padding-top: 6px; }
+
 /* 守護獸分頁:寬螢幕時獸在左、技能與紀錄在右 */
 @media (min-width: 960px) {
   .pane-pet {
