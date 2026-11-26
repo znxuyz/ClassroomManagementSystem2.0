@@ -139,11 +139,21 @@ function listSkillFruits() {
     if (existing.has(f.id)) {
       // 已經上架過的只更新說明(效果表可能改過),價格與上下架沿用老師設的
       const cur = state.shopItems.find(i => i.id === f.id);
+      let touched = false;
       if (cur.description !== f.description) {
         cur.description = f.description;
         cur.skillId = f.skillId;
-        updated.push(f.name);
+        touched = true;
       }
+      /* 星星價:**只有「從來沒設過」才補上**。
+         用 === undefined 而不是看它是不是 0 —— 老師把它設成 0
+         就是「這一顆不收星星」,那是一個決定,不是沒填。
+         (這一段也讓更新前就上架的果實補得到星星價。) */
+      if (cur.starPrice === undefined) {
+        cur.starPrice = f.starPrice;
+        touched = true;
+      }
+      if (touched) updated.push(f.name);
     } else {
       state.shopItems.push(f);
       added.push(f.name);
@@ -154,7 +164,8 @@ function listSkillFruits() {
   renderAll();
   toast(added.length
     ? `✦ 已上架 ${added.length} 顆技能果實`
-    : updated.length ? `已更新 ${updated.length} 顆果實的說明` : '技能果實都已經在架上了');
+    : updated.length ? `已更新 ${updated.length} 顆果實(說明與星星價)`
+                     : '技能果實都已經在架上了');
 }
 
 /* ============================================
@@ -176,6 +187,10 @@ function skillBoardHtml() {
   const range = SkillEngine.seasonRange(state.skills, Date.now());
   const onShelf = PET_SKILLS.filter(s =>
     state.shopItems.some(i => i.id === SkillEngine.fruitId(s.id))).length;
+  /* 更新之前就上架的果實沒有星星價(那時還沒有星星這回事)——
+     老師不會知道要按什麼,所以按鈕直接講出來。 */
+  const needStar = state.shopItems.filter(i =>
+    SkillEngine.isFruit(i.id) && i.starPrice === undefined).length;
 
   /* 四階效果總表:一眼看完哪一階能用什麼、多強。
      照領域分段 —— 十八個技能平鋪的話,老師要找「測驗那幾個」
@@ -228,9 +243,14 @@ function skillBoardHtml() {
         ~ ${new Date(range.to - 1).toLocaleDateString('zh-TW')}</span>
 
       <div style="flex:1"></div>
-      <button class="btn ${onShelf === PET_SKILLS.length ? 'btn-ghost' : 'btn-accent'} btn-small"
-              onclick="listSkillFruits()">
-        ${onShelf === PET_SKILLS.length ? '更新果實說明' : `上架技能果實(${onShelf}/${PET_SKILLS.length})`}
+      <button class="btn ${onShelf === PET_SKILLS.length && !needStar
+                             ? 'btn-ghost' : 'btn-accent'} btn-small"
+              onclick="listSkillFruits()"
+              title="${needStar ? '這幾顆是更新前上架的,還沒有星星價 —— 按一下補上'
+                                : '果實的效果說明會跟著技能表更新'}">
+        ${onShelf < PET_SKILLS.length ? `上架技能果實(${onShelf}/${PET_SKILLS.length})`
+          : needStar ? `補上果實的星星價(${needStar} 顆)`
+          : '更新果實說明'}
       </button>
     </div>
 

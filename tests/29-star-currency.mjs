@@ -143,5 +143,74 @@ ok('星星榜排的是累積拿到的,不是餘額(花掉不會掉名次)',
    r.starRank[0].endsWith(':20'), r.starRank.join(' / '));
 ok('沒拿過星星的人不上榜', r.starRank.length === 3, r.starRank.length + ' 人');
 
+/* ============================================
+   技能果實也要收得了星星
+   ────────────────────────────────────────────
+   星星本來就能在商店當錢用,但「上架技能果實」產生的那十七顆
+   **沒有帶星星價** —— 所以學生按下去只會看到「這項獎品現在不能用星星換」。
+   機制在、實際上用不到,等於沒做。
+============================================ */
+const f = await page.evaluate(() => {
+  const out = {};
+  __apply(__fixture({ students: 4, historyPer: 0, questions: 0 }));
+  window.confirm = () => true;
+  state.skills = { enabled: true, weeks: 1 };
+  state.shopItems = [];
+
+  listSkillFruits();
+  const fruits = () => state.shopItems.filter(i => SkillEngine.isFruit(i.id));
+  out.上架幾顆 = fruits().length;
+  out.都有星星價 = fruits().every(x => Number(x.starPrice) > 0);
+  out.星星價範圍 = [Math.min(...fruits().map(x => x.starPrice)),
+                    Math.max(...fruits().map(x => x.starPrice))];
+  // 星星價要比積分價小一個級距 —— 星星稀有得多
+  out.比積分便宜 = fruits().every(x => x.starPrice < x.price);
+
+  const s = state.students[0];
+  s.starsEarned = 50; s.starSpent = 0; s.currentPoints = 0; s.inventory = [];
+  const first = fruits()[0];
+  const r = PurchaseWatch.settle({ studentId: s.id, itemId: first.id, currency: 'star' });
+  out.用星星買果實 = r.result.status;
+  out.扣了幾顆 = 50 - StarBank.available(s);
+  out.真的拿到技能 = SkillEngine.owns(s, SkillEngine.skillOfFruit(first.id).id);
+  out.積分沒被扣 = s.currentPoints === 0;
+
+  // 同一顆不能買第二次(就算改用星星付)
+  const again = PurchaseWatch.settle({ studentId: s.id, itemId: first.id, currency: 'star' });
+  out.買第二次 = again.result.status;
+
+  /* 老師改過的價格不可以被「再按一次上架」蓋掉 ——
+     包括「設成 0 = 這一顆不收星星」,那是一個決定,不是沒填。 */
+  fruits()[1].starPrice = 99;
+  fruits()[2].starPrice = 0;
+  listSkillFruits();
+  out.老師改的價還在 = fruits()[1].starPrice === 99;
+  out.設成0沒被填回去 = fruits()[2].starPrice === 0;
+
+  // 舊班級:上架在這個功能之前,果實沒有星星價 —— 再按一次要補得上
+  delete fruits()[3].starPrice;
+  listSkillFruits();
+  out.舊的補得上 = Number(fruits()[3].starPrice) > 0;
+
+  return out;
+});
+
+ok('上架技能果實時**每一顆都帶星星價**',
+   f.上架幾顆 === 17 && f.都有星星價 === true,
+   f.上架幾顆 + ' 顆 · 星星價 ' + f.星星價範圍.join('~'));
+ok('星星價比積分價低一個級距(星星稀有得多)', f.比積分便宜 === true,
+   f.星星價範圍.join('~') + ' 顆星');
+
+ok('**學生真的用星星換得到果實**', f.用星星買果實 === 'delivered', f.用星星買果實);
+ok('扣的是星星,不是積分', f.扣了幾顆 > 0 && f.積分沒被扣 === true,
+   '扣了 ' + f.扣了幾顆 + ' 顆');
+ok('而且技能真的進到背包', f.真的拿到技能 === true);
+ok('同一顆果實不能買第二次', f.買第二次 === 'rejected', f.買第二次);
+
+ok('老師改過的星星價不會被「再按一次上架」蓋掉', f.老師改的價還在 === true);
+ok('設成 0(這一顆不收星星)也是一個決定,不會被填回去',
+   f.設成0沒被填回去 === true);
+ok('更新前就上架的果實,再按一次補得上星星價', f.舊的補得上 === true);
+
 await close();
 process.exit(report('星星帳本與雙貨幣商店', lines, errors) ? 0 : 1);
