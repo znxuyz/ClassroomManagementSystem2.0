@@ -26,6 +26,7 @@ Object.assign(StudentApp, {
       { key: 'war',    name: '蜂巢戰紀' },
       { key: 'blocks', name: '積木冒險' }
     ] },
+    { key: 'homework', name: '作業' },
     { key: 'shop', name: '兌換' },
     { key: 'help', name: '說明' }
   ],
@@ -42,6 +43,12 @@ Object.assign(StudentApp, {
     if (key === 'war') {
       return { live: !!(typeof TerritoryGame !== 'undefined' && TerritoryGame.config
                         && TerritoryGame.config.status === 'running'), badge: 0 };
+    }
+    /* 作業:老師開放繳交的才看得到。一份都沒有的時候整個分頁收起來 ——
+       孩子點進一片空白只會以為壞了。上面的數字是「還沒交幾份」。 */
+    if (key === 'homework') {
+      const list = this.homeworkList ? this.homeworkList() : [];
+      return { live: list.length > 0, badge: this.homeworkPending() };
     }
     if (key === 'blocks') {
       const list = this.blockTasks || [];

@@ -88,6 +88,35 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/classes/$(classId)).data.teacherUid == request.auth.uid;
       }
 
+      /* ---------- 作業 ----------
+         題目這一份全班都讀得到(要交什麼、交到哪個雲端資料夾),
+         只有導師寫得了。 */
+      match /homework/{hwId} {
+        allow read: if signedIn();
+        allow write: if signedIn()
+          && get(/databases/$(database)/documents/classes/$(classId)).data.teacherUid == request.auth.uid;
+      }
+
+      /* 繳交紀錄:文件 id 是 {作業}__{uid},所以一個人只動得了自己那一份。
+         讀取只開放給本人與導師 —— 全班讀得到的話,
+         誰沒交就變成公開資訊,那是會出事的那種公開。
+         檔案本身在 Google 雲端硬碟,這裡只有它的 id 與連結。 */
+      match /hwsubs/{subId} {
+        function isMine() {
+          return signedIn()
+                 && request.resource.data.uid == request.auth.uid
+                 && subId.matches('.*__' + request.auth.uid);
+        }
+        function isClassTeacher() {
+          return signedIn()
+            && get(/databases/$(database)/documents/classes/$(classId)).data.teacherUid == request.auth.uid;
+        }
+        allow create, update: if isMine();
+        allow read: if isClassTeacher()
+                    || (signedIn() && resource.data.uid == request.auth.uid);
+        allow delete: if isClassTeacher();
+      }
+
       /* 學生自選守護獸:
          文件 id 就是學生的 uid,所以只能寫自己那一份。
          老師端會讀取並收進班級資料(且只填補還沒有守護獸的學生)。 */

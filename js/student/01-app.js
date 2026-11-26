@@ -288,6 +288,19 @@ const StudentApp = {
       : await this.optional('守護獸選擇', () => Cloud.getMyPetChoice(classId, Cloud.uid), null);
 
     this.quizzes = await this.optional('測驗', () => Cloud.listQuizzesForStudent(classId), []);
+
+    /* 作業。自己交過哪幾份要一起查 —— 不查的話,交過的作業
+       每次進來都還是一副「沒交」的樣子,孩子會重交一遍。 */
+    this.homework = await this.optional('作業',
+      () => Cloud.listHomework(classId), []);
+    this.myHwSubs = {};
+    if (this.homework.length) {
+      const rows = await this.optional('繳交紀錄',
+        () => Cloud.listHomeworkSubs(classId), []);
+      rows.filter(r => r.uid === Cloud.uid)
+          .forEach(r => { this.myHwSubs[r.hwId] = r; });
+    }
+
     await this.loadSkills();
 
     // 逐份查自己交過沒 — 開放中的測驗通常不多,這裡的查詢量很小
@@ -368,6 +381,7 @@ const StudentApp = {
           ${this.tab === 'rank' ? this.renderRankTab() : ''}
           ${this.tab === 'quiz' ? this.renderQuizTab() : ''}
           ${this.tab === 'shop' ? this.renderShopTab() : ''}
+          ${this.tab === 'homework' ? this.renderHomeworkTab() : ''}
           ${this.tab === 'war'  ? this.renderWarTab()  : ''}
           ${this.tab === 'blocks' ? this.renderBlocksTab() : ''}
           ${this.tab === 'help' ? renderHelpFull('student', this.classRules) : ''}

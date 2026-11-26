@@ -363,3 +363,123 @@
   .hw-create-form > .field.mid,
   .hw-create-form > button { grid-column: 1 / -1; }
 }
+
+/* ============================================
+   作業 × 雲端硬碟
+============================================ */
+.hw-drive-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  margin: 0 0 10px;
+  border-radius: var(--r-tile);
+  background: var(--paper-shadow);
+  font-size: 13px;
+}
+.hw-drive-row.is-on { background: color-mix(in srgb, var(--forest) 10%, transparent); }
+/* --ink-muted 放在 --paper-shadow 上只有 4.1,差一點點 ——
+   這一行是在跟老師說明功能,不是裝飾,要讀得清楚。 */
+.hw-drive-row.is-off { color: var(--ink-soft); }
+.hw-drive-note { color: var(--ink-muted); font-size: 12px; }
+
+/* 學生交上來的檔案:名字旁邊一顆小連結,點得開 */
+.hw-file-link {
+  margin-left: 6px;
+  font-size: 11px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--forest);
+  color: var(--paper);
+  text-decoration: none;
+}
+
+/* ---------- 設定頁的雲端硬碟區 ---------- */
+.drive-intro { font-size: 13px; line-height: 1.8; color: var(--ink-soft); }
+.drive-steps { margin: 14px 0; display: grid; gap: 8px; }
+.drive-step {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  font-size: 13px;
+  line-height: 1.7;
+  /* 步驟裡有網址與一長串用戶端 ID —— 不準斷行的話,
+     手機上整個面板會被撐出一條橫向捲軸。 */
+  overflow-wrap: anywhere;
+}
+.drive-step b {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--forest-deep);
+  color: var(--paper);
+  font-size: 11px;
+}
+.drive-origin {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--paper-shadow);
+  /* 網址要選得起來複製 —— 這一步抄錯的話 Google 會直接擋掉授權 */
+  user-select: all;
+}
+.drive-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.drive-status { margin-top: 10px; font-size: 13px; color: var(--ink-muted); }
+
+/* ---------- 學生端 ---------- */
+.hw-stu-list { display: grid; gap: 12px; }
+.hw-stu-card {
+  background: var(--paper);
+  border: 1px solid var(--paper-shadow);
+  border-radius: var(--r-card);
+  padding: var(--pad);
+}
+.hw-stu-card.is-done { background: color-mix(in srgb, var(--forest) 6%, var(--paper)); }
+.hw-stu-head { display: flex; justify-content: space-between; gap: 10px; }
+.hw-stu-name { font-weight: 600; font-size: 16px; color: var(--ink); }
+.hw-stu-desc { font-size: 13px; color: var(--ink-muted); margin-top: 3px; line-height: 1.7; }
+.hw-stu-chip {
+  flex: none;
+  align-self: flex-start;
+  font-size: 11px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--paper-shadow);
+  color: var(--ink-soft);
+}
+.hw-stu-chip.done { background: var(--forest); color: var(--paper); }
+.hw-stu-chip.over { background: var(--sick); color: var(--sick-ink); }
+.hw-stu-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin: 8px 0 10px;
+}
+.hw-stu-pick { display: inline-flex; align-items: center; cursor: pointer; }
+.hw-stu-note { font-size: 12px; color: var(--ink-muted); margin-top: 8px; line-height: 1.7; }
+.hw-stu-progress {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--paper-shadow);
+  overflow: hidden;
+}
+.hw-stu-progress i {
+  display: block;
+  height: 100%;
+  background: var(--forest);
+  transition: width .2s;
+}
+
+/* 設定頁的雲端硬碟面板和下一張卡之間要留空隙 ——
+   .panel-card 自己沒有 margin,靠外層的版面給。這裡是直接塞在
+   子分頁下面的,所以自己補。 */
+#drivePanel { margin-bottom: 16px; }

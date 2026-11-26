@@ -8,6 +8,7 @@ function renderSettings() {
     state.students.map(s => [s.seatNumber || '', s.name, s.email || ''].join(',')).join('\n');
   loadApiKeyToUI();
   renderThemeChoice();
+  if (typeof renderDriveSettings === 'function') renderDriveSettings();
 }
 
 function saveSettings() {

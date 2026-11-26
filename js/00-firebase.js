@@ -311,6 +311,41 @@ const Cloud = {
      注意:發布給學生的版本會抽掉正確答案,避免學生從開發者工具偷看。
      批改在老師端做,學生只送出自己的答案。 */
 
+  /* ---------- 作業 ----------
+     發下去的只有「要交什麼、交到哪個雲端資料夾」。
+     誰交了誰沒交是老師端的資料,不寫進這裡 ——
+     寫進去的話全班都讀得到同學的繳交狀況。 */
+  async publishHomework(classId, hw) {
+    await this.db.collection('classes').doc(classId)
+      .collection('homework').doc(hw.id)
+      .set(Object.assign({ publishedAt: Date.now() }, hw));
+  },
+
+  async listHomework(classId) {
+    const snap = await this.db.collection('classes').doc(classId)
+      .collection('homework').get();
+    return snap.docs.map(d => d.data()).filter(h => !h.closed);
+  },
+
+  /* 學生交完之後寫一筆「我交了,檔案在這裡」。
+     檔案本身在雲端硬碟,這裡只記得到它的 id 與連結 ——
+     Firestore 不碰檔案,容量就不會是問題(這整件事的起點)。 */
+  async submitHomework(classId, hwId, row) {
+    const uid = this.auth.currentUser.uid;
+    await this.db.collection('classes').doc(classId)
+      .collection('hwsubs').doc(hwId + '__' + uid)
+      .set(Object.assign({
+        uid, hwId, at: Date.now(),
+        email: (this.auth.currentUser.email || '').toLowerCase()
+      }, row));
+  },
+
+  async listHomeworkSubs(classId) {
+    const snap = await this.db.collection('classes').doc(classId)
+      .collection('hwsubs').get();
+    return snap.docs.map(d => d.data());
+  },
+
   async publishQuiz(classId, quiz) {
     const forStudents = {
       id: quiz.id,

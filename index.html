@@ -9,29 +9,29 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700;900&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 
 <!-- 樣式表 -->
-<link rel="stylesheet" href="css/base.css?v=20261112a">
-<link rel="stylesheet" href="css/components.css?v=20261112a">
-<link rel="stylesheet" href="css/dashboard.css?v=20261112a">
-<link rel="stylesheet" href="css/tools.css?v=20261112a">
-<link rel="stylesheet" href="css/management.css?v=20261112a">
-<link rel="stylesheet" href="css/contact.css?v=20261112a">
-<link rel="stylesheet" href="css/shop.css?v=20261112a">
-<link rel="stylesheet" href="css/ai.css?v=20261112a">
-<link rel="stylesheet" href="css/report.css?v=20261112a">
-<link rel="stylesheet" href="css/projector.css?v=20261112a">
-<link rel="stylesheet" href="css/settings.css?v=20261112a">
-<link rel="stylesheet" href="css/auth.css?v=20261112a">
-<link rel="stylesheet" href="css/quiz.css?v=20261112a">
-<link rel="stylesheet" href="css/student.css?v=20261112a">
-<link rel="stylesheet" href="css/pet-picker.css?v=20261112a">
-<link rel="stylesheet" href="css/leaderboard.css?v=20261112a">
-<link rel="stylesheet" href="css/blocks.css?v=20261112a">
-<link rel="stylesheet" href="css/territory.css?v=20261112a">
-<link rel="stylesheet" href="css/help.css?v=20261112a">
-<link rel="stylesheet" href="css/skills.css?v=20261112a">
-<link rel="stylesheet" href="css/hud.css?v=20261112a">
+<link rel="stylesheet" href="css/base.css?v=20261126a">
+<link rel="stylesheet" href="css/components.css?v=20261126a">
+<link rel="stylesheet" href="css/dashboard.css?v=20261126a">
+<link rel="stylesheet" href="css/tools.css?v=20261126a">
+<link rel="stylesheet" href="css/management.css?v=20261126a">
+<link rel="stylesheet" href="css/contact.css?v=20261126a">
+<link rel="stylesheet" href="css/shop.css?v=20261126a">
+<link rel="stylesheet" href="css/ai.css?v=20261126a">
+<link rel="stylesheet" href="css/report.css?v=20261126a">
+<link rel="stylesheet" href="css/projector.css?v=20261126a">
+<link rel="stylesheet" href="css/settings.css?v=20261126a">
+<link rel="stylesheet" href="css/auth.css?v=20261126a">
+<link rel="stylesheet" href="css/quiz.css?v=20261126a">
+<link rel="stylesheet" href="css/student.css?v=20261126a">
+<link rel="stylesheet" href="css/pet-picker.css?v=20261126a">
+<link rel="stylesheet" href="css/leaderboard.css?v=20261126a">
+<link rel="stylesheet" href="css/blocks.css?v=20261126a">
+<link rel="stylesheet" href="css/territory.css?v=20261126a">
+<link rel="stylesheet" href="css/help.css?v=20261126a">
+<link rel="stylesheet" href="css/skills.css?v=20261126a">
+<link rel="stylesheet" href="css/hud.css?v=20261126a">
 <!-- 主題:掛在 <html data-theme> 上,一定要放最後才蓋得過前面的規則 -->
-<link rel="stylesheet" href="css/theme-aurora.css?v=20261112a">
+<link rel="stylesheet" href="css/theme-aurora.css?v=20261126a">
 <script>
   // 在 CSS 之後、畫面之前就決定主題,避免載入瞬間閃一下舊配色
   document.documentElement.dataset.theme =
@@ -42,6 +42,9 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 
 <!-- Firebase(compat 版,可直接用 script 標籤,不需要 build 步驟) -->
+<!-- Google 登入(作業繳交要用:檔案傳進老師的雲端硬碟)。
+     載不進來的時候系統會說「Google 登入程式庫沒有載入」,其他功能照常。 -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -1287,6 +1290,11 @@
       </div>
 
       <div id="setDataSubView" class="sub-view">
+      <div class="panel-card" id="drivePanel">
+        <div class="panel-title">Google 雲端硬碟(作業繳交)</div>
+        <div id="driveBox"></div>
+      </div>
+
       <div class="panel-card">
         <div class="panel-title">資料備份</div>
         <div class="text-muted" style="font-size: 12px; line-height: 1.9; margin-bottom: 12px;">
@@ -1406,80 +1414,83 @@
 
 
 <!-- 應用程式邏輯(載入順序很重要) -->
-<script src="js/00-firebase.js?v=20261112a"></script>
-<script src="js/00b-session.js?v=20261112a"></script>
-<script src="js/00c-auth-ui.js?v=20261112a"></script>
-<script src="js/00d-switch-hud.js?v=20261112a"></script>
-<script src="js/01-constants.js?v=20261112a"></script>
-<script src="js/skills/01-defs.js?v=20261112a"></script>
-<script src="js/02-state.js?v=20261112a"></script>
-<script src="js/03-storage.js?v=20261112a"></script>
-<script src="js/03b-history-archive.js?v=20261112a"></script>
-<script src="js/03c-question-bank.js?v=20261112a"></script>
-<script src="js/03d-roster.js?v=20261112a"></script>
-<script src="js/04-utils.js?v=20261112a"></script>
-<script src="js/05-pet-engine.js?v=20261112a"></script>
-<script src="js/06-ai.js?v=20261112a"></script>
-<script src="js/06b-ai-hud.js?v=20261112a"></script>
-<script src="js/07-excel.js?v=20261112a"></script>
-<script src="js/09-keyboard.js?v=20261112a"></script>
-<script src="js/10-nav.js?v=20261112a"></script>
+<script src="js/00-firebase.js?v=20261126a"></script>
+<script src="js/00b-session.js?v=20261126a"></script>
+<script src="js/00c-auth-ui.js?v=20261126a"></script>
+<script src="js/00d-switch-hud.js?v=20261126a"></script>
+<script src="js/01-constants.js?v=20261126a"></script>
+<script src="js/skills/01-defs.js?v=20261126a"></script>
+<script src="js/02-state.js?v=20261126a"></script>
+<script src="js/03-storage.js?v=20261126a"></script>
+<script src="js/03b-history-archive.js?v=20261126a"></script>
+<script src="js/03c-question-bank.js?v=20261126a"></script>
+<script src="js/03d-roster.js?v=20261126a"></script>
+<script src="js/04-utils.js?v=20261126a"></script>
+<script src="js/05-pet-engine.js?v=20261126a"></script>
+<script src="js/06-ai.js?v=20261126a"></script>
+<script src="js/06b-ai-hud.js?v=20261126a"></script>
+<script src="js/07-excel.js?v=20261126a"></script>
+<script src="js/09-keyboard.js?v=20261126a"></script>
+<script src="js/10-nav.js?v=20261126a"></script>
 <!-- 積木冒險:積木定義 / 直譯器 / 判對錯。三支都沒有畫面,可以單獨測。 -->
-<script src="js/blocks/01-defs.js?v=20261112a"></script>
-<script src="js/blocks/02-vm.js?v=20261112a"></script>
-<script src="js/blocks/03-judge.js?v=20261112a"></script>
-<script src="js/blocks/04-editor.js?v=20261112a"></script>
-<script src="js/blocks/05-sim.js?v=20261112a"></script>
-<script src="js/blocks/06-teacher.js?v=20261112a"></script>
-<script src="js/blocks/07-settle.js?v=20261112a"></script>
-<script src="js/blocks/08-stars.js?v=20261112a"></script>
-<script src="js/blocks/09-wall.js?v=20261112a"></script>
-<script src="js/blocks/11-lzma.js?v=20261112a"></script>
-<script src="js/blocks/10-import.js?v=20261112a"></script>
-<script src="js/10c-icons.js?v=20261112a"></script>
-<script src="js/10b-nav-groups.js?v=20261112a"></script>
-<script src="js/feature-setup.js?v=20261112a"></script>
-<script src="js/feature-students.js?v=20261112a"></script>
-<script src="js/feature-dashboard.js?v=20261112a"></script>
-<script src="js/feature-batch-award.js?v=20261112a"></script>
-<script src="js/feature-award-log.js?v=20261112a"></script>
-<script src="js/feature-attendance.js?v=20261112a"></script>
-<script src="js/feature-picker.js?v=20261112a"></script>
-<script src="js/feature-timer.js?v=20261112a"></script>
-<script src="js/feature-seating.js?v=20261112a"></script>
-<script src="js/feature-grouping.js?v=20261112a"></script>
-<script src="js/feature-quiz.js?v=20261112a"></script>
-<script src="js/territory/01-hex.js?v=20261112a"></script>
-<script src="js/territory/02-shapes.js?v=20261112a"></script>
-<script src="js/territory/03-engine.js?v=20261112a"></script>
-<script src="js/territory/04-map-view.js?v=20261112a"></script>
-<script src="js/territory/05-game.js?v=20261112a"></script>
-<script src="js/territory/06-teacher.js?v=20261112a"></script>
-<script src="js/territory/07-weekly.js?v=20261112a"></script>
-<script src="js/territory/08-sfx.js?v=20261112a"></script>
-<script src="js/feature-leaderboard.js?v=20261112a"></script>
-<script src="js/student/01-app.js?v=20261112a"></script>
-<script src="js/student/02-tabs.js?v=20261112a"></script>
-<script src="js/skills/02-student.js?v=20261112a"></script>
-<script src="js/student/03-quiz.js?v=20261112a"></script>
-<script src="js/student/04-war.js?v=20261112a"></script>
-<script src="js/student/05-result.js?v=20261112a"></script>
-<script src="js/student/06-blocks.js?v=20261112a"></script>
-<script src="js/student/07-preview.js?v=20261112a"></script>
-<script src="js/skills/03-teacher.js?v=20261112a"></script>
-<script src="js/feature-contact-book.js?v=20261112a"></script>
-<script src="js/feature-homework.js?v=20261112a"></script>
-<script src="js/feature-shop.js?v=20261112a"></script>
-<script src="js/feature-class-tasks.js?v=20261112a"></script>
-<script src="js/feature-ai-features.js?v=20261112a"></script>
-<script src="js/feature-projector.js?v=20261112a"></script>
-<script src="js/feature-overview.js?v=20261112a"></script>
-<script src="js/feature-report.js?v=20261112a"></script>
-<script src="js/feature-report-export.js?v=20261112a"></script>
-<script src="js/feature-rules.js?v=20261112a"></script>
-<script src="js/feature-help.js?v=20261112a"></script>
-<script src="js/feature-settings.js?v=20261112a"></script>
-<script src="js/99-app.js?v=20261112a"></script>
+<script src="js/blocks/01-defs.js?v=20261126a"></script>
+<script src="js/blocks/02-vm.js?v=20261126a"></script>
+<script src="js/blocks/03-judge.js?v=20261126a"></script>
+<script src="js/blocks/04-editor.js?v=20261126a"></script>
+<script src="js/blocks/05-sim.js?v=20261126a"></script>
+<script src="js/blocks/06-teacher.js?v=20261126a"></script>
+<script src="js/blocks/07-settle.js?v=20261126a"></script>
+<script src="js/blocks/08-stars.js?v=20261126a"></script>
+<script src="js/blocks/09-wall.js?v=20261126a"></script>
+<script src="js/blocks/11-lzma.js?v=20261126a"></script>
+<script src="js/blocks/10-import.js?v=20261126a"></script>
+<script src="js/10c-icons.js?v=20261126a"></script>
+<script src="js/10b-nav-groups.js?v=20261126a"></script>
+<script src="js/feature-setup.js?v=20261126a"></script>
+<script src="js/feature-students.js?v=20261126a"></script>
+<script src="js/feature-dashboard.js?v=20261126a"></script>
+<script src="js/feature-batch-award.js?v=20261126a"></script>
+<script src="js/feature-award-log.js?v=20261126a"></script>
+<script src="js/feature-attendance.js?v=20261126a"></script>
+<script src="js/feature-picker.js?v=20261126a"></script>
+<script src="js/feature-timer.js?v=20261126a"></script>
+<script src="js/feature-seating.js?v=20261126a"></script>
+<script src="js/feature-grouping.js?v=20261126a"></script>
+<script src="js/feature-quiz.js?v=20261126a"></script>
+<script src="js/territory/01-hex.js?v=20261126a"></script>
+<script src="js/territory/02-shapes.js?v=20261126a"></script>
+<script src="js/territory/03-engine.js?v=20261126a"></script>
+<script src="js/territory/04-map-view.js?v=20261126a"></script>
+<script src="js/territory/05-game.js?v=20261126a"></script>
+<script src="js/territory/06-teacher.js?v=20261126a"></script>
+<script src="js/territory/07-weekly.js?v=20261126a"></script>
+<script src="js/territory/08-sfx.js?v=20261126a"></script>
+<script src="js/feature-leaderboard.js?v=20261126a"></script>
+<script src="js/student/01-app.js?v=20261126a"></script>
+<script src="js/student/02-tabs.js?v=20261126a"></script>
+<script src="js/skills/02-student.js?v=20261126a"></script>
+<script src="js/student/03-quiz.js?v=20261126a"></script>
+<script src="js/student/04-war.js?v=20261126a"></script>
+<script src="js/student/05-result.js?v=20261126a"></script>
+<script src="js/student/06-blocks.js?v=20261126a"></script>
+<script src="js/student/07-preview.js?v=20261126a"></script>
+<script src="js/student/08-homework.js?v=20261126a"></script>
+<script src="js/skills/03-teacher.js?v=20261126a"></script>
+<script src="js/feature-contact-book.js?v=20261126a"></script>
+<script src="js/feature-drive.js?v=20261126a"></script>
+<script src="js/feature-homework.js?v=20261126a"></script>
+<script src="js/feature-homework-drive.js?v=20261126a"></script>
+<script src="js/feature-shop.js?v=20261126a"></script>
+<script src="js/feature-class-tasks.js?v=20261126a"></script>
+<script src="js/feature-ai-features.js?v=20261126a"></script>
+<script src="js/feature-projector.js?v=20261126a"></script>
+<script src="js/feature-overview.js?v=20261126a"></script>
+<script src="js/feature-report.js?v=20261126a"></script>
+<script src="js/feature-report-export.js?v=20261126a"></script>
+<script src="js/feature-rules.js?v=20261126a"></script>
+<script src="js/feature-help.js?v=20261126a"></script>
+<script src="js/feature-settings.js?v=20261126a"></script>
+<script src="js/99-app.js?v=20261126a"></script>
 
 </body>
 </html>

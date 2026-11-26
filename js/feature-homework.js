@@ -109,6 +109,8 @@ function renderHomeworkCard(hw, isArchived) {
         </div>
       </div>
       
+      ${typeof homeworkDriveRow === 'function' ? homeworkDriveRow(hw) : ''}
+
       <div class="hw-submissions">
         <div class="hw-bulk-row">
           <button class="btn btn-primary btn-small" onclick="bulkMarkHomework('${hw.id}', 'submitted')">全部標記繳交</button>
@@ -129,7 +131,12 @@ function renderHomeworkCard(hw, isArchived) {
             return `
               <div class="hw-student-row ${status}">
                 <div style="font-size:16px;">${icon}</div>
-                <span class="hw-student-name">${s.name}</span>
+                <span class="hw-student-name">${s.name}${
+                  sub && sub.fileUrl
+                    ? `<a class="hw-file-link" target="_blank" rel="noopener"
+                          href="${escapeHtml(sub.fileUrl)}" title="${escapeHtml(sub.fileName || '')}"
+                          onclick="event.stopPropagation()">檔案</a>`
+                    : ''}</span>
                 <div class="hw-student-buttons">
                   <button class="hw-mini-btn sub-yes ${status === 'submitted' ? 'active' : ''}" 
                     onclick="markHomework('${hw.id}', '${s.id}', 'submitted')" title="已繳交">${svgIcon('check', 15)}</button>
