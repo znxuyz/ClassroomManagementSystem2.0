@@ -229,3 +229,27 @@
   margin-right: auto;
   line-height: 1.7;
 }
+
+/* 錯誤訊息:第一行講該怎麼辦,原始訊息收起來。
+   Gemini 的配額錯誤有四五行英文加網址,整段攤開只會把重點埋掉。 */
+.hud-error-msg { line-height: 1.8; }
+
+.hud-error-more {
+  margin-top: 8px;
+  font-size: 11px;
+  opacity: .75;
+}
+
+.hud-error-more summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+.hud-error-more > div {
+  margin-top: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+  word-break: break-all;
+  line-height: 1.7;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}

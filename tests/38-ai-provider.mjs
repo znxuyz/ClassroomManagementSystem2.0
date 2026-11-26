@@ -11,8 +11,11 @@
       供應商、金鑰、型號都要原封不動。
    2. **兩家的金鑰分開存**:切過去試一下 Gemini,切回來不必重貼。
    3. 兩家的**請求形狀**各自正確(欄位名稱完全不同)。
-   4. **型號不存在時自己換一個再試** —— 寫死的預設值哪天被 Google 收掉,
-      老師只會看到一句看不懂的 404。
+   4. **型號選「自動」時會自己換一個再試**。Google 列出二十幾個型號,
+      裡面還混著畫圖、向量、Gemma,而且**哪幾個免費方案真的能用,
+      API 裡沒有講** —— 老師選錯的下場是一整面英文錯誤
+      (實際踩到的是 gemini-4-neon:免費額度 limit 0)。
+      所以預設讓系統自己試;但老師自己指定型號時就不要雞婆換掉。
    5. 壞金鑰要講人話。Google 回的是 **400 INVALID_ARGUMENT**(不是 401),
       只看狀態碼的話老師會看到「請求失敗(400)」然後完全猜不到是貼錯金鑰。
 
@@ -46,12 +49,30 @@ const r = await page.evaluate(async () => {
                json: async () => ({ error: { code: 400, status: 'INVALID_ARGUMENT',
                  message: 'API key not valid. Please pass a valid API key.' } }) };
     }
-    if (mode === 'nomodel' && u.includes(':generateContent')) {
-      // 第一次打叫不到型號,換過之後就通
-      if (!u.includes('gemini-good-latest')) {
-        return { ok: false, status: 404,
-                 json: async () => ({ error: { code: 404, status: 'NOT_FOUND',
-                   message: 'models/xxx is not found for API version v1beta' } }) };
+    if (u.includes(':generateContent') && mode !== 'ok' && mode !== 'blocked') {
+      /* nomodel:換到 gemini-good-latest 就通(測「會不會自己換」)
+         notfree / perminute:每一個都失敗(測「訊息講不講人話」) */
+      if (mode !== 'nomodel' || !u.includes('gemini-good-latest')) {
+        if (mode === 'nomodel') {
+          return { ok: false, status: 404,
+                   json: async () => ({ error: { code: 404, status: 'NOT_FOUND',
+                     message: 'models/xxx is not found for API version v1beta' } }) };
+        }
+        if (mode === 'notfree') {
+          return { ok: false, status: 429,
+                   json: async () => ({ error: { code: 429, status: 'RESOURCE_EXHAUSTED',
+                     message: 'You exceeded your current quota. * Quota exceeded for metric: '
+                       + 'generativelanguage.googleapis.com/generate_content_free_tier_requests, '
+                       + 'limit: 0, model: gemini-4-neon, description: Generate content input '
+                       + 'requests per minute limit exceeded on Free Tier. '
+                       + 'See https://aistudio.google.com/docs/rate-limits' } }) };
+        }
+        if (mode === 'perminute') {
+          return { ok: false, status: 429,
+                   json: async () => ({ error: { code: 429, status: 'RESOURCE_EXHAUSTED',
+                     message: 'Quota exceeded for metric: generate_content_free_tier_requests, '
+                       + 'limit: 15, per minute limit exceeded. Please retry in 42.5s' } }) };
+        }
       }
     }
     if (u.includes('/v1beta/models?')) {
@@ -116,14 +137,52 @@ const r = await page.evaluate(async () => {
   const list = await AI.fetchModels();
   out.型號清單 = list.map(m => m.id);
 
-  /* ── 5. 型號不存在 → 自己換一個再試 ── */
-  AI.setModel('gemini-早就收掉了', 'gemini');
+  /* ── 5. 自動:挑一個能用的 ── */
+  AI.setModel(AI.AUTO, 'gemini');
+  AI.clearBad();
   mode = 'nomodel';
   const before = sent.length;
-  out.自己換型號結果 = await AI.call(null, '再試一次', 50);
-  out.換成了哪一個 = AI.getModel('gemini');
-  out.多打了幾次 = sent.length - before;
+  out.自動結果 = await AI.call(null, '再試一次', 50);
+  out.自動換成 = AI.getModel('gemini');
+  out.自動多打幾次 = sent.length - before;
+  out.壞型號記起來了 = AI.isBad('gemini-flash-latest');
   mode = 'ok';
+
+  /* 老師自己指定型號時,**不要**自作主張換掉 */
+  AI.clearBad();
+  AI.setModel('gemini-我自己要用的', 'gemini');
+  mode = 'nomodel';
+  try { await AI.call(null, 'x', 10); out.指定型號 = '(被換掉了)'; }
+  catch (e) { out.指定型號 = e.message; }
+  mode = 'ok';
+  out.指定型號沒被改 = AI.getChoice('gemini') === 'gemini-我自己要用的';
+
+  /* ── 5b. 免費方案不開放(limit: 0)── */
+  AI.clearBad();
+  AI.setModel(AI.AUTO, 'gemini');
+  mode = 'notfree';
+  try { await AI.call(null, 'x', 10); } catch (e) { out.limit0訊息 = e.message; }
+  out.limit0永久封存 = Object.values(AI.badModels()).some(x => x.until === 0);
+  mode = 'ok';
+
+  /* ── 5c. 每分鐘額度:只是暫時,要記下什麼時候恢復 ── */
+  AI.clearBad();
+  mode = 'perminute';
+  try { await AI.call(null, 'x', 10); } catch (e) { out.每分鐘訊息 = e.message; }
+  out.每分鐘是暫時的 = Object.values(AI.badModels()).some(x => x.until > Date.now());
+  mode = 'ok';
+  AI.clearBad();
+
+  /* ── 5d. 候選排序:畫圖、向量、Gemma 不該被自動挑中 ── */
+  AI.setModelList([
+    { id: 'imagen-4', name: '畫圖' },
+    { id: 'gemma-4-27b-it', name: 'Gemma' },
+    { id: 'gemini-3-pro-preview', name: 'Pro 預覽' },
+    { id: 'gemini-flash-latest', name: 'Flash 最新' },
+    { id: 'text-embedding-004', name: '向量' },
+    { id: 'nano-banana-pro', name: '香蕉' }
+  ], 'gemini');
+  out.候選順序 = AI.candidates('gemini').map(m => m.id);
 
   /* ── 6. 壞金鑰的訊息 ── */
   mode = 'badkey';
@@ -179,10 +238,27 @@ ok('兩家的金鑰分開存,切來切去都不會弄丟',
 ok('列型號時只留真的能產生文字的(過濾掉向量、畫圖那些)',
    JSON.stringify(r.型號清單) === '["gemini-good-latest"]', r.型號清單.join(','));
 
-ok('**型號被收掉時自己換一個再試**,老師不會看到 404',
-   r.自己換型號結果 === 'Gemini 回答' && r.換成了哪一個 === 'gemini-good-latest',
-   r.換成了哪一個);
-ok('而且只多打一次,不會無限重試', r.多打了幾次 === 3, r.多打了幾次 + ' 次');
+ok('**選「自動」時,型號不能用就自己換一個**,老師不會看到 404',
+   r.自動結果 === 'Gemini 回答' && r.自動換成 === 'gemini-good-latest',
+   r.自動換成);
+ok('不能用的那一個會被記起來,下次不再試', r.壞型號記起來了 === true);
+ok('而且不會無限重試', r.自動多打幾次 <= 5, r.自動多打幾次 + ' 次');
+
+ok('老師自己指定型號時**不會**被自動換掉',
+   /不能用了/.test(r.指定型號) && r.指定型號沒被改 === true, r.指定型號);
+
+ok('**免費方案不開放(limit: 0)講得出來**,不是丟一句「超過額度」',
+   /免費方案不開放/.test(r.limit0訊息), r.limit0訊息);
+ok('而且那個型號永久跳過(不是等一下再試)', r.limit0永久封存 === true);
+
+ok('每分鐘額度滿了講得出大概多久後恢復',
+   /這一分鐘問太多次了/.test(r.每分鐘訊息) && /秒/.test(r.每分鐘訊息),
+   r.每分鐘訊息);
+ok('而且只是暫時跳過,時間到會再用', r.每分鐘是暫時的 === true);
+
+ok('自動挑的時候不會挑到畫圖 / 向量 / Gemma,flash 排在 pro 預覽版前面',
+   JSON.stringify(r.候選順序) === '["gemini-flash-latest","gemini-3-pro-preview"]',
+   r.候選順序.join(' → '));
 
 ok('壞金鑰講人話(Google 回的是 400,不是 401)',
    /金鑰不對/.test(r.壞金鑰訊息), r.壞金鑰訊息.split('\n')[0]);

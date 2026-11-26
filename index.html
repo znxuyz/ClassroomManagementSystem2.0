@@ -1366,8 +1366,12 @@
             (這個系統沒有後端,所有請求都是你的瀏覽器直接發出去的)。
             公用電腦用完請按「清除 API Key」。<br>
           ✦ 兩家的金鑰<strong>分開存</strong>,切換不會把另一把弄丟。<br>
+          ✦ <strong>型號選「自動」就好</strong>。Google 列出二十幾個,但哪幾個
+            「免費方案真的能用」它沒有講 —— 選到不開放的(額度 limit 0)會直接失敗。
+            按一次<strong>測試連線</strong>,系統會一個一個試到能用為止並記起來;
+            之後那一個額度滿了也會自動換下一個。<br>
           ✦ 模型選擇:
-          <select id="aiModelSelect" class="setup-input" style="display:inline-block; width: 300px; margin-left: 8px;" onchange="saveAiModel()">
+          <select id="aiModelSelect" class="setup-input" style="display:inline-block; width: 360px; margin-left: 8px;" onchange="saveAiModel()">
           </select>
           <button class="btn btn-ghost btn-small" id="aiLoadModelsBtn"
                   onclick="loadAiModels()" style="margin-left:6px;">載入可用型號</button>

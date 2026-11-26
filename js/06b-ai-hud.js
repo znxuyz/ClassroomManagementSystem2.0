@@ -88,17 +88,25 @@ const AiHUD = {
     this.close();
   },
 
-  fail(message) {
+  /* detail 是對方回的原文(Gemini 的配額錯誤有四五行英文網址)。
+     **預設收起來** —— 整段倒在畫面上,老師看到的是一面看不懂的英文,
+     真正該做的那一句反而被埋掉了。想追原因的人再點開。 */
+  fail(message, detail) {
     if (!this.active) return;
     clearInterval(this.timer);
     this.stage('');
     const panel = this.el.querySelector('.hud-panel');
-    if (panel) {
-      panel.insertAdjacentHTML('beforeend',
-        `<div class="hud-error">${escapeHtml(message)}
-           <button class="btn btn-ghost btn-small" onclick="AiHUD.close()">關閉</button>
-         </div>`);
-    }
+    if (!panel) return;
+    panel.insertAdjacentHTML('beforeend',
+      `<div class="hud-error">
+         <div class="hud-error-msg">${escapeHtml(message)}</div>
+         ${detail && detail !== message ? `
+           <details class="hud-error-more">
+             <summary>原始訊息</summary>
+             <div>${escapeHtml(detail)}</div>
+           </details>` : ''}
+         <button class="btn btn-ghost btn-small" onclick="AiHUD.close()">關閉</button>
+       </div>`);
   },
 
   cancel() {
@@ -124,7 +132,7 @@ async function runWithAiHUD(title, subject, expect, fn) {
     return out;
   } catch (e) {
     if (e.name === 'AbortError') { AiHUD.close(); return null; }
-    AiHUD.fail(e.message || String(e));
+    AiHUD.fail(e.message || String(e), e.detail);
     throw e;
   }
 }

@@ -1,6 +1,18 @@
 /* ============================================
    設定頁 - API Key 管理
 ============================================ */
+
+/* 錯誤框。原始訊息收在 <details> 裡 —— Gemini 的配額錯誤有四五行
+   英文加網址,整段倒出來只會把「該怎麼辦」那一句埋掉。 */
+function aiErrorHtml(e) {
+  const msg = (e && e.message) || String(e);
+  const detail = e && e.detail;
+  return `<div class="ai-error">❌ ${escapeHtml(msg)}` +
+    (detail && detail !== msg
+      ? `<details class="hud-error-more"><summary>原始訊息</summary>
+           <div>${escapeHtml(detail)}</div></details>` : '') +
+    `</div>`;
+}
 /* AI 那一頁的狀態列/引導區要跟著變 —— 但那一頁可能根本還沒畫出來
    (老師現在在設定頁),所以先確認元素在不在。 */
 function refreshAiStatus() {
@@ -46,13 +58,27 @@ function renderAiModelOptions() {
   if (!select) return;
   const p = AI.getProvider();
   const list = AI.getModelList(p);
-  const cur = AI.getModel(p);
+  const cur = AI.getChoice(p);
+
+  /* Gemini 的型號有二十幾個,還混著畫圖、向量、Gemma ——
+     老師沒辦法分辨哪一個「免費方案真的能用」,而選錯會直接噴一整面英文。
+     所以第一個選項是「自動」,而且是預設。 */
+  let html = '';
+  if (p === 'gemini') {
+    const now = AI.goodModel();
+    html += `<option value="${AI.AUTO}" ${cur === AI.AUTO ? 'selected' : ''}
+      >自動挑一個能用的${now ? '(現在用 ' + escapeHtml(now) + ')' : ''}</option>`;
+  }
   /* 目前選的那個若不在清單裡(例如老師手動改過、或 Google 收掉了某個型號),
      還是要列出來 —— 不然下拉會顯示別的型號,但實際用的是另一個。 */
-  const all = list.some(m => m.id === cur) ? list : [{ id: cur, name: cur }].concat(list);
-  select.innerHTML = all.map(m =>
-    `<option value="${escapeHtml(m.id)}" ${m.id === cur ? 'selected' : ''}
-      >${escapeHtml(m.name)}</option>`).join('');
+  const all = (cur === AI.AUTO || list.some(m => m.id === cur))
+    ? list : [{ id: cur, name: cur }].concat(list);
+  html += all.map(m => {
+    const bad = AI.isBad(m.id) ? ' ✕ 試過不能用' : '';
+    return `<option value="${escapeHtml(m.id)}" ${m.id === cur ? 'selected' : ''}
+      >${escapeHtml(m.name)}${bad}</option>`;
+  }).join('');
+  select.innerHTML = html;
 }
 
 function saveAiProvider() {
@@ -99,12 +125,8 @@ function saveApiKey() {
      內建的預設值總有一天會被改掉,問過一次就不會踩到。
      問不到也不要擋著 —— 真的要用的時候還會自己再試一次。 */
   if (AI.getProvider() === 'gemini') {
-    AI.fetchModels().then(list => {
-      if (!list.length) return;
-      if (!list.some(m => m.id === AI.getModel())) AI.setModel(list[0].id);
-      renderAiModelOptions();
-      toast('✦ 已連上,可用型號 ' + list.length + ' 個');
-    }).catch(() => { /* 等真的要用的時候再說 */ });
+    AI.fetchModels().then(() => renderAiModelOptions())
+      .catch(() => { /* 等真的要用的時候再說 */ });
   }
 }
 
@@ -133,12 +155,29 @@ async function testApiKey() {
     if (inputKey) AI.setKey(inputKey);
     else { toast('請先輸入 API Key'); return; }
   }
+
+  /* Gemini 選「自動」時,這裡就是挑型號的時機 ——
+     一個一個試到成功為止。先在設定頁試完,老師真的要用的時候
+     才不會卡在一連串失敗上(而且那時他正等著一段評語)。 */
+  if (AI.getProvider() === 'gemini' && AI.getChoice('gemini') === AI.AUTO) {
+    toast('正在找一個能用的型號…');
+    try {
+      const m = await AI.autoPick(undefined, x => toast('試試 ' + x.id + '…'));
+      renderAiModelOptions();
+      toast('✦ 連線成功,之後會用「' + (m.name || m.id) + '」');
+    } catch (e) {
+      renderAiModelOptions();
+      toast('連線失敗:' + (e.message || e));
+    }
+    return;
+  }
+
   toast('測試中...');
   try {
     const response = await AI.call(null, '請只回覆「連線成功」四個字。', 30);
     toast('✦ ' + response.substring(0, 30));
   } catch (e) {
-    toast('連線失敗:' + e.message);
+    toast('連線失敗:' + (e.message || e));
   }
 }
 
@@ -250,7 +289,7 @@ ${obs}
     if (text === null) { results.classList.remove('active'); return; }
     displayAiResults(results, text);
   } catch (e) {
-    results.innerHTML = `<div class="ai-error">❌ ${e.message}</div>`;
+    results.innerHTML = aiErrorHtml(e);
   }
 }
 
@@ -310,7 +349,7 @@ ${draft}
     if (text === null) { results.classList.remove('active'); return; }
     displayAiResults(results, text);
   } catch (e) {
-    results.innerHTML = `<div class="ai-error">❌ ${e.message}</div>`;
+    results.innerHTML = aiErrorHtml(e);
   }
 }
 
@@ -459,7 +498,7 @@ ${extra ? '【老師補充說明】\n' + extra : ''}
     if (text === null) { results.classList.remove('active'); return; }   // 使用者取消
     displayAiResults(results, text, true);
   } catch (e) {
-    results.innerHTML = `<div class="ai-error">❌ ${e.message}</div>`;
+    results.innerHTML = aiErrorHtml(e);
   }
 }
 
