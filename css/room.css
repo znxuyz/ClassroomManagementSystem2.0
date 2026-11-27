@@ -128,11 +128,10 @@
   inset: 0;
   will-change: transform;
 }
+/* 位置與大小由 box 給(見 feature-petroom.js):圖是裁過的,
+   inset:0 會把它拉滿整格,家具就會變形又站錯地方。 */
 .room-item-img {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
   opacity: 0;
 }
 .room-item-img.on { opacity: 1; }

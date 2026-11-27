@@ -44,10 +44,13 @@ os.makedirs(ITEMS_OUT, exist_ok=True)
 MODE = sys.argv[1] if len(sys.argv) > 1 else 'shell'
 W = int(sys.argv[2]) if len(sys.argv) > 2 else 960
 SAMPLES = int(sys.argv[3]) if len(sys.argv) > 3 else 110
-FRAMES = int(sys.argv[4]) if len(sys.argv) > 4 else 13
+FRAMES = int(sys.argv[4]) if len(sys.argv) > 4 else 8
 
 H_PX = int(W * 0.72)
-ARC = 44.0          # 左右各轉幾度。再多就會看到牆的背面
+# 相機掃過的角度範圍。**不是對稱的**:牆在後面(+Y)和左邊(-X),
+# 所以往左轉過頭會看到左牆的外側把整個房間擋住(第一版是 ±44,
+# 前五格全毀)。往右轉到 44 度都還好,往左只能到 -7 度。
+ARC_FROM, ARC_TO = -7.33, 44.0
 R = 5.0             # 房間邊長
 WALL_H = 3.2
 WIN = (1.9, 1.5, 1.95)      # 窗的寬、高、中心離地
@@ -246,7 +249,10 @@ def it_shelf():
 
 ITEMS = [
     {'id': 'rug',    'name': '地毯',   'build': it_rug,
-     'desc': '守護獸最愛待的地方',           'price': 30,  'star': 10},
+     'desc': '守護獸最愛待的地方',           'price': 30,  'star': 10,
+     # 平貼在地上的東西永遠畫在最下面 —— 照距離排的話,地毯拖到
+     # 守護獸前面就會蓋住牠的腳,看起來像牠陷進地毯裡
+     'flat': True},
     {'id': 'bowl',   'name': '飯碗',   'build': it_bowl,
      'desc': '吃飯的地方',                   'price': 20,  'star': 7},
     {'id': 'water',  'name': '水盆',   'build': it_water,
@@ -321,7 +327,7 @@ sc.camera = cam
 
 def angle_of(i):
     t = 0.5 if FRAMES == 1 else i / (FRAMES - 1)
-    return math.radians(-ARC + 2 * ARC * t)
+    return math.radians(ARC_FROM + (ARC_TO - ARC_FROM) * t)
 
 
 def aim(i):
@@ -389,7 +395,8 @@ if MODE == 'shell':
         })
         print('shell %d/%d' % (i + 1, FRAMES))
 
-    meta = {'width': W, 'height': H_PX, 'arc': ARC, 'room': R,
+    meta = {'width': W, 'height': H_PX,
+            'arcFrom': ARC_FROM, 'arcTo': ARC_TO, 'room': R,
             'frames': frames,
             'note': '由 tools/blender/room.py 產生,不要手改'}
     for path, head in ((os.path.join(OUT, 'room.json'), None),
@@ -424,7 +431,10 @@ elif MODE == 'items':
         for i in range(FRAMES):
             aim(i)
             shot(os.path.join(sub, '%02d.webp' % i))
-        manifest.append({k: item[k] for k in ('id', 'name', 'desc', 'price', 'star')})
+        row = {k: item[k] for k in ('id', 'name', 'desc', 'price', 'star')}
+        if item.get('flat'):
+            row['flat'] = True
+        manifest.append(row)
         print('item %s' % item['id'])
         for o in objs:
             D.objects.remove(o, do_unlink=True)

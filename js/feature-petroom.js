@@ -104,6 +104,15 @@ const PetRoom = {
     return -Math.hypot(c[0] - x, c[1] - y, c[2]);   // 近的大 → 畫在上面
   },
 
+  /* 平貼在地上的東西(地毯)永遠墊在最下面。
+     照距離排的話,學生把地毯拖到守護獸前面,地毯就會蓋住牠的腳 ——
+     看起來像牠陷進地毯裡。地板上的東西沒有「擋住」這回事。 */
+  zOf(f, p) {
+    const it = this.itemById(p.id);
+    if (it && it.flat) return 10;
+    return Math.round(1000 + this.depthAt(f, p.x, p.y) * 10);
+  },
+
   /* 不要讓東西被拖到牆外面去 */
   clampFloor(p) {
     const half = (this.meta.room || 5) / 2 - 0.35;
@@ -140,17 +149,25 @@ const PetRoom = {
       </div>`;
   },
 
+  /* 家具的圖是**裁過**的(整張畫面幾乎都是透明的,留著只是浪費)。
+     box 記著那一塊原本在畫面的哪個位置,照著擺回去就和沒裁一樣。
+     外層那一格仍然是整個畫面大小 —— 縮放中心要用畫面座標算。 */
   itemHtml(p, i) {
     const it = this.itemById(p.id);
     if (!it) return '';
+    const img = (k) => {
+      const b = (it.box && it.box[k]) || [0, 0, 1, 1];
+      const src = `${this.BASE}items/${p.id}/${String(k).padStart(2, '0')}.webp`;
+      const near = Math.abs(k - this.frame) <= 1;
+      return `<img class="room-item-img ${k === this.frame ? 'on' : ''}"
+                 data-i="${k}" alt="${escapeHtml(it.name)}" draggable="false"
+                 style="left:${b[0] * 100}%;top:${b[1] * 100}%;
+                        width:${b[2] * 100}%;height:${b[3] * 100}%"
+                 ${near ? `src="${src}"` : `data-src="${src}"`} />`;
+    };
     return `
       <div class="room-item" data-idx="${i}" title="${escapeHtml(it.name)}">
-        ${this.meta.frames.map((fr, k) => `
-          <img class="room-item-img ${k === this.frame ? 'on' : ''}"
-               data-i="${k}" alt="${escapeHtml(it.name)}" draggable="false"
-               ${Math.abs(k - this.frame) <= 1
-                 ? `src="${this.BASE}items/${p.id}/${String(k).padStart(2, '0')}.webp"`
-                 : `data-src="${this.BASE}items/${p.id}/${String(k).padStart(2, '0')}.webp"`} />`).join('')}
+        ${this.meta.frames.map((fr, k) => img(k)).join('')}
       </div>`;
   },
 
@@ -189,7 +206,7 @@ const PetRoom = {
       el.style.transformOrigin = (o.x * 100) + '% ' + (o.y * 100) + '%';
       el.style.transform =
         `translate(${(s.x - o.x) * 100}%, ${(s.y - o.y) * 100}%) scale(${k})`;
-      el.style.zIndex = String(Math.round(1000 + this.depthAt(f, p.x, p.y) * 10));
+      el.style.zIndex = String(this.zOf(f, p));
     });
   },
 

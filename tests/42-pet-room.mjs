@@ -94,7 +94,7 @@ const r = await page.evaluate(async () => {
 
   window.PET_ROOM = { width: 800, height: 576, arc: 44, room: 5, frames };
   window.PET_ROOM_ITEMS = [
-    { id: 'rug', name: '地毯', desc: 'x', price: 30, star: 10 },
+    { id: 'rug', name: '地毯', desc: 'x', price: 30, star: 10, flat: true },
     { id: 'bed', name: '睡墊', desc: 'y', price: 45, star: 15 }
   ];
   PetRoom.meta = null;
@@ -147,7 +147,7 @@ const r = await page.evaluate(async () => {
   PetRoom.onChange = list => { saved = list.length; };
   /* 刻意**不要**擺在原點:家具的圖就是在原點算的,所以擺在原點時
      位移和縮放本來就都是零,測不出「有沒有跟著轉」。 */
-  PetRoom.setPlaced([{ id: 'rug', x: 1.2, y: 0.8 }]);
+  PetRoom.setPlaced([{ id: 'bed', x: 1.2, y: 0.8 }]);
   host.innerHTML = PetRoom.html({ img: 'assets/pets/bear-adult.png', name: '小熊' });
   PetRoom.mount();
 
@@ -172,6 +172,13 @@ const r = await page.evaluate(async () => {
   PetRoom.placed[0].y = -2.2;
   PetRoom.place();
   out.flipped = Number(item().style.zIndex) > Number(pet().style.zIndex);
+
+  /* 地毯是平的:不管擺多前面都要墊在最下面 ——
+     照距離排的話,拖到守護獸前面就會蓋住牠的腳。 */
+  PetRoom.setPlaced([{ id: 'rug', x: 0, y: -2.2 }]);
+  host.innerHTML = PetRoom.html({ img: 'assets/pets/bear-adult.png', name: '小熊' });
+  PetRoom.mount();
+  out.flatUnderPet = Number(item().style.zIndex) < Number(pet().style.zIndex);
 
   PetRoom.add('bed');
   out.saveCalled = saved;
@@ -214,6 +221,7 @@ ok('而且換成那個角度算的那一張圖', r.itemFrameSwapped === true);
 ok('守護獸也跟著走', r.petMovedOnTurn === true);
 ok('守護獸站在地毯前面時蓋住地毯', r.petInFront === true);
 ok('地毯挪到守護獸前面之後,換地毯蓋住牠', r.flipped === true);
+ok('地毯是平的,拖到守護獸前面也不會蓋住牠的腳', r.flatUnderPet === true);
 ok('擺動之後會通知外面存起來', r.saveCalled === 2, String(r.saveCalled));
 
 ok('房間的圖沒放進來時安靜退掉,不影響其他功能', r.degraded === false);
