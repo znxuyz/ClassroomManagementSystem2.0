@@ -125,10 +125,12 @@ const r = await page.evaluate(async () => {
   PetRoom.poke();
   out.happy = pet().classList.contains('is-happy');
 
-  // 載不到的時候
+  // 老師還沒放房間的圖(或還沒 git pull)的時候
   PetRoom.meta = null;
-  window.fetch = async () => ({ ok: false });
+  const keep = window.PET_ROOM;
+  delete window.PET_ROOM;
   await PetRoom.load();
+  window.PET_ROOM = keep;
   out.degraded = PetRoom.available();
   out.htmlWhenMissing = PetRoom.html({ img: 'x', name: 'y' });
 

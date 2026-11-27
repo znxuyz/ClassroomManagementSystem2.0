@@ -276,5 +276,15 @@ meta = {
 with open(os.path.join(OUT, 'room.json'), 'w', encoding='utf-8') as f:
     json.dump(meta, f, ensure_ascii=False, indent=1)
 
+# 同一份資料再寫成一支 .js。
+# 老師是**雙擊 index.html** 打開這個系統的(README 就是這樣寫的),
+# 而 file:// 下 fetch() 讀本機 JSON 會被瀏覽器擋掉 ——
+# 用 <script> 載就沒有這個問題。JSON 那一份留著給工具和測試用。
+with open(os.path.join(OUT, 'room-data.js'), 'w', encoding='utf-8') as f:
+    f.write('/* 由 tools/blender/room.py 產生,不要手改 */\n')
+    f.write('window.PET_ROOM = ')
+    json.dump(meta, f, ensure_ascii=False, separators=(',', ':'))
+    f.write(';\n')
+
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(HERE, 'room.blend'))
 print('OK ->', OUT)

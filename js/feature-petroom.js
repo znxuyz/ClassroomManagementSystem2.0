@@ -27,17 +27,19 @@ const PetRoom = {
   _drag: null,
 
   /* ---------- 載入 ----------
+     資料從 assets/room/room-data.js 進來(index.html 用 <script> 載),
+     **不是 fetch 一份 JSON** —— 老師是雙擊 index.html 打開這個系統的,
+     而 file:// 下 fetch 讀本機檔案會被瀏覽器擋掉,房間就永遠不會出現。
+
      房間的圖是額外的資產,老師可能根本沒放(或還沒 git pull)。
-     載不到就安靜退回原本的守護獸畫面 —— 不要讓一個裝飾功能
-     把整個分頁弄壞。 */
+     沒有就安靜退回原本的守護獸畫面 —— 不要讓一個裝飾功能把整個分頁弄壞。 */
   async load() {
     if (this.meta !== null) return this.meta;
-    try {
-      const res = await fetch(this.DATA, { cache: 'force-cache' });
-      if (!res.ok) throw new Error('no room');
-      this.meta = await res.json();
-      this.frame = Math.floor((this.meta.frames.length - 1) / 2);   // 從正面開始
-    } catch (e) {
+    const data = (typeof window !== 'undefined') ? window.PET_ROOM : null;
+    if (data && data.frames && data.frames.length) {
+      this.meta = data;
+      this.frame = Math.floor((data.frames.length - 1) / 2);   // 從正面開始
+    } else {
       this.meta = false;
     }
     return this.meta;
