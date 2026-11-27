@@ -38,8 +38,14 @@ if (existsSync(META)) {
     && Array.isArray(f.cam) && f.cam.length === 3 && f.unit0 > 0);
   ok('算好的 room.json 每一格都有相機矩陣與縮放基準',
      m.frames.length >= 3 && good, m.frames.length + ' 格');
-  ok('room.json 指到的圖都真的在',
-     m.frames.every(f => existsSync(new URL('../assets/room/' + f.file, import.meta.url))));
+  ok('每一種房間風格的圖都算好了', (() => {
+    const src = readFileSync(new URL('../assets/room/shells-data.js', import.meta.url), 'utf8');
+    const styles = JSON.parse(src.slice(src.indexOf('['), src.lastIndexOf(']') + 1));
+    return styles.length >= 2 && styles.some(s => s.free)
+      && styles.every(st => m.frames.every((f, i) =>
+        existsSync(new URL(`../assets/room/shells/${st.id}/${String(i).padStart(2, '0')}.webp`,
+                           import.meta.url))));
+  })());
   // 相機真的有繞 —— 每一格都一樣的話就是沒在轉
   const xs = m.frames.map(f => f.cam[0]);
   ok('相機真的繞了一圈(不是每一格都同一個位置)',
@@ -92,7 +98,12 @@ const r = await page.evaluate(async () => {
   host.style.width = '800px';
   document.body.appendChild(host);
 
-  window.PET_ROOM = { width: 800, height: 576, arc: 44, room: 5, frames };
+  window.PET_ROOM = { width: 800, height: 576, room: 5, frames };
+  window.PET_ROOM_STYLES = [
+    { id: 'wood', name: '原木', desc: 'a', price: 0, star: 0, free: true, tint: '' },
+    { id: 'night', name: '夜晚', desc: 'b', price: 90, star: 30,
+      tint: 'brightness(.62)' }
+  ];
   window.PET_ROOM_ITEMS = [
     { id: 'rug', name: '地毯', desc: 'x', price: 30, star: 10, flat: true },
     { id: 'bed', name: '睡墊', desc: 'y', price: 45, star: 15 }
@@ -183,6 +194,16 @@ const r = await page.evaluate(async () => {
   PetRoom.add('bed');
   out.saveCalled = saved;
 
+  /* 房間風格 */
+  out.defaultStyle = PetRoom.style;
+  out.freeStyle = PetRoom.freeStyle();
+  out.switched = PetRoom.setStyle('night') && PetRoom.style === 'night';
+  out.tintApplied = PetRoom.tint();
+  out.unknownStyle = PetRoom.setStyle('沒這種');
+  out.stillNight = PetRoom.style;
+  out.shellPath = PetRoom.shellSrc('night', 3);
+  PetRoom.setStyle('wood');
+
   /* 7. 沒放圖的時候 */
   PetRoom.meta = null;
   const keep = window.PET_ROOM;
@@ -224,6 +245,17 @@ ok('地毯挪到守護獸前面之後,換地毯蓋住牠', r.flipped === true);
 ok('地毯是平的,拖到守護獸前面也不會蓋住牠的腳', r.flatUnderPet === true);
 ok('擺動之後會通知外面存起來', r.saveCalled === 2, String(r.saveCalled));
 
+ok('一開始用的是免費那一種風格',
+   r.defaultStyle === 'wood' && r.freeStyle === 'wood');
+ok('換得了風格', r.switched === true);
+ok('換到夜晚之後,家具與守護獸會套上同一個色調 —— '
+   + '不然會變成暗房間裡擺著中午的飯碗',
+   /brightness/.test(r.tintApplied), r.tintApplied);
+ok('型錄裡沒有的風格換不了,也不會把現在這個弄壞',
+   r.unknownStyle === false && r.stillNight === 'night');
+ok('風格只是換一疊背景圖,相機完全沒動',
+   r.shellPath === 'assets/room/shells/night/03.webp', r.shellPath);
+
 ok('房間的圖沒放進來時安靜退掉,不影響其他功能', r.degraded === false);
 ok('而且不畫一個壞掉的框', r.htmlWhenMissing === '');
 
@@ -241,6 +273,10 @@ const shop = await page.evaluate(() => {
     { id: 'rug', name: '地毯', desc: 'x', price: 30, star: 10 },
     { id: 'bed', name: '睡墊', desc: 'y', price: 45, star: 15 }
   ];
+  window.PET_ROOM_STYLES = [
+    { id: 'wood', name: '原木', desc: 'a', price: 0, star: 0, free: true, tint: '' },
+    { id: 'night', name: '夜晚', desc: 'b', price: 90, star: 30, tint: 'brightness(.62)' }
+  ];
   window.__apply(window.__fixture({ students: 6, historyPer: 1, questions: 0 }));
   state.shopItems = [];
   listRoomItems();
@@ -257,12 +293,26 @@ const shop = await page.evaluate(() => {
   s.inventory = ['room_rug'];
   out.ownsIt = RoomShop.has(s, 'rug');
   out.ownedList = RoomShop.owned(s);
+
+  /* 免費那一種不上架(不用買),但學生永遠算有 */
+  out.freeNotListed = !state.shopItems.some(i => i.id === 'roomstyle_wood');
+  out.ownsFree = RoomShop.hasStyle(s, 'wood');
+  out.ownsPaid = RoomShop.hasStyle(s, 'night');
+  s.inventory.push('roomstyle_night');
+  out.afterBuying = RoomShop.ownedStyles(s);
   return out;
 });
 
-ok('老師按一次就把家具全部上架',
-   JSON.stringify(shop.listed) === JSON.stringify(['room_rug', 'room_bed']),
+ok('老師按一次就把家具和房間風格全部上架',
+   JSON.stringify(shop.listed)
+     === JSON.stringify(['room_rug', 'room_bed', 'roomstyle_night']),
    shop.listed.join(','));
+ok('免費那一種風格不上架(不用買),但學生永遠算有',
+   shop.freeNotListed === true && shop.ownsFree === true
+   && shop.ownsPaid === false);
+ok('買了之後就換得到',
+   JSON.stringify(shop.afterBuying) === JSON.stringify(['wood', 'night']),
+   shop.afterBuying.join(','));
 ok('每一件都有積分價和星星價', shop.bothPrices === true);
 ok('老師改過的價錢不會被「再按一次上架」蓋掉', shop.keptPrice === 99,
    String(shop.keptPrice));

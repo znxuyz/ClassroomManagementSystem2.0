@@ -12,6 +12,7 @@
 ============================================ */
 
 const ROOM_ITEM_PREFIX = 'room_';
+const ROOM_STYLE_PREFIX = 'roomstyle_';
 
 const RoomShop = {
   itemId(id) { return ROOM_ITEM_PREFIX + id; },
@@ -23,8 +24,54 @@ const RoomShop = {
 
   isFurniture(itemId) { return !!this.rawId(itemId); },
 
+  /* 家具與風格都算「房間相關」,商店分區時放在一起 */
+  isRoomThing(itemId) { return this.isFurniture(itemId) || this.isStyle(itemId); },
+
   catalog() {
     return (typeof window !== 'undefined' && window.PET_ROOM_ITEMS) || [];
+  },
+
+  /* ---------- 房間風格 ----------
+     和家具同一套做法,只是前綴不同。預設那一種不用買 ——
+     不然學生一開始連房間都沒有。 */
+  styleItemId(id) { return ROOM_STYLE_PREFIX + id; },
+
+  rawStyleId(itemId) {
+    return (itemId && itemId.indexOf(ROOM_STYLE_PREFIX) === 0)
+      ? itemId.slice(ROOM_STYLE_PREFIX.length) : null;
+  },
+
+  isStyle(itemId) { return !!this.rawStyleId(itemId); },
+
+  styleCatalog() {
+    return ((typeof window !== 'undefined' && window.PET_ROOM_STYLES) || [])
+      .filter(s => !s.free);
+  },
+
+  /* 這位學生能用哪幾種風格(免費那一種永遠算有) */
+  ownedStyles(student) {
+    const free = ((typeof window !== 'undefined' && window.PET_ROOM_STYLES) || [])
+      .filter(s => s.free).map(s => s.id);
+    const bought = ((student && student.inventory) || [])
+      .map(id => this.rawStyleId(id)).filter(Boolean);
+    return [...new Set(free.concat(bought))];
+  },
+
+  hasStyle(student, id) { return this.ownedStyles(student).includes(id); },
+
+  styleShopItems() {
+    return this.styleCatalog().map(st => ({
+      id: this.styleItemId(st.id),
+      name: st.name + '(房間風格)',
+      icon: '🏠',
+      price: st.price,
+      starPrice: st.star,
+      starAuto: true,
+      stock: null,
+      description: st.desc + '\n\n換到之後可以在守護獸的房間裡切換。',
+      active: true,
+      roomStyle: st.id
+    }));
   },
 
   /* 這位學生買了哪幾件(背包裡的家具) */
@@ -57,7 +104,7 @@ const RoomShop = {
 /* 老師按一次就全部上架。和技能果實同一套規則:
    已經上架過的只更新說明,價格沿用老師自己設的。 */
 function listRoomItems() {
-  const items = RoomShop.shopItems();
+  const items = RoomShop.shopItems().concat(RoomShop.styleShopItems());
   if (!items.length) {
     toast('找不到家具資料 —— assets/room/items-data.js 還沒放進來');
     return;
@@ -73,6 +120,7 @@ function listRoomItems() {
       if (cur.description !== f.description) {
         cur.description = f.description;
         cur.roomItem = f.roomItem;
+        cur.roomStyle = f.roomStyle;
         touched = true;
       }
       /* 星星價只有「從來沒設過」才補。用 === undefined 而不是看真假值 ——
@@ -92,7 +140,7 @@ function listRoomItems() {
   save();
   renderAll();
   toast(added.length
-    ? `🪑 已上架 ${added.length} 件家具`
-    : updated.length ? `已更新 ${updated.length} 件家具的說明`
-                     : '家具都已經在架上了');
+    ? `🪑 已上架 ${added.length} 件(家具與房間風格)`
+    : updated.length ? `已更新 ${updated.length} 件的說明`
+                     : '家具與房間風格都已經在架上了');
 }

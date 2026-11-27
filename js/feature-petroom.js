@@ -29,6 +29,8 @@ const PetRoom = {
 
   meta: null,
   items: null,        // 型錄:買得到哪些家具
+  styles: null,       // 型錄:買得到哪些房間風格
+  style: 'wood',      // 現在用哪一種風格
   placed: [],         // 這位學生擺了哪些、擺在哪 [{id, x, y}]
   frame: 0,
   petSpot: { x: 0, y: -0.4 },
@@ -51,9 +53,14 @@ const PetRoom = {
       this.meta = data;
       this.frame = Math.floor((data.frames.length - 1) / 2);   // 從正面開始
       this.items = (typeof window !== 'undefined' && window.PET_ROOM_ITEMS) || [];
+      this.styles = (typeof window !== 'undefined' && window.PET_ROOM_STYLES) || [];
+      if (!this.styleById(this.style) && this.styles.length) {
+        this.style = this.styles[0].id;
+      }
     } else {
       this.meta = false;
       this.items = [];
+      this.styles = [];
     }
     return this.meta;
   },
@@ -61,6 +68,34 @@ const PetRoom = {
   available() { return !!this.meta; },
 
   itemById(id) { return (this.items || []).find(i => i.id === id) || null; },
+
+  styleById(id) { return (this.styles || []).find(s => s.id === id) || null; },
+
+  /* 預設那一種不用買 —— 不然學生一開始連房間都沒有 */
+  freeStyle() {
+    const f = (this.styles || []).find(s => s.free);
+    return f ? f.id : ((this.styles || [])[0] || {}).id;
+  },
+
+  /* 房間背景那一格的圖。風格只是換一疊圖,相機完全沒動 ——
+     所以投影矩陣、家具的位置、守護獸站的地方都不必跟著變。 */
+  shellSrc(styleId, i) {
+    return `${this.BASE}shells/${styleId}/${String(i).padStart(2, '0')}.webp`;
+  },
+
+  /* 家具和守護獸要套上這一種風格的色調。
+     家具的圖只算過白天那一套(算五套要兩個小時),所以夜晚的房間裡
+     要是不壓暗,會變成「暗房間裡擺著一件中午的飯碗」。 */
+  tint() {
+    const st = this.styleById(this.style);
+    return (st && st.tint) || '';
+  },
+
+  setStyle(id) {
+    if (!this.styleById(id)) return false;
+    this.style = id;
+    return true;
+  },
 
   /* ---------- 幾何 ---------- */
 
@@ -131,10 +166,11 @@ const PetRoom = {
           <img class="room-bg ${i === this.frame ? 'on' : ''}"
                data-i="${i}" alt=""
                ${Math.abs(i - this.frame) <= 1
-                 ? `src="${this.BASE}${fr.file}"` : `data-src="${this.BASE}${fr.file}"`}
+                 ? `src="${this.shellSrc(this.style, i)}"`
+                 : `data-src="${this.shellSrc(this.style, i)}"`}
                loading="${i === this.frame ? 'eager' : 'lazy'}" />`).join('')}
 
-        <div class="room-stage" id="roomStage">
+        <div class="room-stage" id="roomStage" style="filter:${this.tint()}">
           ${this.placed.map((p, i) => this.itemHtml(p, i)).join('')}
           <div class="room-pet" id="roomPet">
             <div class="room-shadow"></div>

@@ -216,7 +216,7 @@ function renderShopItems() {
    兩邊看到的順序一樣,老師講「第二區那顆」學生才找得到。 */
 function renderShopGroups(items, card) {
   const isFruit = id => typeof SkillEngine !== 'undefined' && SkillEngine.isFruit(id);
-  const isRoom = id => typeof RoomShop !== 'undefined' && RoomShop.isFurniture(id);
+  const isRoom = id => typeof RoomShop !== 'undefined' && RoomShop.isRoomThing(id);
   const normal = items.filter(i => !isFruit(i.id) && !isRoom(i.id));
   const fruits = items.filter(i => isFruit(i.id));
   const rooms = items.filter(i => isRoom(i.id));
@@ -234,8 +234,8 @@ function renderShopGroups(items, card) {
          ? '<div class="shop-group-title">🎁 一般獎品</div>' : ''}
       ${grid(normal)}` : ''}
     ${rooms.length ? `
-      <div class="shop-group-title">🪑 守護獸的家具
-        <small>買到的可以在守護獸的房間裡自由擺放</small></div>
+      <div class="shop-group-title">🪑 守護獸的房間
+        <small>家具可以自由擺放,風格可以隨時切換</small></div>
       ${grid(rooms)}` : ''}
     ${groups.length ? `
       <div class="shop-group-title">✦ 技能果實
@@ -433,6 +433,10 @@ const PurchaseWatch = {
     const furniture = (typeof RoomShop !== 'undefined') ? RoomShop.rawId(item.id) : null;
     if (furniture && RoomShop.has(student, furniture)) {
       return no('房間裡已經有這一件了');
+    }
+    const style = (typeof RoomShop !== 'undefined') ? RoomShop.rawStyleId(item.id) : null;
+    if (style && RoomShop.hasStyle(student, style)) {
+      return no('已經有這一種房間風格了');
     }
 
     /* 議價:價格打折。折扣倍率記在技能使用紀錄上(已被安全規則核對),

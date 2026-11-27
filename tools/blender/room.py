@@ -38,8 +38,10 @@ from mathutils import Vector
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.normpath(os.path.join(HERE, '..', '..', 'assets', 'room'))
 ITEMS_OUT = os.path.join(OUT, 'items')
+SHELLS_OUT = os.path.join(OUT, 'shells')
 os.makedirs(OUT, exist_ok=True)
 os.makedirs(ITEMS_OUT, exist_ok=True)
+os.makedirs(SHELLS_OUT, exist_ok=True)
 
 MODE = sys.argv[1] if len(sys.argv) > 1 else 'shell'
 W = int(sys.argv[2]) if len(sys.argv) > 2 else 960
@@ -133,6 +135,79 @@ def cone(r1, r2, h, loc, m, verts=36):
                                     location=loc, vertices=verts)
     bpy.ops.object.shade_smooth()
     return put(C.object, m)
+
+
+# ============================================================ 房間風格
+# 同一間房,換牆色、地板色與窗外的光。相機完全沒動 ——
+# 所以那張投影矩陣、家具擺的位置、守護獸站的地方全部照舊,
+# 風格只是換一疊背景圖而已。
+#
+# 光刻意**不要差太多**:家具的圖只算一次(算五套要兩個小時),
+# 所以每一種風格的主光方向與強度都一樣,差別在顏色。
+# 剩下的色溫差用網頁的 tint 補 —— 家具和守護獸會套同一個濾鏡,
+# 這樣夜晚的房間裡不會擺著一件中午的飯碗。
+STYLES = [
+    {'id': 'wood', 'name': '原木', 'desc': '溫暖的木地板,午後的陽光',
+     'price': 0, 'star': 0, 'free': True, 'tint': '',
+     'floor': ((0.50, 0.32, 0.17), (0.40, 0.25, 0.13)),
+     'wall': (0.93, 0.88, 0.77), 'trim': (0.52, 0.36, 0.22),
+     'sun': (1.0, 0.92, 0.76), 'sky': (0.86, 0.93, 1.0), 'back': (0.30, 0.34, 0.42)},
+
+    {'id': 'forest', 'name': '森林小屋', 'desc': '綠色的牆,窗外是一片樹林',
+     'price': 60, 'star': 20, 'tint': 'saturate(1.08) hue-rotate(-8deg)',
+     'floor': ((0.30, 0.19, 0.09), (0.22, 0.14, 0.07)),
+     'wall': (0.30, 0.46, 0.26), 'trim': (0.20, 0.15, 0.08),
+     'sun': (0.88, 1.0, 0.55), 'sky': (0.46, 0.86, 0.38), 'back': (0.13, 0.22, 0.15)},
+
+    {'id': 'sakura', 'name': '櫻花和室', 'desc': '榻榻米配紙窗,窗外開著櫻花',
+     'price': 70, 'star': 23, 'tint': 'saturate(1.06) hue-rotate(6deg)',
+     'floor': ((0.62, 0.60, 0.26), (0.54, 0.53, 0.22)),
+     'wall': (0.96, 0.84, 0.80), 'trim': (0.30, 0.16, 0.12),
+     'sun': (1.0, 0.76, 0.74), 'sky': (1.0, 0.62, 0.74), 'back': (0.30, 0.18, 0.24)},
+
+    {'id': 'ocean', 'name': '海邊', 'desc': '淺藍色的牆,窗外是海',
+     'price': 70, 'star': 23, 'tint': 'saturate(1.04) hue-rotate(-14deg)',
+     'floor': ((0.82, 0.78, 0.66), (0.74, 0.70, 0.58)),
+     'wall': (0.38, 0.72, 0.86), 'trim': (0.92, 0.92, 0.90),
+     'sun': (0.92, 0.98, 1.0), 'sky': (0.26, 0.70, 1.0), 'back': (0.14, 0.28, 0.40)},
+
+    {'id': 'night', 'name': '星空夜晚', 'desc': '深色的牆,窗外是整片星空',
+     'price': 90, 'star': 30,
+     # 夜晚是唯一把光整個調暗的 —— 家具只算過白天那一套,
+     # 所以濾鏡也要跟著壓暗,不然會變成「暗房間裡擺著中午的飯碗」
+     'tint': 'brightness(.62) saturate(.85) hue-rotate(-16deg)',
+     'lights': 0.30,
+     'floor': ((0.22, 0.15, 0.09), (0.16, 0.11, 0.07)),
+     'wall': (0.16, 0.19, 0.34), 'trim': (0.12, 0.10, 0.14),
+     'sun': (0.44, 0.58, 1.0), 'sky': (0.10, 0.26, 0.72), 'back': (0.04, 0.05, 0.11)},
+]
+
+
+def apply_style(st):
+    """把這一種風格的顏色套到既有的材質上。
+       重建整間房太慢也沒必要 —— 形狀完全一樣,只有顏色不同。"""
+    def setc(m, rgb, emit=None, strength=None):
+        b = m.node_tree.nodes['Principled BSDF']
+        b.inputs['Base Color'].default_value = (*rgb, 1)
+        if emit:
+            b.inputs['Emission Color'].default_value = (*emit, 1)
+        if strength is not None:
+            b.inputs['Emission Strength'].default_value = strength
+
+    setc(WOOD, st['floor'][0])
+    setc(WOOD_D, st['floor'][1])
+    setc(WALL, st['wall'])
+    setc(TRIM, st['trim'])
+    setc(SKY, st['sky'], emit=st['sky'],
+         strength=5.0 if st['id'] == 'night' else 2.6)
+    sun.data.color = st['sun']
+    world.node_tree.nodes['Background'].inputs[0].default_value = (*st['back'], 1)
+
+    # 整體亮度。只有夜晚會動它 —— 其餘風格的光保持一致,
+    # 家具才不必一種風格算一套(算五套要兩個小時)。
+    k = st.get('lights', 1.0)
+    for o, base in LIGHT_BASE:
+        o.data.energy = base * k
 
 
 # ============================================================ 空房間
@@ -295,6 +370,10 @@ light('AREA', (1.2, -2.0, 3.0), 170, (math.radians(34), 0, math.radians(18)),
 light('AREA', (-2.4, -1.4, 2.6), 80, (math.radians(50), 0, math.radians(-42)),
       4, (0.86, 0.90, 1.0))
 
+# 每一盞燈原本的強度。換風格時用倍率去乘,不要直接改掉 ——
+# 連換兩種風格的話,乘過的值會被當成原本的值再乘一次。
+LIGHT_BASE = [(o, o.data.energy) for o in C.scene.objects if o.type == 'LIGHT']
+
 world = D.worlds.new('w')
 C.scene.world = world
 world.use_nodes = True
@@ -380,40 +459,54 @@ def show_only(keep):
 # ============================================================ 算圖
 if MODE == 'shell':
     sc.render.film_transparent = False
+
+    # 相機每一格的資料只算一次 —— 所有風格共用同一組角度,
+    # 所以投影矩陣、縮放基準也完全一樣。家具和守護獸的位置因此不必跟著風格變。
     frames = []
     for i in range(FRAMES):
         aim(i)
-        name = 'room-%02d.webp' % i
-        shot(os.path.join(OUT, name))
         frames.append({
-            'file': name,
             'angle': round(math.degrees(angle_of(i)), 2),
             'H': floor_matrix(),
             'cam': [round(v, 4) for v in cam.location],
-            # 房間正中央的縮放基準:家具與守護獸的大小都以它為 1
             'unit0': round(unit_at((0, 0)), 6)
         })
-        print('shell %d/%d' % (i + 1, FRAMES))
+
+    only = sys.argv[5] if len(sys.argv) > 5 else None
+    for st in STYLES:
+        if only and st['id'] != only:
+            continue
+        apply_style(st)
+        sub = os.path.join(SHELLS_OUT, st['id'])
+        os.makedirs(sub, exist_ok=True)
+        for i in range(FRAMES):
+            aim(i)
+            shot(os.path.join(sub, '%02d.webp' % i))
+        print('style %s' % st['id'])
 
     meta = {'width': W, 'height': H_PX,
             'arcFrom': ARC_FROM, 'arcTo': ARC_TO, 'room': R,
             'frames': frames,
             'note': '由 tools/blender/room.py 產生,不要手改'}
-    for path, head in ((os.path.join(OUT, 'room.json'), None),
-                       (os.path.join(OUT, 'room-data.js'), 'window.PET_ROOM = ')):
-        with open(path, 'w', encoding='utf-8') as f:
-            if head:
-                # 老師是雙擊 index.html 打開系統的,file:// 下 fetch 讀本機
-                # JSON 會被瀏覽器擋掉 —— 所以同一份資料再寫成一支 .js
-                f.write('/* 由 tools/blender/room.py 產生,不要手改 */\n' + head)
-            json.dump(meta, f, ensure_ascii=False,
-                      indent=None if head else 1,
-                      separators=(',', ':') if head else None)
-            if head:
-                f.write(';\n')
-    print('OK shell ->', OUT)
+    with open(os.path.join(OUT, 'room.json'), 'w', encoding='utf-8') as f:
+        json.dump(meta, f, ensure_ascii=False, indent=1)
+    # 老師是雙擊 index.html 打開系統的,file:// 下 fetch 讀本機 JSON
+    # 會被瀏覽器擋掉 —— 所以同一份資料再寫成一支 .js
+    with open(os.path.join(OUT, 'room-data.js'), 'w', encoding='utf-8') as f:
+        f.write('/* 由 tools/blender/room.py 產生,不要手改 */\nwindow.PET_ROOM = ')
+        json.dump(meta, f, ensure_ascii=False, separators=(',', ':'))
+        f.write(';\n')
+    with open(os.path.join(OUT, 'shells-data.js'), 'w', encoding='utf-8') as f:
+        f.write('/* 由 tools/blender/room.py 產生,不要手改 */\n'
+                'window.PET_ROOM_STYLES = ')
+        json.dump([{k: st[k] for k in ('id', 'name', 'desc', 'price', 'star', 'tint')
+                    if k in st} | ({'free': True} if st.get('free') else {})
+                   for st in STYLES], f, ensure_ascii=False, separators=(',', ':'))
+        f.write(';\n')
+    print('OK shell ->', SHELLS_OUT)
 
 elif MODE == 'items':
+    apply_style(STYLES[0])
     # 家具用透明背景算,影子烘進去 —— 地板設成「只收影子」,
     # 這樣沙發底下那一圈暗暗的會跟著圖走,擺到哪裡都像真的放在地上。
     sc.render.film_transparent = True

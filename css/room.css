@@ -184,3 +184,11 @@
 }
 .room-tray-item.is-out { opacity: .55; }
 .room-tray-empty { font-size: 12px; color: var(--ink-soft); }
+
+.room-tray-label {
+  align-self: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin-right: 2px;
+}

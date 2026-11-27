@@ -296,13 +296,20 @@ const StudentApp = {
     await PetRoom.load();
     if (PetRoom.available()) {
       const saved = await this.optional('房間',
-        () => Cloud.getMyRoomLayout(classId, Cloud.uid), []);
-      PetRoom.setPlaced(saved);
+        () => Cloud.getMyRoomLayout(classId, Cloud.uid), { placed: [], style: '' });
+      PetRoom.setPlaced(saved.placed);
+      /* 風格要先確認這位學生真的換過 —— 資料被改過也不會憑空多一種。 */
+      if (saved.style && RoomShop.hasStyle(this.student, saved.style)) {
+        PetRoom.setStyle(saved.style);
+      } else {
+        PetRoom.setStyle(PetRoom.freeStyle());
+      }
       /* 擺完就存。存不起來不要跳錯誤訊息打斷他 —— 這是裝飾,
          下次進來頂多回到上一次存成功的樣子。 */
-      PetRoom.onChange = placed => {
+      PetRoom.onChange = () => {
         if (this.preview) return;
-        Cloud.saveRoomLayout(classId, Cloud.uid, placed)
+        Cloud.saveRoomLayout(classId, Cloud.uid,
+          { placed: PetRoom.placed, style: PetRoom.style })
           .catch(e => console.warn('[房間] 存不起來:', e.message));
       };
     }

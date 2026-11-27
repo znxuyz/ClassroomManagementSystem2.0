@@ -148,6 +148,17 @@ Object.assign(StudentApp, {
     this.render();
   },
 
+  /* 換房間風格。只能換自己有的 —— 資料被改過也不會憑空多一種。 */
+  pickRoomStyle(id) {
+    if (!RoomShop.hasStyle(this.student, id)) {
+      toast('這一種房間風格還沒換到');
+      return;
+    }
+    if (!PetRoom.setStyle(id)) return;
+    if (PetRoom.onChange) PetRoom.onChange(PetRoom.placed);
+    this.render();
+  },
+
   /* 下面那一排:點一下擺進房間,再點一下收起來。
      沒買過的擺不進去 —— 資料被改過也不會憑空多一件家具。 */
   toggleRoomItem(id) {

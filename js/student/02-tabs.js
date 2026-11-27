@@ -169,8 +169,21 @@ Object.assign(StudentApp, {
           ? '拖曳家具換位置,點下面的名字可以收起來'
           : '在兌換商店可以換到家具'}</span>
       </div>
+      ${PetRoom.editing && RoomShop.ownedStyles(s).length > 1 ? `
+        <div class="room-tray">
+          <span class="room-tray-label">房間風格</span>
+          ${RoomShop.ownedStyles(s).map(id => {
+            const st = PetRoom.styleById(id);
+            if (!st) return '';
+            return `<button class="room-tray-item ${PetRoom.style === id ? '' : 'is-out'}"
+                       onclick="StudentApp.pickRoomStyle('${id}')">
+                      ${PetRoom.style === id ? '✓' : ''} ${escapeHtml(st.name)}
+                    </button>`;
+          }).join('')}
+        </div>` : ''}
       ${PetRoom.editing ? `
         <div class="room-tray">
+          <span class="room-tray-label">家具</span>
           ${owned.length ? owned.map(id => {
             const it = PetRoom.itemById(id);
             if (!it) return '';
@@ -426,8 +439,10 @@ Object.assign(StudentApp, {
     /* 已經有的不能再買。按下去本來就會被擋,但按鈕該先變灰 ——
        讓學生按了才被拒絕是很差的體驗。家具同理,一件只需要一個。 */
     const roomOf = RoomShop.rawId(item.id);
+    const styleOf = RoomShop.rawStyleId(item.id);
     const owned = (!!fruitOf && SkillEngine.owns(this.student, fruitOf.id))
-               || (!!roomOf && RoomShop.has(this.student, roomOf));
+               || (!!roomOf && RoomShop.has(this.student, roomOf))
+               || (!!styleOf && RoomShop.hasStyle(this.student, styleOf));
     // 兩種都付不起才算真的買不起
     const broke = (!byPoint || tooPoor) && (!byStar || tooFew);
     const disabled = soldOut || broke || waiting || owned;
@@ -496,9 +511,9 @@ Object.assign(StudentApp, {
     }
 
     const fruits = items.filter(i => SkillEngine.isFruit(i.id));
-    const rooms = items.filter(i => RoomShop.isFurniture(i.id));
+    const rooms = items.filter(i => RoomShop.isRoomThing(i.id));
     const normal = items.filter(i =>
-      !SkillEngine.isFruit(i.id) && !RoomShop.isFurniture(i.id));
+      !SkillEngine.isFruit(i.id) && !RoomShop.isRoomThing(i.id));
     const groups = groupByArea(fruits, it => {
       const sk = SkillEngine.skillOfFruit(it.id);
       return sk && sk.area;
@@ -512,8 +527,8 @@ Object.assign(StudentApp, {
         <div class="prize-grid">${normal.map(i => this.prizeCard(i, env)).join('')}</div>`
         : ''}
       ${rooms.length ? `
-        <div class="prize-group-title">🪑 守護獸的家具<small>換到的可以在
-          守護獸的房間裡自由擺放</small></div>
+        <div class="prize-group-title">🪑 守護獸的房間<small>家具可以自由擺放,
+          風格可以隨時切換</small></div>
         <div class="prize-grid">${rooms.map(i => this.prizeCard(i, env)).join('')}</div>`
         : ''}
       ${groups.length ? `
