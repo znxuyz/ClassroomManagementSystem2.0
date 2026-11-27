@@ -249,6 +249,16 @@ function skillBoardHtml() {
         ~ ${new Date(range.to - 1).toLocaleDateString('zh-TW')}</span>
 
       <div style="flex:1"></div>
+      ${(typeof RoomShop !== 'undefined' && RoomShop.catalog().length) ? `
+        ${/* 刻意用次要樣式:同一排已經有「上架技能果實」那顆主要按鈕了,
+             兩顆搶眼的擺在一起,老師反而不知道該先按哪一顆。 */''}
+        <button class="btn btn-ghost btn-small"
+                onclick="listRoomItems()"
+                title="家具長什麼樣子由 tools/blender/room.py 決定">
+          ${state.shopItems.some(i => RoomShop.isFurniture(i.id))
+            ? '更新家具說明'
+            : `上架守護獸家具(${RoomShop.catalog().length} 件)`}
+        </button>` : ''}
       <button class="btn ${onShelf === PET_SKILLS.length && !needStar
                              ? 'btn-ghost' : 'btn-accent'} btn-small"
               onclick="listSkillFruits()"

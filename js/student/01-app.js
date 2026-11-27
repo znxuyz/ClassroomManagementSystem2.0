@@ -294,6 +294,18 @@ const StudentApp = {
     /* 房間的圖是額外的資產,載不到就安靜跳過 ——
        一個裝飾功能不該讓整個守護獸分頁壞掉。 */
     await PetRoom.load();
+    if (PetRoom.available()) {
+      const saved = await this.optional('房間',
+        () => Cloud.getMyRoomLayout(classId, Cloud.uid), []);
+      PetRoom.setPlaced(saved);
+      /* 擺完就存。存不起來不要跳錯誤訊息打斷他 —— 這是裝飾,
+         下次進來頂多回到上一次存成功的樣子。 */
+      PetRoom.onChange = placed => {
+        if (this.preview) return;
+        Cloud.saveRoomLayout(classId, Cloud.uid, placed)
+          .catch(e => console.warn('[房間] 存不起來:', e.message));
+      };
+    }
 
     this.homework = await this.optional('作業',
       () => Cloud.listHomework(classId), []);

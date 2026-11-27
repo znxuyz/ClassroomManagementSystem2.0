@@ -136,3 +136,28 @@ Object.assign(StudentApp, {
     }
   }
 });
+
+
+/* ============================================
+   學生端:守護獸的房間(擺設)
+============================================ */
+Object.assign(StudentApp, {
+
+  toggleRoomEdit() {
+    PetRoom.setEditing(!PetRoom.editing);
+    this.render();
+  },
+
+  /* 下面那一排:點一下擺進房間,再點一下收起來。
+     沒買過的擺不進去 —— 資料被改過也不會憑空多一件家具。 */
+  toggleRoomItem(id) {
+    if (!RoomShop.has(this.student, id)) {
+      toast('這件家具還沒換到');
+      return;
+    }
+    const inRoom = PetRoom.placed.some(p => p.id === id);
+    if (inRoom) PetRoom.remove(id);
+    else PetRoom.add(id);
+    this.render();
+  }
+});

@@ -216,8 +216,10 @@ function renderShopItems() {
    兩邊看到的順序一樣,老師講「第二區那顆」學生才找得到。 */
 function renderShopGroups(items, card) {
   const isFruit = id => typeof SkillEngine !== 'undefined' && SkillEngine.isFruit(id);
-  const normal = items.filter(i => !isFruit(i.id));
+  const isRoom = id => typeof RoomShop !== 'undefined' && RoomShop.isFurniture(id);
+  const normal = items.filter(i => !isFruit(i.id) && !isRoom(i.id));
   const fruits = items.filter(i => isFruit(i.id));
+  const rooms = items.filter(i => isRoom(i.id));
 
   const groups = groupByArea(fruits, it => {
     const sk = SkillEngine.skillOfFruit(it.id);
@@ -228,8 +230,13 @@ function renderShopGroups(items, card) {
 
   return `
     ${normal.length ? `
-      ${groups.length ? '<div class="shop-group-title">🎁 一般獎品</div>' : ''}
+      ${groups.length || rooms.length
+         ? '<div class="shop-group-title">🎁 一般獎品</div>' : ''}
       ${grid(normal)}` : ''}
+    ${rooms.length ? `
+      <div class="shop-group-title">🪑 守護獸的家具
+        <small>買到的可以在守護獸的房間裡自由擺放</small></div>
+      ${grid(rooms)}` : ''}
     ${groups.length ? `
       <div class="shop-group-title">✦ 技能果實
         <small>學生買一次就永久擁有,守護獸每進化一階就更強</small></div>
@@ -420,6 +427,12 @@ const PurchaseWatch = {
     const fruit = SkillEngine.skillOfFruit(item.id);
     if (fruit && SkillEngine.owns(student, fruit.id)) {
       return no('已經有這顆果實了,一個技能買一次就好');
+    }
+
+    /* 家具同理:房間裡一樣的東西只需要一件。 */
+    const furniture = (typeof RoomShop !== 'undefined') ? RoomShop.rawId(item.id) : null;
+    if (furniture && RoomShop.has(student, furniture)) {
+      return no('房間裡已經有這一件了');
     }
 
     /* 議價:價格打折。折扣倍率記在技能使用紀錄上(已被安全規則核對),

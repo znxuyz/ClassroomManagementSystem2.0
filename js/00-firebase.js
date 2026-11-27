@@ -526,6 +526,22 @@ const Cloud = {
     return snap.exists ? snap.data() : null;
   },
 
+  /* ---------- 守護獸的房間 ----------
+     學生把家具擺在哪裡,一人一份文件(id 就是 uid),所以只動得了自己的。
+     這是純粹的裝飾資料 —— 寫壞了最糟就是房間要重擺,不影響積分或任何紀錄,
+     所以規則可以比照選守護獸那一份,不必像兌換那樣嚴。 */
+  async saveRoomLayout(classId, uid, placed) {
+    await this.db.collection('classes').doc(classId)
+      .collection('rooms').doc(uid)
+      .set({ uid, placed: placed || [], at: Date.now() });
+  },
+
+  async getMyRoomLayout(classId, uid) {
+    const snap = await this.db.collection('classes').doc(classId)
+      .collection('rooms').doc(uid).get();
+    return snap.exists ? (snap.data().placed || []) : [];
+  },
+
   /* 送出改名請求。
      用 merge 而不是整份覆蓋 —— savePetChoice 是 set(),直接沿用的話
      會把「選了哪一隻守護獸」洗掉。 */

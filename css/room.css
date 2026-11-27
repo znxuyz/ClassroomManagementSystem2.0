@@ -111,3 +111,77 @@
 @media (max-width: 520px) {
   .room-hint { font-size: 10px; padding: 2px 8px; }
 }
+
+/* ---------- 家具 ----------
+   每一件家具是一疊圖(一個角度一張),和房間一樣只顯示當下那一張。
+   圖是在房間**原點**算的,所以擺法是把原點那一點搬到目標那一點 ——
+   transform-origin 設在原點的畫面位置,縮小的時候才不會飄走。 */
+.room-stage {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.room-stage > * { pointer-events: auto; }
+
+.room-item {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+.room-item-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+}
+.room-item-img.on { opacity: 1; }
+
+/* 擺設模式:家具可以拖,所以要看得出來哪些東西可以動 */
+.room.is-editing { cursor: default; }
+.room.is-editing .room-item { cursor: grab; }
+.room.is-editing .room-item-img.on {
+  filter: drop-shadow(0 0 0 var(--gold)) drop-shadow(0 0 3px var(--gold));
+}
+.room-item.is-moving { cursor: grabbing; }
+.room-item.is-moving .room-item-img.on {
+  filter: drop-shadow(0 0 6px var(--gold)) brightness(1.06);
+}
+.room.is-editing .room-pet { pointer-events: none; }
+
+/* ---------- 擺設的工具列 ---------- */
+.room-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  max-width: 720px;
+  margin: 10px auto 0;
+}
+.room-tools .spacer { flex: 1; }
+.room-tools-note { font-size: 12px; color: var(--ink-muted); }
+
+.room-tray {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  max-width: 720px;
+  margin: 10px auto 0;
+  padding: 10px;
+  border-radius: var(--r-tile);
+  background: var(--paper-shadow);
+}
+.room-tray:empty { display: none; }
+.room-tray-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--paper-shadow);
+  background: var(--paper);
+  font-size: 12px;
+  cursor: pointer;
+}
+.room-tray-item.is-out { opacity: .55; }
+.room-tray-empty { font-size: 12px; color: var(--ink-soft); }

@@ -132,6 +132,21 @@ service cloud.firestore {
         allow delete: if isClassTeacher();
       }
 
+      /* 守護獸的房間:家具擺在哪裡。文件 id 就是 uid,只動得了自己那一份。
+         純裝飾資料,寫壞了最糟就是房間要重擺 —— 不碰積分也不碰任何紀錄。
+         老師讀得到是為了在「學生模擬」裡看到學生真正的房間。 */
+      match /rooms/{uid} {
+        function isClassTeacher() {
+          return signedIn()
+            && get(/databases/$(database)/documents/classes/$(classId)).data.teacherUid == request.auth.uid;
+        }
+        allow create, update: if signedIn()
+                              && request.auth.uid == uid
+                              && request.resource.data.uid == uid;
+        allow read: if isClassTeacher() || (signedIn() && request.auth.uid == uid);
+        allow delete: if isClassTeacher();
+      }
+
       /* 獎品兌換申請:
          學生只能建立自己的申請,而且不能自己決定結果 ——
          status 必須是 pending,實際扣點與核可都在老師端執行。

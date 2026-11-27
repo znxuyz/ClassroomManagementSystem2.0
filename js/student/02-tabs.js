@@ -134,10 +134,11 @@ Object.assign(StudentApp, {
     /* 房間是額外的資產(assets/room/),老師可能還沒放 ——
        沒有就不畫,原本的守護獸卡片照舊。 */
     const room = (s && s.pet && PetRoom.available())
-      ? `<section class="student-section">${PetRoom.html({
-            img: PetEngine.getImageSrc(s),
-            name: s.petName || '守護獸'
-          })}</section>`
+      ? `<section class="student-section">
+          ${PetRoom.html({ img: PetEngine.getImageSrc(s),
+                           name: s.petName || '守護獸' })}
+          ${this.roomToolsHtml(s)}
+        </section>`
       : '';
 
     return `
@@ -149,6 +150,38 @@ Object.assign(StudentApp, {
         <div class="student-section-title">最近的積分紀錄</div>
         ${this.renderHistory()}
       </section>`;
+  },
+
+  /* ---------- 房間的工具列 ----------
+     買到的家具在下面那一排,點一下就擺進房間;擺進去的再點一下就收起來。
+     擺設模式才能拖家具 —— 不分模式的話,想轉房間卻一直把家具拖走。 */
+  roomToolsHtml(s) {
+    const owned = RoomShop.owned(s);
+    const inRoom = new Set(PetRoom.placed.map(p => p.id));
+
+    return `
+      <div class="room-tools">
+        <button class="btn btn-small ${PetRoom.editing ? 'btn-accent' : 'btn-ghost'}"
+                onclick="StudentApp.toggleRoomEdit()">
+          ${PetRoom.editing ? '✓ 擺好了' : '🪑 擺設'}
+        </button>
+        <span class="room-tools-note">${PetRoom.editing
+          ? '拖曳家具換位置,點下面的名字可以收起來'
+          : '在兌換商店可以換到家具'}</span>
+      </div>
+      ${PetRoom.editing ? `
+        <div class="room-tray">
+          ${owned.length ? owned.map(id => {
+            const it = PetRoom.itemById(id);
+            if (!it) return '';
+            const on = inRoom.has(id);
+            return `<button class="room-tray-item ${on ? '' : 'is-out'}"
+                       onclick="StudentApp.toggleRoomItem('${id}')">
+                      ${on ? '✓' : '＋'} ${escapeHtml(it.name)}
+                    </button>`;
+          }).join('')
+          : '<span class="room-tray-empty">還沒有家具 —— 到兌換商店看看</span>'}
+        </div>` : ''}`;
   },
 
   /* ---------- 這禮拜 ----------
@@ -390,7 +423,11 @@ Object.assign(StudentApp, {
     const fruitOf = SkillEngine.skillOfFruit(item.id);
     /* 已經有的果實不能再買。按下去本來就會被擋,但按鈕該先變灰 ——
        讓學生按了才被拒絕是很差的體驗 */
-    const owned = !!fruitOf && SkillEngine.owns(this.student, fruitOf.id);
+    /* 已經有的不能再買。按下去本來就會被擋,但按鈕該先變灰 ——
+       讓學生按了才被拒絕是很差的體驗。家具同理,一件只需要一個。 */
+    const roomOf = RoomShop.rawId(item.id);
+    const owned = (!!fruitOf && SkillEngine.owns(this.student, fruitOf.id))
+               || (!!roomOf && RoomShop.has(this.student, roomOf));
     // 兩種都付不起才算真的買不起
     const broke = (!byPoint || tooPoor) && (!byStar || tooFew);
     const disabled = soldOut || broke || waiting || owned;
@@ -459,7 +496,9 @@ Object.assign(StudentApp, {
     }
 
     const fruits = items.filter(i => SkillEngine.isFruit(i.id));
-    const normal = items.filter(i => !SkillEngine.isFruit(i.id));
+    const rooms = items.filter(i => RoomShop.isFurniture(i.id));
+    const normal = items.filter(i =>
+      !SkillEngine.isFruit(i.id) && !RoomShop.isFurniture(i.id));
     const groups = groupByArea(fruits, it => {
       const sk = SkillEngine.skillOfFruit(it.id);
       return sk && sk.area;
@@ -468,8 +507,14 @@ Object.assign(StudentApp, {
     return `
       ${balance}
       ${normal.length ? `
-        ${groups.length ? '<div class="prize-group-title">🎁 獎品</div>' : ''}
+        ${groups.length || rooms.length
+           ? '<div class="prize-group-title">🎁 獎品</div>' : ''}
         <div class="prize-grid">${normal.map(i => this.prizeCard(i, env)).join('')}</div>`
+        : ''}
+      ${rooms.length ? `
+        <div class="prize-group-title">🪑 守護獸的家具<small>換到的可以在
+          守護獸的房間裡自由擺放</small></div>
+        <div class="prize-grid">${rooms.map(i => this.prizeCard(i, env)).join('')}</div>`
         : ''}
       ${groups.length ? `
         <div class="prize-group-title">✦ 技能果實<small>買一次就永久擁有,

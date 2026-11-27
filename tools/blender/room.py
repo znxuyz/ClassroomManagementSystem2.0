@@ -1,4 +1,4 @@
-"""守護獸的房間 —— 可以轉的 2.5D 場景
+"""守護獸的房間 —— 可以轉的 2.5D 場景 + 可以擺的家具
 
 做法:**不是即時 3D**。相機繞著房間走一圈,每隔幾度算一張圖;
 網頁上拖曳就換圖,看起來像在轉,實際上只是在翻圖片。
@@ -6,34 +6,52 @@
 為什麼這樣做而不用 three.js:
   · 畫質是 Cycles 的全域光 —— 地板的反光、窗戶灑進來的光、家具的落影,
     這些即時渲染做不出來,但算成圖片就有了
-  · 載入的是幾張圖,教室的筆電和學生的手機都跑得動;
-    three.js 要拉一個大型函式庫 + 模型 + 貼圖,而且舊平板會卡
+  · 載入的是幾張圖,教室的筆電和學生的手機都跑得動
   · 這個專案到現在沒有 build step、沒有大型相依,不想為了轉鏡頭破例
 
-難的地方是**寵物要站在地板上**。寵物是一張 2D 圖,房間轉的時候它得跟著
-站到對的位置、縮成對的大小 —— 所以這支腳本除了算圖,還會把每一個站位
-在每一個角度的**螢幕座標與縮放**算出來,存成 room.json 給網頁用。
-那張表是整件事能不能成立的關鍵;少了它,寵物就是一張貼在畫面上的貼紙。
+── 兩種輸出 ──
+  shell  空房間(地板、兩面牆、窗)。十三個角度。
+  items  每一件家具單獨算,透明背景、影子烘進去。
+         家具在**原點**算,網頁再把它搬到學生擺的位置 ——
+         所以同一張圖可以擺在房間任何地方。
+
+── 數學在這裡,不在網頁 ──
+家具要能自由擺放,網頁就得知道「畫面上這一點是地板的哪裡」。
+地板是一個平面(z=0),相機投影一個平面是一個 3×3 的單應矩陣,
+可以直接從相機矩陣取出來(不是擬合的,是精確的):
+
+    M = 投影矩陣 @ 視圖矩陣               (4×4)
+    H = M 的第 0、1、3 列與第 0、1、3 行   (3×3)
+    (clipX, clipY, clipW) = H @ (x, y, 1)
+
+網頁拿 H 把地板座標變成畫面座標,拿 H 的反矩陣把拖曳的位置變回地板座標。
+少了它,家具只能擺在我事先決定的幾個洞裡。
 
 用法:
-    python3.13 -I room.py [寬] [取樣] [張數]
-    python3.13 -I room.py 960 96 13      # 預設
+    python3.13 -I room.py shell [寬] [取樣] [張數]
+    python3.13 -I room.py items [寬] [取樣] [張數]
 輸出到 ../../assets/room/
 """
 import bpy, math, json, os, sys
 from mathutils import Vector
-from bpy_extras.object_utils import world_to_camera_view
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.normpath(os.path.join(HERE, '..', '..', 'assets', 'room'))
+ITEMS_OUT = os.path.join(OUT, 'items')
 os.makedirs(OUT, exist_ok=True)
+os.makedirs(ITEMS_OUT, exist_ok=True)
 
-W = int(sys.argv[1]) if len(sys.argv) > 1 else 960
-SAMPLES = int(sys.argv[2]) if len(sys.argv) > 2 else 96
-FRAMES = int(sys.argv[3]) if len(sys.argv) > 3 else 13
+MODE = sys.argv[1] if len(sys.argv) > 1 else 'shell'
+W = int(sys.argv[2]) if len(sys.argv) > 2 else 960
+SAMPLES = int(sys.argv[3]) if len(sys.argv) > 3 else 110
+FRAMES = int(sys.argv[4]) if len(sys.argv) > 4 else 13
 
-H = int(W * 0.72)
+H_PX = int(W * 0.72)
 ARC = 44.0          # 左右各轉幾度。再多就會看到牆的背面
+R = 5.0             # 房間邊長
+WALL_H = 3.2
+WIN = (1.9, 1.5, 1.95)      # 窗的寬、高、中心離地
+DIST, HEIGHT = 10.2, 4.2
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 D, C = bpy.data, bpy.context
@@ -53,19 +71,27 @@ def mat(name, color, rough=0.6, metal=0.0, emit=None, strength=1.0):
     return m
 
 
-WOOD   = mat('wood',   (0.50, 0.32, 0.17), 0.52)
-WOOD_D = mat('wood_d', (0.40, 0.25, 0.13), 0.58)   # 深一階的地板條
-WALL   = mat('wall',   (0.93, 0.88, 0.77), 0.92)
-TRIM   = mat('trim',   (0.52, 0.36, 0.22), 0.5)
-RUG    = mat('rug',    (0.35, 0.55, 0.42), 0.95)
-RUG2   = mat('rug2',   (0.78, 0.74, 0.60), 0.95)
-CUSH   = mat('cush',   (0.78, 0.45, 0.38), 0.9)
-BOWL   = mat('bowl',   (0.86, 0.86, 0.88), 0.35)
+WOOD    = mat('wood',   (0.50, 0.32, 0.17), 0.52)
+WOOD_D  = mat('wood_d', (0.40, 0.25, 0.13), 0.58)
+WALL    = mat('wall',   (0.93, 0.88, 0.77), 0.92)
+TRIM    = mat('trim',   (0.52, 0.36, 0.22), 0.5)
+RUG     = mat('rug',    (0.35, 0.55, 0.42), 0.95)
+RUG2    = mat('rug2',   (0.78, 0.74, 0.60), 0.95)
+CUSH    = mat('cush',   (0.78, 0.45, 0.38), 0.9)
+CUSH2   = mat('cush2',  (0.92, 0.82, 0.70), 0.92)
+BOWL    = mat('bowl',   (0.86, 0.86, 0.88), 0.35)
 BOWL_IN = mat('bowlin', (0.55, 0.38, 0.24), 0.7)
-LEAF   = mat('leaf',   (0.25, 0.48, 0.26), 0.7)
-POT    = mat('pot',    (0.68, 0.42, 0.32), 0.65)
-GLASS  = mat('sky',    (0.80, 0.90, 1.0), 0.5, emit=(0.86, 0.93, 1.0), strength=2.6)
-GOLD   = mat('gold',   (0.92, 0.72, 0.28), 0.25, metal=0.9)
+LEAF    = mat('leaf',   (0.25, 0.48, 0.26), 0.7)
+POT     = mat('pot',    (0.68, 0.42, 0.32), 0.65)
+SKY     = mat('sky',    (0.80, 0.90, 1.0), 0.5, emit=(0.86, 0.93, 1.0), strength=2.6)
+BALL_A  = mat('ball_a', (0.86, 0.32, 0.30), 0.35)
+BALL_B  = mat('ball_b', (0.96, 0.93, 0.86), 0.35)
+LAMP_SH = mat('lampsh', (0.96, 0.88, 0.70), 0.6, emit=(1.0, 0.90, 0.68), strength=3.2)
+METAL   = mat('metal',  (0.70, 0.70, 0.74), 0.3, metal=0.85)
+BOOK_A  = mat('book_a', (0.70, 0.30, 0.28), 0.8)
+BOOK_B  = mat('book_b', (0.28, 0.45, 0.62), 0.8)
+BOOK_C  = mat('book_c', (0.85, 0.70, 0.35), 0.8)
+WATER   = mat('water',  (0.45, 0.72, 0.88), 0.15)
 
 
 def put(o, m):
@@ -75,11 +101,10 @@ def put(o, m):
 
 
 def box(size, loc, m, rot=(0, 0, 0)):
+    """size 是**實際邊長**。primitive_cube_add(size=1) 做出來的邊長就是 1,
+       所以縮放幾倍就是幾長 —— 除以 2 的話整間房子會縮一半(踩過)。"""
     bpy.ops.mesh.primitive_cube_add(size=1, location=loc, rotation=rot)
     o = C.object
-    # primitive_cube_add(size=1) 做出來的立方體邊長就是 1(-0.5 到 0.5),
-    # 所以要幾長就縮放幾倍 —— 除以 2 的話整間房子會縮一半,
-    # 地板條之間會裂開、牆會浮在空中(踩過)。
     o.scale = size
     bpy.ops.object.transform_apply(scale=True)
     return put(o, m)
@@ -92,90 +117,154 @@ def cyl(r, h, loc, m, rot=(0, 0, 0), verts=40):
     return put(C.object, m)
 
 
-# ============================================================ 房間
-# 三面牆的轉角房:後牆 + 左牆。相機在前右方繞,所以那兩面永遠看得到,
-# 而缺掉的兩面就是鏡頭進來的地方 —— 這是立體等角房間的標準做法。
-R = 5.0          # 房間邊長
-WALL_H = 3.2
+def ball(r, loc, m, scale=(1, 1, 1), sub=3):
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=r, subdivisions=sub, location=loc)
+    o = C.object
+    o.scale = scale
+    bpy.ops.object.shade_smooth()
+    return put(o, m)
 
-# 地板:一條一條的木地板,深淺交錯
+
+def cone(r1, r2, h, loc, m, verts=36):
+    bpy.ops.mesh.primitive_cone_add(radius1=r1, radius2=r2, depth=h,
+                                    location=loc, vertices=verts)
+    bpy.ops.object.shade_smooth()
+    return put(C.object, m)
+
+
+# ============================================================ 空房間
+floor_parts = []
 for i in range(14):
     y = -R / 2 + R * (i + 0.5) / 14
-    box((R, R / 14 * 0.94, 0.12), (0, y, -0.06),
-        WOOD if i % 2 == 0 else WOOD_D)
+    floor_parts.append(box((R, R / 14 * 0.94, 0.12), (0, y, -0.06),
+                           WOOD if i % 2 == 0 else WOOD_D))
 
-# 牆
-wall_back = box((R, 0.16, WALL_H), (0, R / 2, WALL_H / 2), WALL)   # 後牆
-box((0.16, R, WALL_H), (-R / 2, 0, WALL_H / 2), WALL)         # 左牆
-# 踢腳板
-box((R, 0.22, 0.22), (0, R / 2 - 0.04, 0.11), TRIM)
-box((0.22, R, 0.22), (-R / 2 + 0.04, 0, 0.11), TRIM)
+wall_back = box((R, 0.16, WALL_H), (0, R / 2, WALL_H / 2), WALL)
+wall_left = box((0.16, R, WALL_H), (-R / 2, 0, WALL_H / 2), WALL)
+trim1 = box((R, 0.22, 0.22), (0, R / 2 - 0.04, 0.11), TRIM)
+trim2 = box((0.22, R, 0.22), (-R / 2 + 0.04, 0, 0.11), TRIM)
 
-# 後牆的窗:挖一個洞,擺一片會發光的「玻璃」當作外面的天光。
-# 真的做一盞太陽從外面照進來最準,但那樣算很久;這樣看起來一樣。
-WIN = (1.9, 1.5, 1.95)      # 寬、高、中心離地
+# 窗:在後牆挖一個洞
 bpy.ops.mesh.primitive_cube_add(size=1, location=(0.55, R / 2, WIN[2]))
 hole = C.object
-# 這裡也一樣:cube 的邊長是 1,要挖多大就縮放多少
 hole.scale = (WIN[0], 1.0, WIN[1])
 bpy.ops.object.transform_apply(scale=True)
-# 直接拿著後牆那個物件,不要事後用座標去找 —— 找錯一次就整支掛掉
 bm = wall_back.modifiers.new('win', 'BOOLEAN')
 bm.object = hole
 bm.operation = 'DIFFERENCE'
 hole.hide_render = hole.hide_viewport = True
 
-# 窗口**不要**擺一片玻璃 —— 不管畫得多像,它都是一面不透光的牆,
-# 太陽會被擋住,地板上就不會有那一塊光(整間因此沒有方向感)。
-# 改成在窗外遠一點的地方放一面會發光的板子當天空,窗口本身是空的。
-# 板子要**剛好躲在牆後面**:比窗口大一點點、比牆小一圈,
-# 這樣只有從窗口看得到它。做太大的話它會從牆的上緣冒出來(踩過)。
-sky = box((2.9, 0.06, 2.3), (0.55, R / 2 + 0.40, WIN[2]), GLASS)
-# 這塊板子擋在太陽和窗口中間,所以要讓光線穿過去 ——
-# 不關掉的話太陽整個被擋住,地板上那一塊光永遠不會出現(找了很久)。
+# 窗口**不要**擺玻璃:不管材質怎麼調,它都是一面不透光的牆,太陽會被擋住,
+# 地板上就不會有那一塊光(整間因此沒有方向感)。改成窗外放一塊會發光的板子。
+sky = box((2.9, 0.06, 2.3), (0.55, R / 2 + 0.40, WIN[2]), SKY)
+# 板子擋在太陽和窗口中間,所以要讓光線穿過去。不關掉的話太陽整個被擋住。
 sky.visible_shadow = False
-# 窗框
-# 上下兩根通到底,左右兩根縮短塞在中間 —— 四根都通到底的話,
-# 四個角會有兩塊木頭重疊,算出來是四個黑方塊(踩過)。
+
+# 窗框。上下兩根通到底、左右兩根縮短塞中間 —— 四根都通到底的話,
+# 四個角會有兩塊木頭重疊,算出來是四個黑方塊。
+frame = []
 for dx, dz, sx, sz in ((0, WIN[1] / 2, WIN[0] + 0.20, 0.12),
                        (0, -WIN[1] / 2, WIN[0] + 0.20, 0.12),
                        (WIN[0] / 2, 0, 0.12, WIN[1] - 0.12),
                        (-WIN[0] / 2, 0, 0.12, WIN[1] - 0.12),
                        (0, 0, 0.07, WIN[1] - 0.12)):
-    box((sx, 0.14, sz), (0.55 + dx, R / 2 - 0.08, WIN[2] + dz), TRIM)
+    frame.append(box((sx, 0.14, sz), (0.55 + dx, R / 2 - 0.08, WIN[2] + dz), TRIM))
+
+SHELL = floor_parts + [wall_back, wall_left, trim1, trim2, sky] + frame
+
 
 # ============================================================ 家具
-# 地毯:寵物主要待的地方
-cyl(1.35, 0.03, (-0.5, -0.6, 0.015), RUG, verts=64)
-cyl(1.05, 0.035, (-0.5, -0.6, 0.02), RUG2, verts=64)
+# 每一件都蓋在**原點**、面向前方。網頁再把它搬到學生擺的位置 ——
+# 所以同一張圖可以擺在房間裡任何地方,不必一個位置算一次。
+def it_bed():
+    return [box((1.5, 1.0, 0.22), (0, 0, 0.11), CUSH),
+            box((1.3, 0.8, 0.14), (0, 0, 0.26), CUSH2)]
 
-# 睡墊
-box((1.5, 1.0, 0.22), (-1.55, 1.25, 0.11), CUSH)
-box((1.3, 0.8, 0.12), (-1.55, 1.25, 0.26), RUG2)
 
-# 飯碗
-cyl(0.34, 0.16, (1.55, -0.35, 0.08), BOWL)
-cyl(0.27, 0.06, (1.55, -0.35, 0.15), BOWL_IN)
+def it_bowl():
+    return [cyl(0.34, 0.16, (0, 0, 0.08), BOWL),
+            cyl(0.27, 0.05, (0, 0, 0.15), BOWL_IN)]
 
-# 盆栽
-cyl(0.33, 0.44, (-1.85, 1.85, 0.22), POT)
-for i, (dx, dy, dz, r) in enumerate(((0, 0, 0.72, 0.36), (0.22, 0.1, 0.52, 0.26),
-                                     (-0.2, -0.12, 0.58, 0.24))):
-    bpy.ops.mesh.primitive_ico_sphere_add(radius=r, subdivisions=3,
-                                          location=(-1.85 + dx, 1.85 + dy, dz))
-    bpy.ops.object.shade_smooth()
-    put(C.object, LEAF)
 
-# 玩具箱(右邊本來是一片空地板)
-box((1.1, 0.8, 0.62), (1.55, 0.95, 0.31), TRIM)
-box((1.16, 0.86, 0.08), (1.55, 0.95, 0.66), WOOD_D)
+def it_water():
+    return [cyl(0.30, 0.18, (0, 0, 0.09), BOWL),
+            cyl(0.24, 0.05, (0, 0, 0.165), WATER)]
 
-# 牆上的架子 + 一顆發光的小球(之後可以換成學生收集到的東西)
-box((1.2, 0.3, 0.07), (-R / 2 + 0.3, -1.1, 1.65), TRIM, rot=(0, 0, math.radians(90)))
-bpy.ops.mesh.primitive_uv_sphere_add(radius=0.16,
-                                     location=(-R / 2 + 0.3, -1.1, 1.85))
-bpy.ops.object.shade_smooth()
-put(C.object, mat('orb', (0.6, 0.9, 1.0), 0.1, emit=(0.4, 0.82, 1.0), strength=6))
+
+def it_plant():
+    out = [cone(0.26, 0.33, 0.44, (0, 0, 0.22), POT)]
+    for dx, dy, dz, r in ((0, 0, 0.72, 0.36), (0.22, 0.1, 0.52, 0.26),
+                          (-0.2, -0.12, 0.58, 0.24)):
+        out.append(ball(r, (dx, dy, dz), LEAF))
+    return out
+
+
+def it_toybox():
+    return [box((1.1, 0.8, 0.62), (0, 0, 0.31), TRIM),
+            box((1.16, 0.86, 0.08), (0, 0, 0.66), WOOD_D)]
+
+
+def it_rug():
+    return [cyl(1.35, 0.03, (0, 0, 0.015), RUG, verts=64),
+            cyl(1.05, 0.035, (0, 0, 0.02), RUG2, verts=64)]
+
+
+def it_ball():
+    out = [ball(0.28, (0, 0, 0.28), BALL_A, sub=4)]
+    # 一圈白色的條紋,讓它看得出來是皮球不是一顆石頭
+    for i in range(3):
+        a = math.radians(i * 60)
+        bpy.ops.mesh.primitive_torus_add(location=(0, 0, 0.28),
+                                         major_radius=0.281, minor_radius=0.035,
+                                         rotation=(math.radians(90), 0, a),
+                                         major_segments=44, minor_segments=10)
+        bpy.ops.object.shade_smooth()
+        out.append(put(C.object, BALL_B))
+    return out
+
+
+def it_lamp():
+    return [cyl(0.26, 0.05, (0, 0, 0.025), METAL),
+            cyl(0.035, 1.3, (0, 0, 0.65), METAL, verts=16),
+            cone(0.30, 0.18, 0.40, (0, 0, 1.45), LAMP_SH)]
+
+
+def it_shelf():
+    out = [box((1.0, 0.32, 0.06), (0, 0, 0.03), TRIM),
+           box((1.0, 0.32, 0.06), (0, 0, 0.52), TRIM),
+           box((1.0, 0.32, 0.06), (0, 0, 1.01), TRIM),
+           box((0.06, 0.32, 1.04), (-0.47, 0, 0.52), TRIM),
+           box((0.06, 0.32, 1.04), (0.47, 0, 0.52), TRIM)]
+    books = [BOOK_A, BOOK_B, BOOK_C]
+    for row, z in ((0, 0.26), (1, 0.75)):
+        for i in range(5):
+            out.append(box((0.11, 0.24, 0.36 + 0.04 * ((i + row) % 3)),
+                           (-0.34 + i * 0.17, 0, z + 0.02),
+                           books[(i + row) % 3]))
+    return out
+
+
+ITEMS = [
+    {'id': 'rug',    'name': '地毯',   'build': it_rug,
+     'desc': '守護獸最愛待的地方',           'price': 30,  'star': 10},
+    {'id': 'bowl',   'name': '飯碗',   'build': it_bowl,
+     'desc': '吃飯的地方',                   'price': 20,  'star': 7},
+    {'id': 'water',  'name': '水盆',   'build': it_water,
+     'desc': '喝水的地方',                   'price': 20,  'star': 7},
+    {'id': 'bed',    'name': '睡墊',   'build': it_bed,
+     'desc': '軟軟的,睡起來很舒服',          'price': 45,  'star': 15},
+    {'id': 'ball',   'name': '皮球',   'build': it_ball,
+     'desc': '可以滾來滾去',                 'price': 25,  'star': 8},
+    {'id': 'plant',  'name': '盆栽',   'build': it_plant,
+     'desc': '一點綠色,房間比較有生氣',      'price': 35,  'star': 12},
+    {'id': 'toybox', 'name': '玩具箱', 'build': it_toybox,
+     'desc': '玩具收在這裡',                 'price': 50,  'star': 17},
+    {'id': 'lamp',   'name': '立燈',   'build': it_lamp,
+     'desc': '晚上也亮亮的',                 'price': 55,  'star': 18},
+    {'id': 'shelf',  'name': '書櫃',   'build': it_shelf,
+     'desc': '放書的地方,看起來很有學問',    'price': 70,  'star': 23},
+]
+
 
 # ============================================================ 光
 def light(kind, loc, energy, rot=(0, 0, 0), size=3.0, color=(1, 1, 1)):
@@ -188,14 +277,15 @@ def light(kind, loc, energy, rot=(0, 0, 0), size=3.0, color=(1, 1, 1)):
     return o
 
 
-# 窗外的天光:一盞大面光貼在窗戶外面往裡照,地板上就會有一塊亮斑
 sun = light('SUN', (0.55, R / 2 + 1.0, WIN[2] + 1.0), 7.0,
             (math.radians(42), 0, math.radians(190)), color=(1.0, 0.92, 0.76))
-sun.data.angle = math.radians(3.5)      # 影子邊緣柔一點,不要刀切
+sun.data.angle = math.radians(3.5)
+# 補光不要太亮 —— 一強就把太陽那一塊光洗掉了,
+# 有光斑和沒光斑,差在「這間房有沒有窗」。
 light('AREA', (0.55, R / 2 + 0.4, WIN[2]), 220,
       (math.radians(90), 0, math.radians(180)), 2.2, (0.95, 0.96, 1.0))
 light('AREA', (1.2, -2.0, 3.0), 170, (math.radians(34), 0, math.radians(18)),
-      4, (0.9, 0.94, 1.0))                       # 室內的補光
+      4, (0.9, 0.94, 1.0))
 light('AREA', (-2.4, -1.4, 2.6), 80, (math.radians(50), 0, math.radians(-42)),
       4, (0.86, 0.90, 1.0))
 
@@ -205,30 +295,21 @@ world.use_nodes = True
 world.node_tree.nodes['Background'].inputs[0].default_value = (0.30, 0.34, 0.42, 1)
 world.node_tree.nodes['Background'].inputs[1].default_value = 0.16
 
-# ============================================================ 站位
-# 寵物會站的幾個點,以及家具的擺放孔位。
-# 每一個點都要算出「在每一個角度下,它在畫面的哪裡、該畫多大」。
-SPOTS = {
-    'rug':   (-0.5, -0.6, 0.0),      # 地毯上(預設)
-    'bed':   (-1.55, 1.25, 0.32),    # 睡墊上
-    'bowl':  (1.05, -0.35, 0.0),     # 飯碗旁
-    'window': (0.55, 1.6, 0.0),      # 窗邊
-}
-
-# ============================================================ 算圖
+# ============================================================ 相機
 sc = C.scene
 sc.render.engine = 'CYCLES'
 sc.cycles.samples = SAMPLES
 sc.cycles.use_denoising = True
 sc.render.resolution_x = W
-sc.render.resolution_y = H
+sc.render.resolution_y = H_PX
 sc.render.image_settings.file_format = 'WEBP'
 sc.render.image_settings.quality = 82
+sc.render.image_settings.color_mode = 'RGBA'
 sc.view_settings.look = 'AgX - Base Contrast'
 
 bpy.ops.object.empty_add(location=(0, 0, 1.25))
 target = C.object
-bpy.ops.object.camera_add(location=(0, -8, 5))
+bpy.ops.object.camera_add(location=(0, -DIST, HEIGHT))
 cam = C.object
 cam.data.lens = 46
 tt = cam.constraints.new('TRACK_TO')
@@ -237,54 +318,121 @@ tt.track_axis = 'TRACK_NEGATIVE_Z'
 tt.up_axis = 'UP_Y'
 sc.camera = cam
 
-DIST, HEIGHT = 10.2, 4.2
-frames = []
 
-for i in range(FRAMES):
+def angle_of(i):
     t = 0.5 if FRAMES == 1 else i / (FRAMES - 1)
-    ang = math.radians(-ARC + 2 * ARC * t)
-    cam.location = (math.sin(ang) * DIST, -math.cos(ang) * DIST, HEIGHT)
-    C.view_layer.update()
+    return math.radians(-ARC + 2 * ARC * t)
 
-    name = 'room-%02d.webp' % i
-    sc.render.filepath = os.path.join(OUT, name)
+
+def aim(i):
+    a = angle_of(i)
+    cam.location = (math.sin(a) * DIST, -math.cos(a) * DIST, HEIGHT)
+    C.view_layer.update()
+    return a
+
+
+def floor_matrix():
+    """地板平面(z=0)投影到畫面的 3×3 單應矩陣。
+
+       取法是從相機矩陣直接拿,不是用幾個點去擬合 —— 這樣是精確的。
+       z=0 代表第 2 行用不到,所以留下第 0、1、3 行與第 0、1、3 列。
+       網頁拿它算「地板座標 → 畫面」,拿它的反矩陣算「拖到哪 → 地板哪裡」。"""
+    dg = C.evaluated_depsgraph_get()
+    P = cam.calc_matrix_camera(dg, x=W, y=H_PX)
+    M = P @ cam.matrix_world.inverted()
+    rows = (0, 1, 3)
+    return [[round(M[r][c], 6) for c in (0, 1, 3)] for r in rows]
+
+
+def unit_at(p):
+    """地面上 p 這一點,一個單位高投影出來佔畫面高的幾成。
+       站得越後面這個數字越小 —— 拿它當縮放,透視就是對的。"""
+    from bpy_extras.object_utils import world_to_camera_view
+    a = world_to_camera_view(sc, cam, Vector((p[0], p[1], 0)))
+    b = world_to_camera_view(sc, cam, Vector((p[0], p[1], 1)))
+    return abs(a.y - b.y)
+
+
+def shot(path):
+    sc.render.filepath = path
     bpy.ops.render.render(write_still=True)
 
-    # 這一格的站位投影。world_to_camera_view 回傳 0~1 的畫面座標,
-    # 乘上解析度就是像素。scale 用「地板上一個單位高的線段投影後有多長」算 ——
-    # 這樣寵物站得越後面就自動畫得越小,而且是真的透視,不是我猜的係數。
-    spots = {}
-    for key, p in SPOTS.items():
-        base = Vector(p)
-        a = world_to_camera_view(sc, cam, base)
-        b = world_to_camera_view(sc, cam, base + Vector((0, 0, 1)))
-        spots[key] = {
-            'x': round(a.x, 5),
-            'y': round(1 - a.y, 5),              # 網頁的 y 由上往下
-            'unit': round(abs(a.y - b.y), 5)     # 一個單位高 = 畫面高的幾成
-        }
-    frames.append({'file': name, 'angle': round(math.degrees(ang), 2),
-                   'spots': spots})
-    print('frame %d/%d  %s' % (i + 1, FRAMES, name))
 
-meta = {
-    'width': W, 'height': H,
-    'arc': ARC,
-    'frames': frames,
-    'note': '由 tools/blender/room.py 產生,不要手改'
-}
-with open(os.path.join(OUT, 'room.json'), 'w', encoding='utf-8') as f:
-    json.dump(meta, f, ensure_ascii=False, indent=1)
+def show_only(keep):
+    """只留下要算的那幾個物件,其餘完全移出這一次算圖。
 
-# 同一份資料再寫成一支 .js。
-# 老師是**雙擊 index.html** 打開這個系統的(README 就是這樣寫的),
-# 而 file:// 下 fetch() 讀本機 JSON 會被瀏覽器擋掉 ——
-# 用 <script> 載就沒有這個問題。JSON 那一份留著給工具和測試用。
-with open(os.path.join(OUT, 'room-data.js'), 'w', encoding='utf-8') as f:
-    f.write('/* 由 tools/blender/room.py 產生,不要手改 */\n')
-    f.write('window.PET_ROOM = ')
-    json.dump(meta, f, ensure_ascii=False, separators=(',', ':'))
-    f.write(';\n')
+       算家具的時候牆要**整個拿掉**,不能只是「不被相機看到」。
+       地板設成只收影子(shadow catcher),而 shadow catcher 算的是
+       「這裡比沒有遮蔽的時候暗多少」—— 牆只要還在,它擋掉的環境光
+       會讓**整片地板**都被判定成陰影,算出來是一塊不透明的黑板子(踩過)。"""
+    for o in C.scene.objects:
+        if o.type != 'MESH':
+            continue
+        o.hide_render = (o not in keep)
+
+
+# ============================================================ 算圖
+if MODE == 'shell':
+    sc.render.film_transparent = False
+    frames = []
+    for i in range(FRAMES):
+        aim(i)
+        name = 'room-%02d.webp' % i
+        shot(os.path.join(OUT, name))
+        frames.append({
+            'file': name,
+            'angle': round(math.degrees(angle_of(i)), 2),
+            'H': floor_matrix(),
+            'cam': [round(v, 4) for v in cam.location],
+            # 房間正中央的縮放基準:家具與守護獸的大小都以它為 1
+            'unit0': round(unit_at((0, 0)), 6)
+        })
+        print('shell %d/%d' % (i + 1, FRAMES))
+
+    meta = {'width': W, 'height': H_PX, 'arc': ARC, 'room': R,
+            'frames': frames,
+            'note': '由 tools/blender/room.py 產生,不要手改'}
+    for path, head in ((os.path.join(OUT, 'room.json'), None),
+                       (os.path.join(OUT, 'room-data.js'), 'window.PET_ROOM = ')):
+        with open(path, 'w', encoding='utf-8') as f:
+            if head:
+                # 老師是雙擊 index.html 打開系統的,file:// 下 fetch 讀本機
+                # JSON 會被瀏覽器擋掉 —— 所以同一份資料再寫成一支 .js
+                f.write('/* 由 tools/blender/room.py 產生,不要手改 */\n' + head)
+            json.dump(meta, f, ensure_ascii=False,
+                      indent=None if head else 1,
+                      separators=(',', ':') if head else None)
+            if head:
+                f.write(';\n')
+    print('OK shell ->', OUT)
+
+elif MODE == 'items':
+    # 家具用透明背景算,影子烘進去 —— 地板設成「只收影子」,
+    # 這樣沙發底下那一圈暗暗的會跟著圖走,擺到哪裡都像真的放在地上。
+    sc.render.film_transparent = True
+    for o in floor_parts:
+        o.is_shadow_catcher = True
+    # 牆拿掉之後少了反彈光,世界光補一點回來
+    world.node_tree.nodes['Background'].inputs[1].default_value = 0.30
+
+    manifest = []
+    for item in ITEMS:
+        objs = item['build']()
+        show_only(set(objs) | set(floor_parts))
+        sub = os.path.join(ITEMS_OUT, item['id'])
+        os.makedirs(sub, exist_ok=True)
+        for i in range(FRAMES):
+            aim(i)
+            shot(os.path.join(sub, '%02d.webp' % i))
+        manifest.append({k: item[k] for k in ('id', 'name', 'desc', 'price', 'star')})
+        print('item %s' % item['id'])
+        for o in objs:
+            D.objects.remove(o, do_unlink=True)
+
+    with open(os.path.join(OUT, 'items-data.js'), 'w', encoding='utf-8') as f:
+        f.write('/* 由 tools/blender/room.py 產生,不要手改 */\nwindow.PET_ROOM_ITEMS = ')
+        json.dump(manifest, f, ensure_ascii=False, separators=(',', ':'))
+        f.write(';\n')
+    print('OK items ->', ITEMS_OUT)
 
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(HERE, 'room.blend'))
-print('OK ->', OUT)
