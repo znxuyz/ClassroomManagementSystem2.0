@@ -50,6 +50,12 @@ const PetEngine = {
       onerror="this.outerHTML='<span class=&quot;pet-emoji&quot;>${emoji}</span>'">`;
   },
 
+  // 圖片的路徑(房間那邊要的是路徑,不是一整段 HTML)
+  getImageSrc(student) {
+    if (!student.pet) return '';
+    return `assets/pets/${student.pet}-${STAGE_KEYS[this.getStage(student.totalPoints)]}.png`;
+  },
+
   // 純 emoji 版本,用於無法放圖片的場合(例如 alert、匯出的文字報表)
   getEmoji(student) {
     if (!student.pet) return '❓';

@@ -131,7 +131,17 @@ Object.assign(StudentApp, {
         ? this.renderPendingPet()
         : this.renderPetPicker();
 
+    /* 房間是額外的資產(assets/room/),老師可能還沒放 ——
+       沒有就不畫,原本的守護獸卡片照舊。 */
+    const room = (s && s.pet && PetRoom.available())
+      ? `<section class="student-section">${PetRoom.html({
+            img: PetEngine.getImageSrc(s),
+            name: s.petName || '守護獸'
+          })}</section>`
+      : '';
+
     return `
+      ${room}
       <section class="student-pet-section">${petHtml}</section>
       ${s && s.pet ? this.renderWeekCard(s) : ''}
       ${this.renderSkillsPanel()}

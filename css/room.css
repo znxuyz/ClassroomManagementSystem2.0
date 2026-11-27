@@ -1,0 +1,113 @@
+/* ============================================
+   守護獸的房間(2.5D)
+   ────────────────────────────────────────────
+   房間是一疊預先算好的圖,疊在一起只顯示一張;轉動就是換哪一張亮。
+   用 opacity 切換而不是改 src —— 改 src 會閃一下白,
+   拖曳的時候會變成一連串的閃爍。
+============================================ */
+.room {
+  position: relative;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  border-radius: var(--r-card);
+  overflow: hidden;
+  background: linear-gradient(170deg, #3a4150, #2b313c);
+  cursor: grab;
+  touch-action: pan-y;      /* 直的還能捲頁面,橫的給我們轉房間 */
+  user-select: none;
+}
+.room.is-drag { cursor: grabbing; }
+.room:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+
+.room-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+}
+.room-bg.on { opacity: 1; }
+
+/* ---------- 守護獸 ----------
+   left/top 是「腳站的那一點」,所以要往左推一半、往上推一整個身高。 */
+.room-pet {
+  position: absolute;
+  height: var(--h, 30%);
+  aspect-ratio: 1;
+  transform: translate(-50%, -100%);
+  cursor: pointer;
+}
+.room-pet-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+  /* 呼吸:不是整張放大,是**底邊不動**地上下起伏 ——
+     整張縮放的話腳會離地,看起來像在飄。 */
+  transform-origin: bottom center;
+  animation: room-breathe 3.4s ease-in-out infinite;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .35));
+}
+
+@keyframes room-breathe {
+  0%, 100% { transform: scale(1, 1); }
+  50%      { transform: scale(0.985, 1.018); }
+}
+
+/* 影子:跟著身體一起縮,牠才像踩在地板上而不是浮著 */
+.room-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: -1.5%;
+  width: 54%;
+  height: 9%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center,
+              rgba(0, 0, 0, .42), rgba(0, 0, 0, 0) 70%);
+  animation: room-shadow 3.4s ease-in-out infinite;
+}
+@keyframes room-shadow {
+  0%, 100% { transform: translateX(-50%) scale(1); opacity: .9; }
+  50%      { transform: translateX(-50%) scale(0.94); opacity: .78; }
+}
+
+/* 被點一下:跳起來。縮放中心一樣在腳底。 */
+.room-pet.is-happy .room-pet-img {
+  animation: room-hop .9s cubic-bezier(.3, 1.4, .5, 1);
+}
+@keyframes room-hop {
+  0%   { transform: scale(1, 1)        translateY(0); }
+  18%  { transform: scale(1.12, 0.88)  translateY(0); }      /* 先蹲 */
+  45%  { transform: scale(0.94, 1.08)  translateY(-16%); }   /* 跳起來 */
+  70%  { transform: scale(1.06, 0.94)  translateY(0); }      /* 落地壓一下 */
+  100% { transform: scale(1, 1)        translateY(0); }
+}
+
+.room-hint {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .42);
+  color: #fff;
+  pointer-events: none;
+  opacity: .85;
+}
+.room.is-drag .room-hint { opacity: 0; }
+
+/* 會暈的孩子、或系統設了減少動態:全部停下來。
+   這不是可有可無的 —— 前庭敏感的人看持續的呼吸動畫會不舒服。 */
+@media (prefers-reduced-motion: reduce) {
+  .room-pet-img,
+  .room-shadow,
+  .room-pet.is-happy .room-pet-img { animation: none; }
+}
+
+@media (max-width: 520px) {
+  .room-hint { font-size: 10px; padding: 2px 8px; }
+}

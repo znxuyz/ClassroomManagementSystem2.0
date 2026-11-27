@@ -291,6 +291,10 @@ const StudentApp = {
 
     /* 作業。自己交過哪幾份要一起查 —— 不查的話,交過的作業
        每次進來都還是一副「沒交」的樣子,孩子會重交一遍。 */
+    /* 房間的圖是額外的資產,載不到就安靜跳過 ——
+       一個裝飾功能不該讓整個守護獸分頁壞掉。 */
+    await PetRoom.load();
+
     this.homework = await this.optional('作業',
       () => Cloud.listHomework(classId), []);
     this.myHwSubs = {};
@@ -390,6 +394,8 @@ const StudentApp = {
     `;
 
     if (this.tab === 'blocks' && this.bkTask) this.bkRemount();
+    /* 房間要等 HTML 掛上去才量得到寬高,所以位置在這裡算 */
+    if (this.tab === 'pet') PetRoom.mount();
   },
 
   /* 積木那一頁的編輯器是程式掛上去的,不是 HTML 字串的一部分。

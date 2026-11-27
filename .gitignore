@@ -3,3 +3,7 @@ firestore-emulator.log
 firestore-debug.log
 firebase-debug.log
 ui-debug.log
+
+# Blender 的工作檔:腳本跑一次就重新產生,不必進版控(而且是二進位、很大)
+tools/blender/*.blend
+tools/blender/*.blend1

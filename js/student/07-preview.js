@@ -140,6 +140,10 @@ const StudentPreviewFrame = {
     StudentApp.bkTask = null;
     StudentApp.activeQuiz = null;
     StudentApp.tab = d.tab || 'pet';
+    /* 房間的資料在學生端是登入後載的,預覽沒走那一條路 ——
+       這裡補載一次,老師才看得到學生真正會看到的畫面。
+       load() 自己有快取,所以重畫幾次都只抓一次。 */
+    PetRoom.load().then(() => StudentApp.render());
     StudentApp.render();
   }
 };
